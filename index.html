@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baiterek ST — Бастауыш мектеп</title>
+<meta name="description" content="Baiterek ST бастауыш мектебі — 1-4 сынып оқушылары үшін жеке қолдау, үш тілде оқыту және қауіпсіз орта.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          emerald: { DEFAULT:'#0F382C', 50:'#EAF1EE', 100:'#CFE0D8', 700:'#164A38', 800:'#123F30', 900:'#0F382C', 950:'#0A2A20' },
+          gold: { DEFAULT:'#D4AF37', 50:'#FBF6E7', 100:'#F5E9C2', 400:'#DDBB4C', 500:'#D4AF37', 600:'#B8952A' },
+          cream: '#FAF9F5',
+          charcoal: '#1A202C'
+        },
+        fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
+        boxShadow: { card:'0 20px 45px -24px rgba(15,56,44,.25)' }
+      }
+    }
+  }
+</script>
+<style>
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+  body{font-family:'Inter',system-ui,sans-serif;}
+  .ornament{background-image:repeating-linear-gradient(45deg, rgba(15,56,44,.06) 0 2px, transparent 2px 14px);}
+  .mark{color:#0F382C;}
+  .hidden-panel{display:none;}
+  .chevron{transition:transform .2s ease;}
+  .accordion-panel{display:none;}
+  .accordion-item-open .accordion-panel{display:block;}
+  .accordion-item-open .chevron{transform:rotate(180deg);}
+  .lang-btn.active{background:#0F382C; color:#fff;}
+  .lang-btn{color:#0F382C;}
+  .tab-btn{background:rgba(255,255,255,.1); color:#fff;}
+  .tab-btn.active{background:#D4AF37; color:#0A2A20;}
+  .tab-btn:hover:not(.active){background:rgba(255,255,255,.2);}
+  .mobile-menu-icon-open{display:block;}
+  .mobile-menu-icon-close{display:none;}
+  .mobile-menu-open .mobile-menu-icon-open{display:none;}
+  .mobile-menu-open .mobile-menu-icon-close{display:block;}
+  .supply-list{list-style:disc; columns:2; column-gap:1.5rem; padding-left:1.15rem; margin:0; font-size:.92rem; color:#1A202C; font-weight:500;}
+  @media (max-width:520px){ .supply-list{columns:1;} }
+  .supply-list li{break-inside:avoid; margin-bottom:.3rem;}
+  .supply-note{color:#B8952A; font-weight:700; font-style:italic; margin-top:.8rem; font-size:.88rem;}
+  .supply-scope{display:inline-block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#0F382C; background:#EAF1EE; border-radius:.4rem; padding:.25rem .55rem; margin-bottom:.7rem;}
+  .room-table{width:100%; border-collapse:collapse; font-size:.88rem; min-width:420px;}
+  .room-table th{text-align:left; text-transform:uppercase; letter-spacing:.05em; font-size:.66rem; font-weight:700; color:#6B7280; padding:.55rem .7rem; border-bottom:2px solid #EAF1EE; white-space:nowrap;}
+  .room-table td{padding:.6rem .7rem; border-bottom:1px solid #EAF1EE; color:#1A202C; font-weight:500;}
+  .room-table td:first-child{font-weight:800; color:#0F382C; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .room-table tr:last-child td{border-bottom:none;}
+  .reveal{opacity:0; transform:translateY(18px); transition:opacity .6s ease, transform .6s ease;}
+  .reveal.in{opacity:1; transform:none;}
+  .day-carousel{scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:thin;}
+  .day-carousel::-webkit-scrollbar{height:6px;}
+  .day-carousel::-webkit-scrollbar-thumb{background:#CFE0D8; border-radius:999px;}
+  .day-slide{scroll-snap-align:start;}
+  .day-photo video, .day-photo img{width:100%; height:100%; object-fit:cover;}
+  .chip{display:inline-flex; align-items:center; gap:.35rem; padding:.45rem .9rem; border-radius:999px; font-size:.85rem; font-weight:700; background:#fff; color:#0F382C; border:1px solid rgba(15,56,44,.15); transition:background .15s;}
+  .chip:hover{background:#EAF1EE;}
+  .chip.active{background:#0F382C; color:#fff; border-color:#0F382C;}
+  .chip .dot{width:6px; height:6px; border-radius:999px; background:#D4AF37;}
+  .rich a{color:#0F382C; font-weight:700; text-decoration:underline;}
+  .rich ul{list-style:disc; padding-left:1.2rem; margin:.4rem 0;}
+  .rich ol{list-style:decimal; padding-left:1.2rem; margin:.4rem 0;}
+  .rich p{margin:.35rem 0;}
+  .clamp{display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;}
+  .media-thumb{position:relative; overflow:hidden; border-radius:.9rem; background:#EAF1EE; cursor:pointer;}
+  .media-thumb img{width:100%; height:100%; object-fit:cover; transition:transform .3s;}
+  .media-thumb:hover img{transform:scale(1.04);}
+  .play-badge{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;}
+  .play-badge span{width:3.2rem; height:3.2rem; border-radius:999px; background:rgba(10,42,32,.75); display:flex; align-items:center; justify-content:center;}
+  #lightbox{position:fixed; inset:0; z-index:100; background:rgba(5,20,15,.92); display:none; align-items:center; justify-content:center; padding:1rem;}
+  #lightbox.open{display:flex;}
+  #lightbox .lb-body{max-width:min(1100px,100%); max-height:85vh; width:100%; display:flex; align-items:center; justify-content:center;}
+  #lightbox img{max-width:100%; max-height:85vh; border-radius:.75rem;}
+  #lightbox iframe{width:100%; aspect-ratio:16/9; max-height:85vh; border:0; border-radius:.75rem; background:#000;}
+  .lb-btn{position:absolute; width:2.8rem; height:2.8rem; border-radius:999px; background:rgba(255,255,255,.12); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.4rem;}
+  .lb-btn:hover{background:rgba(255,255,255,.25);}
+</style>
+</head>
+<body class="bg-cream text-charcoal antialiased">
+
+<div id="app">
+
+  <!-- STICKY HEADER -->
+  <header class="sticky top-0 z-50 bg-cream/90 backdrop-blur-md border-b border-emerald-900/10">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 h-20 flex items-center justify-between gap-4">
+      <a href="#top" class="flex items-center gap-2.5 shrink-0">
+        <svg viewBox="0 0 32 32" class="w-9 h-9" fill="none" stroke="#0F382C" stroke-width="1.6" stroke-linecap="round"><circle cx="16" cy="5.5" r="2.1" fill="#D4AF37" stroke="none"/><path d="M16 8v17"/><path d="M16 12c-3 -2 -6 -2 -8 0"/><path d="M16 12c3 -2 6 -2 8 0"/><path d="M16 17c-3.4 -1.6 -6.6 -1.2 -9 1"/><path d="M16 17c3.4 -1.6 6.6 -1.2 9 1"/><path d="M11 29c1 -3 3 -4.5 5 -4.5s4 1.5 5 4.5"/></svg>
+        <span class="leading-tight">
+          <span class="block font-extrabold text-emerald-900 text-lg tracking-tight">Baiterek ST</span>
+          <span class="block text-[.66rem] font-semibold text-gold-600 uppercase tracking-wider" data-i18n="brand_sub">Бастауыш мектеп</span>
+        </span>
+      </a>
+
+      <nav class="hidden lg:flex items-center gap-1 bg-emerald-900 rounded-full shadow-sm px-1.5 py-1.5">
+        <a href="#daily" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_daily">Күнделікті</a>
+        <a href="#news" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_news">Жаңалықтар</a>
+        <a href="#faq" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_faq">Ата-анаға ақпарат</a>
+        <a href="#team" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_team">Ұжым</a>
+        <a href="#admissions" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_admissions">Қабылдау</a>
+        <a href="#location" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_location">Мекенжай</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center bg-white rounded-full border border-emerald-900/15 p-1 text-xs font-bold">
+          <button type="button" class="lang-btn active" data-lang="kz" onclick="uiSetLang('kz')" style="padding:.375rem .75rem; border-radius:999px; transition:background .15s;">KZ</button>
+          <button type="button" class="lang-btn" data-lang="ru" onclick="uiSetLang('ru')" style="padding:.375rem .75rem; border-radius:999px; transition:background .15s;">RU</button>
+          <button type="button" class="lang-btn" data-lang="en" onclick="uiSetLang('en')" style="padding:.375rem .75rem; border-radius:999px; transition:background .15s;">EN</button>
+        </div>
+        <a href="#admissions" class="hidden md:inline-flex items-center gap-2 bg-gold hover:bg-gold-600 text-emerald-950 font-bold text-sm px-5 py-2.5 rounded-full shadow-card transition" data-i18n="nav_cta">Хабарласу</a>
+        <button type="button" id="mobileToggleBtn" onclick="uiToggleMobileMenu()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-full border border-emerald-900/15 text-emerald-900">
+          <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path class="mobile-menu-icon-open" d="M3 6h18M3 12h18M3 18h18"/><path class="mobile-menu-icon-close" style="display:none" d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- mobile menu -->
+    <div id="mobileMenu" class="hidden-panel lg:hidden bg-white border-t border-emerald-900/10 px-5 py-4 space-y-1">
+      <a onclick="uiCloseMobileMenu()" href="#daily" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_daily">Күнделікті</a>
+      <a onclick="uiCloseMobileMenu()" href="#news" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_news">Жаңалықтар</a>
+      <a onclick="uiCloseMobileMenu()" href="#faq" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_faq">Ата-анаға ақпарат</a>
+      <a onclick="uiCloseMobileMenu()" href="#team" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_team">Ұжым</a>
+      <a onclick="uiCloseMobileMenu()" href="#about" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_about">Неге біз</a>
+      <a onclick="uiCloseMobileMenu()" href="#admissions" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_admissions">Қабылдау</a>
+      <a onclick="uiCloseMobileMenu()" href="#gallery" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_gallery">Мектеп өмірі</a>
+      <a onclick="uiCloseMobileMenu()" href="#location" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_location">Мекенжай</a>
+      <div class="flex items-center gap-2 pt-2">
+        <button type="button" class="lang-btn-m active flex-1 py-2 rounded-lg text-xs font-bold" data-lang="kz" onclick="uiSetLang('kz')" style="background:#0F382C; color:#fff;">KZ</button>
+        <button type="button" class="lang-btn-m flex-1 py-2 rounded-lg text-xs font-bold" data-lang="ru" onclick="uiSetLang('ru')" style="background:#EAF1EE; color:#0F382C;">RU</button>
+        <button type="button" class="lang-btn-m flex-1 py-2 rounded-lg text-xs font-bold" data-lang="en" onclick="uiSetLang('en')" style="background:#EAF1EE; color:#0F382C;">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top" class="pb-24 lg:pb-0">
+
+    <!-- HERO -->
+    <section class="relative overflow-hidden">
+      <div class="absolute inset-0 ornament opacity-40 pointer-events-none"></div>
+      <div class="absolute -top-32 -right-24 w-96 h-96 bg-gold-100 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+      <div class="relative max-w-7xl mx-auto px-5 sm:px-8 pt-14 pb-16 lg:pt-20 lg:pb-24 grid lg:grid-cols-2 gap-14 items-center">
+        <div>
+          <span class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gold-600 bg-gold-50 border border-gold-100 rounded-full px-4 py-1.5" data-i18n="hero_kicker">Baiterek ST · Бастауыш мектеп</span>
+          <h1 class="mt-5 text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold leading-[1.12] tracking-tight text-emerald-950" data-i18n="hero_headline2">Балаңыздың үлкен болашағы <span class="mark">кішкентай қадамдардан</span> басталады</h1>
+          <p class="mt-6 text-lg text-charcoal/85 max-w-xl leading-relaxed" data-i18n="hero_desc">Baiterek ST бастауыш мектебі — 1-4 сынып оқушылары үшін жеке қолдау, үш тілде оқыту және қауіпсіз орта.</p>
+          <div class="mt-8 flex flex-wrap gap-3.5">
+            <a href="#faq" class="inline-flex items-center gap-2 bg-gold hover:bg-gold-600 text-emerald-950 font-bold px-7 py-3.5 rounded-full shadow-card transition" data-i18n="hero_cta_primary">Ата-анаға ақпарат</a>
+            <a href="https://wa.me/77009786500" target="_blank" rel="noopener" class="js-wa inline-flex items-center gap-2 bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-7 py-3.5 rounded-full transition">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.5 10.5c.3 2.4 2.6 4.7 5 5"/></svg>
+              <span data-i18n="hero_cta_secondary">WhatsApp-қа жазу</span>
+            </a>
+          </div>
+          <div class="mt-9 flex flex-wrap gap-3">
+            <span class="inline-flex items-center gap-1.5 bg-white border border-emerald-900/10 rounded-full px-4 py-2 text-sm font-bold shadow-sm">
+              <svg viewBox="0 0 24 24" class="w-4 h-4 text-gold" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01z"/></svg>
+              <span data-i18n="hero_rating">4.8 · 778</span> <span data-i18n="hero_reviews">бағалау</span>
+            </span>
+            <span class="inline-flex items-center bg-white border border-emerald-900/10 rounded-full px-4 py-2 text-sm font-bold shadow-sm" data-i18n="hero_pill_grades">1–4 сынып</span>
+            <span class="inline-flex items-center bg-white border border-emerald-900/10 rounded-full px-4 py-2 text-sm font-bold shadow-sm" data-i18n="hero_pill_lang">3 тілде оқыту</span>
+          </div>
+        </div>
+
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-72 h-72 sm:w-80 sm:h-80 rounded-full bg-emerald-900/[.05] border border-emerald-900/10"></div>
+          <div id="heroPhotoSlot" class="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden bg-emerald-50 border-4 border-white shadow-card">
+            <img src="img/hero.jpg" data-img="hero" alt="Baiterek ST" class="w-full h-full object-cover">
+          </div>
+
+          <div class="absolute -left-2 sm:left-2 bottom-2 bg-white rounded-2xl shadow-card border border-emerald-900/10 px-4 py-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-emerald-900 text-white flex items-center justify-center text-xs font-extrabold">18</div>
+            <div class="text-xs font-semibold text-charcoal/70 leading-tight" data-i18n="badge_rooms">жабдықталған<br>кабинет</div>
+          </div>
+          <div class="absolute -right-2 sm:right-0 top-6 bg-white rounded-2xl shadow-card border border-emerald-900/10 px-4 py-3 flex items-center gap-3">
+            <svg viewBox="0 0 24 24" class="w-7 h-7 text-gold-600" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z"/><path d="M20 17H6.5a2.5 2.5 0 0 0-2.5 2.5"/></svg>
+            <div class="text-xs font-semibold text-charcoal/70 leading-tight" data-i18n="badge_books">оқулықтар<br>мектептен</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- METRICS BAR -->
+    <section class="border-y border-emerald-900/10 bg-white">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-emerald-900" data-i18n="metric1_num">1–4</div>
+          <div class="mt-1 text-base font-semibold text-charcoal/80" data-i18n="metric1_label">сынып</div>
+        </div>
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-emerald-900" data-i18n="metric2_num">3</div>
+          <div class="mt-1 text-base font-semibold text-charcoal/80" data-i18n="metric2_label">тіл</div>
+        </div>
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-emerald-900" data-i18n="metric3_num">4×</div>
+          <div class="mt-1 text-base font-semibold text-charcoal/80" data-i18n="metric3_label">тамақтану</div>
+        </div>
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-emerald-900" data-i18n="metric4_num">24</div>
+          <div class="mt-1 text-base font-semibold text-charcoal/80" data-i18n="metric4_label">сынып жетекшісі</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DAILY: menu / homework / weekly plan -->
+    <section id="daily" class="max-w-7xl mx-auto px-5 sm:px-8 py-16 scroll-mt-20">
+      <div class="max-w-2xl mx-auto text-center">
+        <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="daily_label">Күнделікті ақпарат</span>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="daily_title">Бүгін мектепте</h2>
+      </div>
+      <div class="mt-8 flex flex-wrap justify-center gap-2" id="dailyTabs">
+        <button type="button" class="daily-tab chip" style="font-size:.95rem; padding:.65rem 1.2rem" data-tab="menu" onclick="uiDailyTab('menu')"><span>🍽</span> <span data-i18n="tab_menu">Ас мәзірі</span></button>
+        <button type="button" class="daily-tab chip" style="font-size:.95rem; padding:.65rem 1.2rem" data-tab="hw" onclick="uiDailyTab('hw')"><span>📚</span> <span data-i18n="tab_hw">Үй тапсырмасы</span></button>
+        <button type="button" class="daily-tab chip" style="font-size:.95rem; padding:.65rem 1.2rem" data-tab="week" onclick="uiDailyTab('week')"><span>🗓</span> <span data-i18n="tab_week">Апта жоспары</span></button>
+      </div>
+      <div id="dailyBody" class="mt-8 max-w-3xl mx-auto bg-white rounded-3xl border border-emerald-900/10 shadow-card p-5 sm:p-8 min-h-[12rem]"></div>
+    </section>
+
+    <!-- NEWS -->
+    <section id="news" class="border-t-4 border-gold bg-gradient-to-b from-gold-50/50 to-transparent py-20 scroll-mt-20">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8">
+        <div class="max-w-2xl mx-auto text-center">
+          <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="news_label">Жаңалықтар</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="news_title">Мектеп өмірінен соңғы жаңалықтар</h2>
+        </div>
+        <div id="newsTabs" class="mt-8 flex flex-wrap justify-center gap-2"></div>
+        <div id="newsList" class="mt-10 grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-start"></div>
+        <div class="mt-8 text-center"><button type="button" id="newsMore" onclick="uiNewsMore()" class="hidden-panel bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-3 rounded-full transition" data-i18n="news_more">Тағы көрсету</button></div>
+      </div>
+    </section>
+
+    <!-- ADVANTAGES -->
+    <section id="about" class="border-t-4 border-emerald-700 bg-gradient-to-b from-emerald-50/70 to-transparent py-20">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8">
+      <div class="max-w-2xl mx-auto text-center">
+        <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="about_label">Неге Baiterek ST</span>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="about_title">Бастауыш білім берудің берік іргетасы</h2>
+        <p class="mt-4 text-lg text-charcoal/85 leading-relaxed" data-i18n="about_desc">1-4 сынып — баланың оқуға деген қарым-қатынасы қалыптасатын кез. Біз осы кезеңге ерекше мән береміз.</p>
+      </div>
+      <div class="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-7 hover:shadow-card hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-5"><svg viewBox="0 0 24 24" class="w-6 h-6 text-emerald-900" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M4 12h16"/><path d="M12 4c2.5 2.5 2.5 13.5 0 16"/><path d="M12 4c-2.5 2.5 -2.5 13.5 0 16"/></svg></div>
+          <h3 class="font-bold text-lg text-emerald-950" data-i18n="pillar1_title">Үш тілде білім</h3>
+          <p class="mt-2 text-base text-charcoal/80 leading-relaxed" data-i18n="pillar1_desc">Қазақ және орыс тілінде сабақ, 1-сыныптан бастап аптасына 4+ сағат ағылшын тілі</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-7 hover:shadow-card hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-xl bg-gold-50 flex items-center justify-center mb-5"><svg viewBox="0 0 24 24" class="w-6 h-6 text-gold-600" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c4 0 3 -10 7 -10s3 10 7 10 3 -6 4 -6"/><circle cx="10" cy="7" r="1.4"/><circle cx="17" cy="11" r="1.4"/></svg></div>
+          <h3 class="font-bold text-lg text-emerald-950" data-i18n="pillar2_title">Жеке қолдау</h3>
+          <p class="mt-2 text-base text-charcoal/80 leading-relaxed" data-i18n="pillar2_desc">Әр баланың қарқынына бейімделген жеке даму бағдары</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-7 hover:shadow-card hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-5"><svg viewBox="0 0 24 24" class="w-6 h-6 text-emerald-900" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c0 3 -2 3 -2 6v10a2 2 0 0 0 2 2h0a2 2 0 0 0 2 -2V9c0 -3 -2 -3 -2 -6z"/><path d="M17 3v18"/><path d="M14 3v6a3 3 0 0 0 6 0V3"/></svg></div>
+          <h3 class="font-bold text-lg text-emerald-950" data-i18n="pillar3_title">Қауіпсіздік пен қамқорлық</h3>
+          <p class="mt-2 text-base text-charcoal/80 leading-relaxed" data-i18n="pillar3_desc">Диетолог құрастырған күніне 4 мезгіл тамақтану, дәрігерлік бақылау</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-7 hover:shadow-card hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-xl bg-gold-50 flex items-center justify-center mb-5"><svg viewBox="0 0 24 24" class="w-6 h-6 text-gold-600" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6M9 12h.01M15 12h.01M12 12h.01"/></svg></div>
+          <h3 class="font-bold text-lg text-emerald-950" data-i18n="adv4_title">Заманауи кампус</h3>
+          <p class="mt-2 text-base text-charcoal/80 leading-relaxed" data-i18n="adv4_desc">18 арнайы жабдықталған кабинет: хореография студиясы, логика және ағылшын тілі бөлмелері, спорт залы</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-7 hover:shadow-card hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-5"><svg viewBox="0 0 24 24" class="w-6 h-6 text-emerald-900" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.7 0-3.4.7-4.5 2.1C10.9 3.7 9.2 3 7.5 3A5.5 5.5 0 0 0 2 8.5C2 10.8 3.5 12.5 5 14l7 7Z"/></svg></div>
+          <h3 class="font-bold text-lg text-emerald-950" data-i18n="adv5_title">Тәжірибелі мамандар</h3>
+          <p class="mt-2 text-base text-charcoal/80 leading-relaxed" data-i18n="adv5_desc">Педагог-психолог, логопед, дефектолог және әлеуметтік педагогтан тұратын сүйемелдеу қызметі</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-7 hover:shadow-card hover:-translate-y-1 transition">
+          <div class="w-12 h-12 rounded-xl bg-gold-50 flex items-center justify-center mb-5"><svg viewBox="0 0 24 24" class="w-6 h-6 text-gold-600" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="10" rx="2"/><circle cx="7" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/></svg></div>
+          <h3 class="font-bold text-lg text-emerald-950" data-i18n="adv6_title">Ыңғайлы жол</h3>
+          <p class="mt-2 text-base text-charcoal/80 leading-relaxed" data-i18n="adv6_desc">School Way серіктес компаниясы арқылы мектепке апару-әкелу қызметі, Алматының орталығында орналасқан</p>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- DAY IN THE LIFE -->
+    <section class="bg-white py-20 border-y border-emerald-900/10">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8">
+        <div class="max-w-2xl mx-auto text-center">
+          <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="day_label">Мектеп өмірі</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="day_title">Балаңыздың мектептегі бір күні</h2>
+        </div>
+        <div class="mt-12 -mx-5 sm:mx-0">
+          <div id="dayCarousel" class="day-carousel flex gap-4 overflow-x-auto px-5 sm:px-1 pb-3"></div>
+          <div class="mt-1 flex items-center justify-center gap-1.5 text-xs text-charcoal/40">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            <span data-i18n="day_swipe_hint">Көбірек көру үшін оңға жылжытыңыз</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ATMOSPHERE -->
+    <section class="relative py-28 overflow-hidden">
+      <img src="img/atmosphere.jpg" data-img="atmosphere" alt="" class="absolute inset-0 w-full h-full object-cover">
+      <div class="absolute inset-0 bg-emerald-950/75"></div>
+      <div class="relative max-w-3xl mx-auto px-5 sm:px-8 text-center">
+        <span class="text-xs font-bold uppercase tracking-widest text-gold" data-i18n="atmo_label">Мектеп атмосферасы</span>
+        <h2 class="mt-4 text-2xl sm:text-3xl font-extrabold text-white leading-snug" data-i18n="atmo_title">Біз үшін мектеп — баланың екінші үйі.</h2>
+        <p class="mt-7 text-xl sm:text-2xl font-semibold text-gold italic leading-snug" data-i18n="atmo_quote">«Бала өзін қауіпсіз сезінген жерде еркін үйренеді.»</p>
+      </div>
+    </section>
+
+    <!-- LEARNING DIRECTIONS -->
+    <section class="max-w-7xl mx-auto px-5 sm:px-8 py-20">
+      <div class="max-w-2xl mx-auto text-center">
+        <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="learn_label">Оқу процесі</span>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="learn_title">Бастауышта бала нені үйренеді?</h2>
+      </div>
+      <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-6">
+          <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center mb-4"><svg viewBox="0 0 24 24" class="w-5 h-5 text-emerald-900" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z"/></svg></div>
+          <h3 class="font-bold text-emerald-950" data-i18n="learn1_title">Академиялық білім</h3>
+          <p class="mt-1.5 text-base text-charcoal/80" data-i18n="learn1_desc">Мемлекеттік стандартқа сай негізгі пәндер бойынша берік білім</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-6">
+          <div class="w-11 h-11 rounded-xl bg-gold-50 flex items-center justify-center mb-4"><svg viewBox="0 0 24 24" class="w-5 h-5 text-gold-600" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+          <h3 class="font-bold text-emerald-950" data-i18n="learn2_title">Оқу сауаттылығы</h3>
+          <p class="mt-1.5 text-base text-charcoal/80" data-i18n="learn2_desc">Қазақ және орыс тілдерінде еркін оқу, жазу және түсіну дағдылары</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-6">
+          <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center mb-4"><svg viewBox="0 0 24 24" class="w-5 h-5 text-emerald-900" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M9 15h.01M15 9h.01M15 15h.01M12 12h.01"/></svg></div>
+          <h3 class="font-bold text-emerald-950" data-i18n="learn3_title">Математика және логика</h3>
+          <p class="mt-1.5 text-base text-charcoal/80" data-i18n="learn3_desc">Логикалық ойлауды дамытатын арнайы сабақтар</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-6">
+          <div class="w-11 h-11 rounded-xl bg-gold-50 flex items-center justify-center mb-4"><svg viewBox="0 0 24 24" class="w-5 h-5 text-gold-600" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c4 0 3 -10 7 -10s3 10 7 10 3 -6 4 -6"/></svg></div>
+          <h3 class="font-bold text-emerald-950" data-i18n="learn4_title">Тілдік дағдылар</h3>
+          <p class="mt-1.5 text-base text-charcoal/80" data-i18n="learn4_desc">1-сыныптан бастап аптасына 4+ сағат ағылшын тілі</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-6">
+          <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center mb-4"><svg viewBox="0 0 24 24" class="w-5 h-5 text-emerald-900" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <h3 class="font-bold text-emerald-950" data-i18n="learn5_title">Цифрлық сауаттылық</h3>
+          <p class="mt-1.5 text-base text-charcoal/80" data-i18n="learn5_desc">Заманауи технологияларды қауіпсіз әрі саналы қолдану дағдылары</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-emerald-900/10 p-6">
+          <div class="w-11 h-11 rounded-xl bg-gold-50 flex items-center justify-center mb-4"><svg viewBox="0 0 24 24" class="w-5 h-5 text-gold-600" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5l-4 8M12 12l4 8M8 13l-3 -1M16 13l3 -1"/></svg></div>
+          <h3 class="font-bold text-emerald-950" data-i18n="learn6_title">Шығармашылық және спорт</h3>
+          <p class="mt-1.5 text-base text-charcoal/80" data-i18n="learn6_desc">Музыка, сурет, хореография және дене шынықтыру сабақтары</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="bg-emerald-950 border-t-4 border-gold py-20">
+      <div class="max-w-5xl mx-auto px-5 sm:px-8">
+        <div class="max-w-2xl mx-auto text-center">
+          <span class="text-xs font-bold uppercase tracking-widest text-gold" data-i18n="faq_label">Ата-анаға ақпарат</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-white tracking-tight" data-i18n="faq_title">Барлық сұраққа бір жерден жауап</h2>
+          <p class="mt-4 text-lg text-white/85 leading-relaxed" data-i18n="faq_desc">Қажетті тақырыпты басыңыз — жауабы астынан ашылады.</p>
+        </div>
+
+        <div id="faqTabs" class="mt-10 flex flex-wrap justify-center gap-2"></div>
+        <div id="faqPanels"></div>
+      </div>
+    </section>
+
+    <!-- TEAM -->
+    <section id="team" class="border-t-4 border-gold bg-gradient-to-b from-gold-50/50 to-transparent py-20">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8">
+      <div class="max-w-2xl mx-auto text-center">
+        <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="team_label">Ұжым</span>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="team_title">Бастауыш мектеп ұжымымен танысыңыз</h2>
+        <p class="mt-4 text-lg text-charcoal/85 leading-relaxed" data-i18n="team_desc">Әр маман — өз саласының маманы.</p>
+      </div>
+
+      <h3 class="mt-14 mb-5 text-lg font-extrabold text-emerald-950" data-i18n="team_sub_leadership">Әкімшілік құрамы</h3>
+      <div id="teamLeadership" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+      <h3 class="mt-14 mb-5 text-lg font-extrabold text-emerald-950" data-i18n="team_sub_structure">Ұйымдық құрылым — әдістемелік бірлестіктер</h3>
+      <div id="teamMO" class="grid sm:grid-cols-2 gap-3"></div>
+
+      <h3 class="mt-14 mb-5 text-lg font-extrabold text-emerald-950" data-i18n="team_sub_specialists">Қолдау қызметі мамандары</h3>
+      <div id="teamSpecialists" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+
+      <h3 class="mt-14 mb-5 text-lg font-extrabold text-emerald-950" data-i18n="team_sub_preschool">Мектепке дейінгі дайындық тобы</h3>
+      <div id="teamPreschool" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+
+      <h3 class="mt-14 mb-5 text-lg font-extrabold text-emerald-950" data-i18n="team_sub_teachers">Пән мұғалімдері</h3>
+      <div id="teamTeachers" class="space-y-2"></div>
+
+      <h3 class="mt-14 mb-5 text-lg font-extrabold text-emerald-950" data-i18n="team_sub_support">Қосымша қызметкерлер</h3>
+      <div id="teamSupport" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+      </div>
+    </section>
+
+    <!-- ADMISSIONS + LEAD FORM -->
+    <section id="admissions" class="bg-emerald-50/60 border-t-4 border-gold py-20">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8">
+        <div class="mb-12 rounded-2xl bg-gold-50 border-2 border-gold px-6 py-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="inline-block text-xs font-extrabold uppercase tracking-wide text-gold-600" data-i18n="promo_label">Жаңалық</span>
+            <p class="mt-1 font-bold text-emerald-950" data-i18n="promo_title">Мектепалды даярлық сыныбына (дайындық тобы) қабылдау ашылды!</p>
+            <p class="mt-1 text-base text-charcoal/80" data-i18n="promo_desc">1–4 сынып пен дайындық тобына арналған өтінімді төмендегі бір форма арқылы бір жерден қалдыруға болады.</p>
+          </div>
+          <a href="#leadform" class="shrink-0 inline-flex items-center gap-2 bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-3 rounded-full transition" data-i18n="admissions_label">Қабылдау</a>
+        </div>
+      <div class="grid lg:grid-cols-2 gap-14">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="admissions_label">Қабылдау</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="admissions_title">Қабылдау қалай өтеді</h2>
+          <div class="mt-10 space-y-6">
+            <div class="flex gap-5">
+              <div class="w-11 h-11 shrink-0 rounded-full bg-emerald-900 text-white flex items-center justify-center font-extrabold">1</div>
+              <div>
+                <h3 class="font-bold text-emerald-950" data-i18n="step1_title">Хабарласу</h3>
+                <p class="mt-1 text-base text-charcoal/80" data-i18n="step1_desc">Қоңырау немесе WhatsApp арқылы сұрау салыңыз</p>
+              </div>
+            </div>
+            <div class="flex gap-5">
+              <div class="w-11 h-11 shrink-0 rounded-full bg-gold text-emerald-950 flex items-center justify-center font-extrabold">2</div>
+              <div>
+                <h3 class="font-bold text-emerald-950" data-i18n="step2_title">Әңгімелесу</h3>
+                <p class="mt-1 text-base text-charcoal/80" data-i18n="step2_desc">1-4 сынып үшін баланың дайындығын анықтайтын сұхбат өтеді</p>
+              </div>
+            </div>
+            <div class="flex gap-5">
+              <div class="w-11 h-11 shrink-0 rounded-full bg-emerald-900 text-white flex items-center justify-center font-extrabold">3</div>
+              <div>
+                <h3 class="font-bold text-emerald-950" data-i18n="step3_title">Қабылдау</h3>
+                <p class="mt-1 text-base text-charcoal/80" data-i18n="step3_desc">Нәтиже бойынша сынып пен кабинет анықталады</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="leadform" class="bg-white rounded-3xl shadow-card border border-emerald-900/10 p-8">
+          <h3 class="text-xl font-extrabold text-emerald-950" data-i18n="lead_title">Өтінім қалдырыңыз</h3>
+          <p class="mt-2 text-base text-charcoal/80" data-i18n="lead_desc">Аты-жөніңіз бен телефоныңызды қалдырыңыз — қабылдау комиссиясы жақын арада хабарласады.</p>
+          <form id="leadFormEl" class="mt-6 space-y-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wide text-charcoal/70 mb-1.5" data-i18n="lead_name">Аты-жөні</label>
+              <input id="leadName" required type="text" class="w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold">
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wide text-charcoal/70 mb-1.5" data-i18n="lead_phone">Телефон нөмірі</label>
+              <input id="leadPhone" required type="tel" placeholder="+7" class="w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold">
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wide text-charcoal/70 mb-1.5" data-i18n="lead_message">Хабарлама (міндетті емес)</label>
+              <textarea id="leadMsg" rows="3" class="w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold"></textarea>
+            </div>
+            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-3.5 rounded-xl transition">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.5 10.5c.3 2.4 2.6 4.7 5 5"/></svg>
+              <span data-i18n="lead_submit">WhatsApp арқылы жіберу</span>
+            </button>
+          </form>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- GALLERY -->
+    <section id="gallery" class="border-t-4 border-emerald-800 bg-gradient-to-b from-cream via-gold-50/40 to-transparent py-20">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8">
+      <div class="max-w-2xl mx-auto text-center">
+        <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="gallery_label">Мектеп өмірі</span>
+        <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="gallery_title">Балаңыз күнін қалай өткізеді</h2>
+      </div>
+      <div id="galleryGrid" class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      </div>
+    </section>
+
+    <!-- LOCATION -->
+    <section id="location" class="bg-white border-t-4 border-emerald-800 py-20">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8 grid lg:grid-cols-2 gap-12 items-center">
+        <div class="relative aspect-[5/4] rounded-3xl overflow-hidden border border-emerald-900/10 bg-emerald-50">
+          <iframe src="https://www.google.com/maps?q=Алматы,+Жандосов+көшесі,+94&amp;output=embed" class="js-map-frame absolute inset-0 w-full h-full border-0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Baiterek ST мекенжайы"></iframe>
+          <div class="absolute bottom-4 right-4 w-2/5 sm:w-1/3 rounded-2xl overflow-hidden border-4 border-white shadow-card pointer-events-none">
+            <img src="img/building.jpg" data-img="building" alt="Baiterek ST" class="w-full h-full object-cover">
+          </div>
+        </div>
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="location_label">Мекенжай</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="location_title">Бізді қалай табуға болады</h2>
+          <dl class="mt-8">
+            <dt class="text-xs font-bold uppercase tracking-wide text-charcoal/70" data-i18n="location_addr_label">Мекенжай</dt>
+            <dd class="mt-1 text-lg font-semibold text-emerald-950" data-i18n="location_address">Алматы қаласы, Жандосов көшесі, 94</dd>
+            <dt class="mt-6 text-xs font-bold uppercase tracking-wide text-charcoal/70" data-i18n="location_phone_label">Телефон</dt>
+            <dd class="mt-1 text-lg font-semibold text-emerald-950"><a class="js-tel js-tel-text" href="tel:+77085849402">+7 708 584-94-02</a></dd>
+          </dl>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="https://www.google.com/maps/search/?api=1&query=Zhandosov+94+Almaty" target="_blank" rel="noopener" class="js-map-link inline-flex items-center gap-2 bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-3 rounded-full transition" data-i18n="btn_maps">Google Maps ашу</a>
+            <a href="https://2gis.kz/almaty/firm/70000001101988107" target="_blank" rel="noopener" class="js-gis inline-flex items-center gap-2 bg-white border-2 border-gold text-emerald-900 font-bold px-6 py-3 rounded-full transition" data-i18n="btn_2gis">2GIS ашу</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section class="max-w-7xl mx-auto px-5 sm:px-8 py-20">
+      <div class="bg-gradient-to-br from-emerald-950 to-emerald-800 rounded-3xl p-8 sm:p-14 grid lg:grid-cols-2 gap-10">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-gold" data-i18n="contact_label">Байланыс</span>
+          <h2 class="mt-3 text-3xl font-extrabold text-white tracking-tight" data-i18n="contact_title">Сұрақтарыңыз бар ма?</h2>
+          <p class="mt-4 text-lg text-white/85 leading-relaxed" data-i18n="contact_desc">Қабылдау комиссиясы қоңырауыңызға немесе WhatsApp хатыңызға жылдам жауап береді.</p>
+          <div class="mt-7 flex flex-wrap gap-3">
+            <a href="#leadform" class="inline-flex items-center gap-2 bg-gold hover:bg-gold-600 text-emerald-950 font-bold px-6 py-3 rounded-full transition" data-i18n="admissions_label">Қабылдау</a>
+            <a href="https://wa.me/77009786500" target="_blank" rel="noopener" class="js-wa inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-bold px-6 py-3 rounded-full transition" data-i18n="hero_cta_secondary">WhatsApp-қа жазу</a>
+          </div>
+        </div>
+        <ul class="space-y-3">
+          <li><a href="tel:+77085849402" class="js-tel flex items-center gap-3 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl px-5 py-3.5 text-white font-bold transition"><svg viewBox="0 0 24 24" class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6.3 6.3l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.7 2.1z"/></svg><span><span class="js-tel-text">+7 708 584-94-02</span> <small class="js-tel2-text block font-normal opacity-70 text-xs">+7 708 584-94-20</small></span></a></li>
+          <li><a href="https://wa.me/77009786500" target="_blank" rel="noopener" class="js-wa flex items-center gap-3 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl px-5 py-3.5 text-white font-bold transition"><svg viewBox="0 0 24 24" class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.5 10.5c.3 2.4 2.6 4.7 5 5"/></svg><span>WhatsApp <small class="js-wa-text block font-normal opacity-70 text-xs">+7 700 978-65-00</small></span></a></li>
+          <li><a href="https://www.instagram.com/baiterek.st/" target="_blank" rel="noopener" class="js-ig flex items-center gap-3 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl px-5 py-3.5 text-white font-bold transition"><svg viewBox="0 0 24 24" class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg><span>Instagram <small class="js-ig-text block font-normal opacity-70 text-xs">@baiterek.st</small></span></a></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-emerald-950 text-white/70 pb-24 lg:pb-0">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <svg viewBox="0 0 32 32" class="w-8 h-8" fill="none" stroke="#D4AF37" stroke-width="1.6" stroke-linecap="round"><circle cx="16" cy="5.5" r="2.1" fill="#D4AF37" stroke="none"/><path d="M16 8v17"/><path d="M16 12c-3 -2 -6 -2 -8 0"/><path d="M16 12c3 -2 6 -2 8 0"/><path d="M11 29c1 -3 3 -4.5 5 -4.5s4 1.5 5 4.5"/></svg>
+          <span class="font-extrabold text-white text-lg">Baiterek ST</span>
+        </div>
+        <p class="mt-3 text-sm" data-i18n="footer_tagline">Тамырдан бастап, аспанға дейін өсеміз.</p>
+      </div>
+      <div>
+        <h4 class="text-white font-bold text-sm mb-3" data-i18n="nav_faq">Ата-анаға ақпарат</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a href="#daily" class="hover:text-gold transition" data-i18n="nav_daily">Күнделікті</a></li>
+          <li><a href="#news" class="hover:text-gold transition" data-i18n="nav_news">Жаңалықтар</a></li>
+          <li><a href="#faq" class="hover:text-gold transition" data-i18n="nav_faq">Ата-анаға ақпарат</a></li>
+          <li><a href="#team" class="hover:text-gold transition" data-i18n="nav_team">Ұжым</a></li>
+          <li><a href="#admissions" class="hover:text-gold transition" data-i18n="nav_admissions">Қабылдау</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-white font-bold text-sm mb-3" data-i18n="location_label">Мекенжай</h4>
+        <p class="text-sm" data-i18n="location_address">Алматы қаласы, Жандосов көшесі, 94</p>
+        <p class="mt-2 text-sm"><a class="js-tel js-tel-text" href="tel:+77085849402">+7 708 584-94-02</a></p>
+      </div>
+      <div>
+        <h4 class="text-white font-bold text-sm mb-3">Instagram</h4>
+        <a href="https://www.instagram.com/baiterek.st/" target="_blank" rel="noopener" class="js-ig js-ig-text text-sm hover:text-gold transition">@baiterek.st</a>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 pb-8 text-xs text-white/40" data-i18n="footer_rights">© 2026 Baiterek ST School. Барлық құқықтар қорғалған.</div>
+  </footer>
+
+  <!-- STICKY MOBILE CTA -->
+  <div class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-emerald-900/10 shadow-[0_-8px_24px_-12px_rgba(15,56,44,.25)] px-3 py-3 flex gap-2" style="padding-bottom:calc(.75rem + env(safe-area-inset-bottom));">
+    <a href="https://wa.me/77009786500" target="_blank" rel="noopener" class="js-wa flex-1 inline-flex items-center justify-center gap-2 bg-emerald-900 text-white font-bold text-sm py-3 rounded-xl">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20l1-5.3A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.5 10.5c.3 2.4 2.6 4.7 5 5"/></svg>
+      WhatsApp
+    </a>
+    <a href="#leadform" class="flex-1 inline-flex items-center justify-center gap-2 bg-gold text-emerald-950 font-bold text-sm py-3 rounded-xl" data-i18n="sticky_apply">Өтініш беру</a>
+  </div>
+</div>
+
+<div id="lightbox" role="dialog" aria-modal="true" onclick="if(event.target===this)uiLbClose()">
+  <button type="button" class="lb-btn" style="top:1rem;right:1rem" onclick="uiLbClose()" aria-label="Close">✕</button>
+  <button type="button" class="lb-btn" id="lbPrev" style="left:1rem;top:50%" onclick="uiLbStep(-1)" aria-label="Prev">‹</button>
+  <div class="lb-body" id="lbBody"></div>
+  <button type="button" class="lb-btn" id="lbNext" style="right:1rem;top:50%" onclick="uiLbStep(1)" aria-label="Next">›</button>
+  <div id="lbCap" style="position:absolute;bottom:1rem;left:0;right:0;text-align:center;color:#fff;font-weight:600;padding:0 4rem"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="defaults.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

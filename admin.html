@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Әкімші — Baiterek ST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: {
+      emerald: { DEFAULT:'#0F382C', 50:'#EAF1EE', 100:'#CFE0D8', 700:'#164A38', 800:'#123F30', 900:'#0F382C', 950:'#0A2A20' },
+      gold: { DEFAULT:'#D4AF37', 50:'#FBF6E7', 100:'#F5E9C2', 400:'#DDBB4C', 500:'#D4AF37', 600:'#B8952A' },
+      cream: '#FAF9F5', charcoal: '#1A202C'
+    },
+    fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
+    boxShadow: { card:'0 20px 45px -24px rgba(15,56,44,.25)' }
+  } } }
+</script>
+<style>
+  body{font-family:'Inter',system-ui,sans-serif;}
+  [hidden]{display:none !important;}
+  .lbl{display:block; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:rgba(26,32,44,.68);}
+  .inp{width:100%; border:1px solid rgba(15,56,44,.2); border-radius:.75rem; padding:.6rem .8rem; background:#fff; font-size:.95rem; color:#1A202C;}
+  .inp:focus, .rich-ed:focus{outline:none; box-shadow:0 0 0 2px #D4AF37;}
+  textarea.inp{resize:vertical;}
+  .rich-ed{min-height:6.5rem; border:1px solid rgba(15,56,44,.2); border-top:0; border-radius:0 0 .75rem .75rem; padding:.6rem .8rem; background:#fff; font-size:.95rem; line-height:1.55; overflow-wrap:anywhere;}
+  .rich-ed.small{min-height:2.6rem;}
+  .rich-ed ul{list-style:disc; padding-left:1.2rem;} .rich-ed ol{list-style:decimal; padding-left:1.2rem;}
+  .rich-ed a{color:#0F382C; text-decoration:underline; font-weight:700;}
+  .rich-ed table{border-collapse:collapse; font-size:.85rem;} .rich-ed td, .rich-ed th{border:1px solid #CFE0D8; padding:.2rem .4rem;}
+  .rich-bar{display:flex; flex-wrap:wrap; gap:.15rem; border:1px solid rgba(15,56,44,.2); border-radius:.75rem .75rem 0 0; background:#EAF1EE; padding:.25rem;}
+  .rich-bar button{min-width:2rem; height:2rem; border-radius:.45rem; font-weight:800; color:#0F382C; font-size:.85rem; padding:0 .4rem;}
+  .rich-bar button:hover{background:#fff;}
+  .ml-tab{font-size:.68rem; font-weight:800; padding:.2rem .45rem; border-radius:.4rem; background:#EAF1EE; color:#0F382C;}
+  .ml-tab.on{background:#0F382C; color:#fff;}
+  .ml-tab.empty:not(.on){opacity:.45;}
+  .ml-tr{font-size:.72rem; font-weight:700; padding:.2rem .5rem; border-radius:.4rem; color:#B8952A;}
+  .ml-tr:hover{background:#FBF6E7;}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:.4rem; font-weight:700; border-radius:999px; padding:.6rem 1.15rem; font-size:.9rem; transition:background .15s; white-space:nowrap;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .btn-p{background:#0F382C; color:#fff;} .btn-p:hover{background:#123F30;}
+  .btn-g{background:#D4AF37; color:#0A2A20;} .btn-g:hover{background:#B8952A;}
+  .btn-l{background:#fff; color:#0F382C; border:1px solid rgba(15,56,44,.2);} .btn-l:hover{background:#EAF1EE;}
+  .btn-d{background:#fff; color:#B42318; border:1px solid #F4C7C3;} .btn-d:hover{background:#FEF3F2;}
+  .btn-s{padding:.35rem .7rem; font-size:.8rem;}
+  .card{background:#fff; border:1px solid rgba(15,56,44,.1); border-radius:1.25rem; padding:1.25rem;}
+  .chip{display:inline-flex; align-items:center; gap:.35rem; padding:.45rem .85rem; border-radius:999px; font-size:.85rem; font-weight:700; background:#fff; color:#0F382C; border:1px solid rgba(15,56,44,.15); white-space:nowrap;}
+  .chip.active{background:#0F382C; color:#fff; border-color:#0F382C;}
+  .chip .dot{width:6px; height:6px; border-radius:999px; background:#D4AF37;}
+  .thumb{position:relative; aspect-ratio:1; border-radius:.7rem; overflow:hidden; background:#EAF1EE; border:1px solid rgba(15,56,44,.1);}
+  .thumb img{width:100%; height:100%; object-fit:cover;}
+  .thumb .x{position:absolute; top:.25rem; right:.25rem; width:1.6rem; height:1.6rem; border-radius:999px; background:rgba(0,0,0,.6); color:#fff; font-size:.8rem;}
+  .thumb .mv{position:absolute; bottom:.25rem; display:flex; gap:.2rem; left:.25rem;}
+  .thumb .mv button{width:1.5rem; height:1.5rem; border-radius:.4rem; background:rgba(255,255,255,.85); font-size:.75rem; font-weight:800;}
+  .thumb .tag{position:absolute; left:.3rem; top:.3rem; font-size:.65rem; font-weight:800; background:rgba(0,0,0,.6); color:#fff; border-radius:.35rem; padding:.05rem .35rem;}
+  .bar{height:.4rem; background:#EAF1EE; border-radius:999px; overflow:hidden;} .bar > div{height:100%; background:#D4AF37; transition:width .2s;}
+  .row-tools button{width:1.9rem; height:1.9rem; border-radius:.5rem; font-weight:800; color:#0F382C; background:#EAF1EE;}
+  .row-tools button:hover{background:#CFE0D8;}
+  #toast{position:fixed; left:50%; bottom:1.25rem; transform:translateX(-50%); z-index:200; max-width:92vw;}
+  #toast div{background:#0A2A20; color:#fff; font-weight:600; padding:.75rem 1.1rem; border-radius:.9rem; margin-top:.5rem; box-shadow:0 10px 30px -10px rgba(0,0,0,.4);}
+  #toast div.err{background:#B42318;}
+  #busy{position:fixed; inset:0; z-index:150; background:rgba(250,249,245,.75); display:flex; align-items:center; justify-content:center;}
+  details > summary{list-style:none; cursor:pointer;} details > summary::-webkit-details-marker{display:none;}
+</style>
+</head>
+<body class="bg-cream text-charcoal antialiased min-h-screen">
+
+<!-- КІРУ -->
+<div id="login" class="min-h-screen flex items-center justify-center px-4">
+  <form id="loginForm" class="card w-full max-w-sm shadow-card">
+    <div class="flex items-center gap-2.5">
+      <svg viewBox="0 0 32 32" class="w-10 h-10" fill="none" stroke="#0F382C" stroke-width="1.6" stroke-linecap="round"><circle cx="16" cy="5.5" r="2.1" fill="#D4AF37" stroke="none"/><path d="M16 8v17"/><path d="M16 12c-3 -2 -6 -2 -8 0"/><path d="M16 12c3 -2 6 -2 8 0"/><path d="M16 17c-3.4 -1.6 -6.6 -1.2 -9 1"/><path d="M16 17c3.4 -1.6 6.6 -1.2 9 1"/><path d="M11 29c1 -3 3 -4.5 5 -4.5s4 1.5 5 4.5"/></svg>
+      <div><div class="font-extrabold text-emerald-900 text-lg leading-tight">Baiterek ST</div><div class="text-xs font-bold text-gold-600 uppercase tracking-wider">Сайт әкімшісі</div></div>
+    </div>
+    <label class="lbl mt-6 mb-1.5" for="pw">Пароль</label>
+    <input id="pw" type="password" class="inp" autocomplete="current-password" required>
+    <label class="mt-3 flex items-center gap-2 text-sm font-medium"><input id="remember" type="checkbox" checked> Осы құрылғыда есте сақтау</label>
+    <button type="submit" class="btn btn-p w-full mt-5">Кіру</button>
+    <p id="loginMsg" class="mt-3 text-sm text-charcoal/70"></p>
+  </form>
+</div>
+
+<!-- НЕГІЗГІ БЕТ -->
+<div id="app" hidden>
+  <header class="sticky top-0 z-40 bg-cream/95 backdrop-blur border-b border-emerald-900/10">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+      <div class="font-extrabold text-emerald-900">Baiterek ST <span class="text-gold-600 text-sm">· әкімші</span></div>
+      <div class="flex items-center gap-2">
+        <a href="./" target="_blank" class="btn btn-l btn-s">Сайтты ашу ↗</a>
+        <button type="button" id="logout" class="btn btn-l btn-s">Шығу</button>
+      </div>
+    </div>
+    <nav id="tabs" class="max-w-5xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto"></nav>
+  </header>
+  <main id="view" class="max-w-5xl mx-auto px-4 py-6 pb-24"></main>
+</div>
+
+<div id="busy" hidden><div class="card shadow-card w-72 text-center"><div id="busyText" class="font-bold text-emerald-950">Сақталуда…</div><div class="bar mt-3"><div id="busyBar" style="width:0%"></div></div></div></div>
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script src="defaults.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
