@@ -244,6 +244,7 @@
       const close = modal(
         h('div', {class: 'flex items-center justify-between gap-2 mb-3'}, h('h3', {class: 'font-extrabold text-emerald-950'}, '📁 Drive қалтамдағы файлдар'),
           h('a', {href: j.folder, target: '_blank', class: 'btn btn-l btn-s'}, 'Қалтаны ашу ↗')),
+        h('p', {class: 'text-xs text-charcoal/60 mb-3'}, 'Қалта браузерде ашық тұрған Google аккаунтыңызбен ашылады. Қызметкер өз Gmail-ымен кірсе, тек өзіне берілген қалтаны көреді.'),
         j.files.length ? grid : h('p', {class: 'text-charcoal/60'}, 'Қалтада әзірге фото не видео жоқ. Алдымен файлдарды Google Drive-тағы қалтаңызға жүктеңіз.'),
         h('div', {class: 'flex justify-end gap-2 mt-4'},
           h('button', {type: 'button', class: 'btn btn-l', onclick: () => { close(); resolve([]); }}, 'Бас тарту'),
@@ -1098,13 +1099,25 @@
     const old = sessionStorage.getItem('adm_pw') || localStorage.getItem('adm_pw');
     if (!saved && old) saved = {login: 'admin', pw: old};
   } catch (e) {}
+  const clearSaved = () => { try { localStorage.removeItem('adm_auth'); sessionStorage.removeItem('adm_auth'); localStorage.removeItem('adm_pw'); sessionStorage.removeItem('adm_pw'); } catch (e) {} };
   if (saved && saved.pw && API) {
+    // Сақталған кіру: форманы жасырып, кімнің атынан кіріп жатқанын көрсетеміз, басқа логинге ауысуға болады
     LOGIN = saved.login || 'admin'; PW = saved.pw;
-    loginInput.value = LOGIN;
-    $('loginMsg').textContent = 'Кіру…';
-    api('login').then(start).catch(err => {
-      $('loginMsg').textContent = err.message; PW = null;
-      try { localStorage.removeItem('adm_auth'); sessionStorage.removeItem('adm_auth'); localStorage.removeItem('adm_pw'); sessionStorage.removeItem('adm_pw'); } catch (e) {}
+    const formEls = [...$('loginForm').querySelectorAll('label, input, button[type=submit], p.mt-1')];
+    formEls.forEach(e => { e.hidden = true; });
+    let cancelled = false;
+    const other = h('button', {type: 'button', class: 'btn btn-l w-full mt-3', onclick: () => {
+      cancelled = true; clearSaved(); PW = null; LOGIN = '';
+      formEls.forEach(e => { e.hidden = false; });
+      loginInput.value = ''; $('pw').value = ''; other.remove(); $('loginMsg').textContent = ''; loginInput.focus();
+    }}, 'Басқа логинмен кіру');
+    $('loginMsg').textContent = 'Сақталған кіру: «' + LOGIN + '» болып кіруде…';
+    $('loginMsg').after(other);
+    api('login').then(() => { if (!cancelled) return start(); }).catch(err => {
+      if (cancelled) return;
+      $('loginMsg').textContent = err.message; PW = null; other.remove();
+      formEls.forEach(e => { e.hidden = false; });
+      clearSaved();
     });
   }
 })();
