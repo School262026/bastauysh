@@ -76,7 +76,9 @@
       <svg viewBox="0 0 32 32" class="w-10 h-10" fill="none" stroke="#0F382C" stroke-width="1.6" stroke-linecap="round"><circle cx="16" cy="5.5" r="2.1" fill="#D4AF37" stroke="none"/><path d="M16 8v17"/><path d="M16 12c-3 -2 -6 -2 -8 0"/><path d="M16 12c3 -2 6 -2 8 0"/><path d="M16 17c-3.4 -1.6 -6.6 -1.2 -9 1"/><path d="M16 17c3.4 -1.6 6.6 -1.2 9 1"/><path d="M11 29c1 -3 3 -4.5 5 -4.5s4 1.5 5 4.5"/></svg>
       <div><div class="font-extrabold text-emerald-900 text-lg leading-tight">Baiterek ST</div><div class="text-xs font-bold text-gold-600 uppercase tracking-wider">Сайт әкімшісі</div></div>
     </div>
-    <label class="lbl mt-6 mb-1.5" for="pw">Пароль</label>
+    <label class="lbl mt-6 mb-1.5" for="loginName">Логин</label>
+    <input id="loginName" type="text" class="inp" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="мысалы: 1a" required>
+    <label class="lbl mt-4 mb-1.5" for="pw">Пароль</label>
     <input id="pw" type="password" class="inp" autocomplete="current-password" required>
     <label class="mt-3 flex items-center gap-2 text-sm font-medium"><input id="remember" type="checkbox" checked> Осы құрылғыда есте сақтау</label>
     <button type="submit" class="btn btn-p w-full mt-5">Кіру</button>
@@ -88,7 +90,7 @@
 <div id="app" hidden>
   <header class="sticky top-0 z-40 bg-cream/95 backdrop-blur border-b border-emerald-900/10">
     <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-      <div class="font-extrabold text-emerald-900">Baiterek ST <span class="text-gold-600 text-sm">· әкімші</span></div>
+      <div class="font-extrabold text-emerald-900 min-w-0 truncate">Baiterek ST <span id="whoami" class="text-gold-600 text-sm">· әкімші</span></div>
       <div class="flex items-center gap-2">
         <a href="./" target="_blank" class="btn btn-l btn-s">Сайтты ашу ↗</a>
         <button type="button" id="logout" class="btn btn-l btn-s">Шығу</button>
@@ -101,6 +103,7 @@
 
 <div id="busy" hidden><div class="card shadow-card w-72 text-center"><div id="busyText" class="font-bold text-emerald-950">Сақталуда…</div><div class="bar mt-3"><div id="busyBar" style="width:0%"></div></div></div></div>
 <div id="toast"></div>
+<div id="modal" hidden class="fixed inset-0 z-[120] bg-black/50 flex items-end sm:items-center justify-center p-2 sm:p-6"><div id="modalBody" class="card w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-card"></div></div>
 
 <script src="config.js"></script>
 <script src="defaults.js"></script>

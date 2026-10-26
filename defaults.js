@@ -554,7 +554,40 @@
       week_empty:"No events planned for this week", today:"Today", loading:"Loading…"
     }
   };
-  ['kz','ru','en'].forEach(function(l){ for(var k in EXTRA[l]) I18N[l][k] = EXTRA[l][k]; });
+  // «Сыныбым» — сынып кодымен ашылатын ата-аналар беті
+  var MYCLASS = {
+    kz:{
+      nav_myclass:"Сыныбым", mc_label:"Ата-аналарға", mc_title:"Сыныбыңыздың жеке беті",
+      mc_desc:"Сынып жетекшісі берген кодты енгізіңіз. Үй тапсырмасы, сыныптың фото-видеолары және сұрақ-жауап тек сіздің сыныбыңыздың ата-аналарына көрінеді.",
+      mc_code_ph:"Сынып коды", mc_enter:"Кіру", mc_bad:"Код қате немесе ескірген. Сынып жетекшісінен жаңа кодты сұраңыз.",
+      mc_add:"+ Басқа баланың сыныбы", mc_remove:"Осы сыныптан шығу", mc_teacher:"Сынып жетекшісі",
+      mc_tab_hw:"Үй тапсырмасы", mc_tab_news:"Сынып жаңалықтары", mc_tab_qa:"Сұрақ-жауап", mc_news_empty:"Әзірге сынып жаңалығы жоқ",
+      qa_ask_title:"Сынып жетекшісіне сұрақ қою", qa_name:"Атыңыз", qa_child:"Баланың аты", qa_text:"Сұрағыңыз", qa_send:"Жіберу",
+      qa_sent:"Сұрағыңыз жіберілді. Жауап осы бетте шығады.", qa_wait:"Жауап күтілуде", qa_private:"Тек сізге", qa_public:"Барлық ата-анаға",
+      qa_empty:"Әзірге сұрақ-жауап жоқ", qa_answer:"Жауап", qa_note:"Жеке жауапты тек сұрақ жіберген телефоныңыздан/компьютеріңізден көресіз."
+    },
+    ru:{
+      nav_myclass:"Мой класс", mc_label:"Для родителей", mc_title:"Страница вашего класса",
+      mc_desc:"Введите код, который дал классный руководитель. Домашние задания, фото и видео класса и вопросы-ответы видят только родители вашего класса.",
+      mc_code_ph:"Код класса", mc_enter:"Войти", mc_bad:"Код неверный или устарел. Попросите новый код у классного руководителя.",
+      mc_add:"+ Класс другого ребёнка", mc_remove:"Выйти из этого класса", mc_teacher:"Классный руководитель",
+      mc_tab_hw:"Домашнее задание", mc_tab_news:"Новости класса", mc_tab_qa:"Вопросы и ответы", mc_news_empty:"Пока нет новостей класса",
+      qa_ask_title:"Задать вопрос классному руководителю", qa_name:"Ваше имя", qa_child:"Имя ребёнка", qa_text:"Ваш вопрос", qa_send:"Отправить",
+      qa_sent:"Ваш вопрос отправлен. Ответ появится на этой странице.", qa_wait:"Ожидает ответа", qa_private:"Только вам", qa_public:"Всем родителям",
+      qa_empty:"Пока нет вопросов и ответов", qa_answer:"Ответ", qa_note:"Личный ответ виден только на том телефоне/компьютере, с которого вы отправили вопрос."
+    },
+    en:{
+      nav_myclass:"My class", mc_label:"For parents", mc_title:"Your class page",
+      mc_desc:"Enter the code from your class teacher. Homework, class photos and videos, and Q&A are visible only to parents of your class.",
+      mc_code_ph:"Class code", mc_enter:"Enter", mc_bad:"The code is wrong or outdated. Ask your class teacher for a new code.",
+      mc_add:"+ Another child's class", mc_remove:"Leave this class", mc_teacher:"Class teacher",
+      mc_tab_hw:"Homework", mc_tab_news:"Class news", mc_tab_qa:"Questions & answers", mc_news_empty:"No class news yet",
+      qa_ask_title:"Ask the class teacher", qa_name:"Your name", qa_child:"Child's name", qa_text:"Your question", qa_send:"Send",
+      qa_sent:"Your question has been sent. The answer will appear on this page.", qa_wait:"Awaiting answer", qa_private:"Only you", qa_public:"All parents",
+      qa_empty:"No questions yet", qa_answer:"Answer", qa_note:"A private answer is visible only on the device you sent the question from."
+    }
+  };
+  ['kz','ru','en'].forEach(function(l){ for(var k in EXTRA[l]) I18N[l][k] = EXTRA[l][k]; for(var m in MYCLASS[l]) I18N[l][m] = MYCLASS[l][m]; });
 
   function L3(key){ return {kz:I18N.kz[key]||'', ru:I18N.ru[key]||'', en:I18N.en[key]||''}; }
 

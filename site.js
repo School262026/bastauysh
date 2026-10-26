@@ -309,8 +309,7 @@
 
   // ---------- күнделікті: ас мәзірі, үй тапсырмасы, апта жоспары ----------
   var dailyTab = 'menu';
-  var menuDate = null, hwClass = null, hwDate = null, weekStart = null;
-  try { hwClass = localStorage.getItem('bs_class'); } catch(e) {}
+  var menuDate = null, weekStart = null;
   function schoolDay(s){ var w = parse(s).getDay(); return w === 6 ? addDays(s, 2) : w === 0 ? addDays(s, 1) : s; }
   function navBtns(prevFn, nextFn, label, todayFn){
     return '<div class="flex items-center justify-between gap-3 mb-5"><button type="button" class="chip" onclick="' + prevFn + '" aria-label="prev">‹</button>' +
@@ -352,39 +351,6 @@
   window.uiMenuWeek = function(n){ menuDate = addDays(monday(menuDate), 7 * n); renderDaily(); };
   window.uiMenuToday = function(){ menuDate = schoolDay(today()); renderDaily(); };
 
-  function hwFor(cls){
-    return (get('homework') || []).filter(function(h){ var c = h.cls || []; return c.indexOf('*') >= 0 || c.indexOf(cls) >= 0; });
-  }
-  function renderHw(){
-    var classes = (get('settings').classes) || [];
-    var h = '<p class="text-center text-sm font-bold text-charcoal/70 mb-3">' + esc(t('hw_pick_class')) + '</p><div class="flex flex-wrap justify-center gap-1.5 mb-6">' + classes.map(function(c){
-      return '<button type="button" class="chip" style="padding:.35rem .7rem" ' + (c === hwClass ? 'data-on="1"' : '') + ' onclick="uiHwClass(\'' + esc(c) + '\')">' + esc(c) + '</button>';
-    }).join('') + '</div>';
-    h = h.replace(/class="chip" style="padding:.35rem .7rem" data-on="1"/g, 'class="chip active" style="padding:.35rem .7rem"');
-    if (!hwClass) return h;
-    var items = hwFor(hwClass);
-    if (!hwDate) {
-      var t0 = today();
-      var past = items.filter(function(x){ return x.date <= t0; }).map(function(x){ return x.date; }).sort();
-      hwDate = past.length && past[past.length - 1] >= addDays(t0, -14) ? past[past.length - 1] : t0;
-    }
-    var dates = {};
-    items.forEach(function(x){ dates[x.date] = 1; });
-    h += navBtns('uiHwDay(-1)', 'uiHwDay(1)', esc(hwClass + ' · ' + fmtDate(hwDate, true)), 'uiHwToday()');
-    var list = items.filter(function(x){ return x.date === hwDate; });
-    if (!list.length) h += '<p class="text-center text-charcoal/60 py-6">📚 ' + esc(t('hw_empty')) + '</p>';
-    else h += '<div class="space-y-3">' + list.map(function(x){
-      return '<div class="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-4"><div class="font-extrabold text-emerald-950">' + esc(L(x.subject)) + '</div><div class="rich mt-1 text-base text-charcoal leading-relaxed">' + clean(L(x.text)) + '</div>' + mediaRow(x.media, 'hw_' + x.id) + '</div>';
-    }).join('') + '</div>';
-    return h;
-  }
-  window.uiHwClass = function(c){ hwClass = c; hwDate = null; try { localStorage.setItem('bs_class', c); } catch(e) {} renderDaily(); };
-  window.uiHwDay = function(n){
-    var d = hwDate;
-    do { d = addDays(d, n); } while (parse(d).getDay() === 0 || parse(d).getDay() === 6);
-    hwDate = d; renderDaily();
-  };
-  window.uiHwToday = function(){ hwDate = today(); renderDaily(); };
 
   function renderWeek(){
     if (!weekStart) weekStart = monday(today());
@@ -410,11 +376,168 @@
   function renderDaily(){
     var body = byId('dailyBody'); if (!body) return;
     document.querySelectorAll('.daily-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab') === dailyTab); });
-    body.innerHTML = dailyTab === 'menu' ? renderMenu() : dailyTab === 'hw' ? renderHw() : renderWeek();
+    body.innerHTML = dailyTab === 'menu' ? renderMenu() : renderWeek();
   }
   window.uiDailyTab = function(tab){ dailyTab = tab; renderDaily(); };
+
+  // ---------- «Сыныбым»: сынып кодымен ашылатын жабық бөлім ----------
+  var MC = {codes: [], cur: 0, tab: 'hw', data: {}, err: '', hwDate: null, sent: false, adding: false, pending: false};
+  try { MC.codes = JSON.parse(localStorage.getItem('bs_codes') || '[]') || []; } catch(e) { MC.codes = []; }
+  function mcSave(){ try { localStorage.setItem('bs_codes', JSON.stringify(MC.codes)); } catch(e) {} }
+  // Құрылғының жасырын белгісі: жеке жауаптарды тек сұрақ жіберген құрылғы көреді
+  function mcToken(){
+    var tok = null;
+    try { tok = localStorage.getItem('bs_tok'); } catch(e) {}
+    if (!tok) {
+      var a = new Uint8Array(16); (window.crypto || window.msCrypto).getRandomValues(a);
+      tok = Array.prototype.map.call(a, function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+      try { localStorage.setItem('bs_tok', tok); } catch(e) {}
+    }
+    return tok;
+  }
+  function post(body){
+    return fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body)}).then(function(r){ return r.json(); });
+  }
+  function mcIndex(code){ for (var i = 0; i < MC.codes.length; i++) if (MC.codes[i].code === code) return i; return -1; }
+  function mcLoad(code, isNew){
+    if (!API) return;
+    if (!MC.data[code]) { try { var c = JSON.parse(localStorage.getItem('bs_cls_' + code) || 'null'); if (c) MC.data[code] = c; } catch(e) {} }
+    if (isNew) { MC.pending = true; renderMyClass(); }
+    post({a:'cls', code: code, tokens:[mcToken()]}).then(function(j){
+      MC.pending = false;
+      if (!j.ok) {
+        if (String(j.err).indexOf('CODE') >= 0) {
+          MC.err = t('mc_bad');
+          var i = mcIndex(code);
+          if (i >= 0) { MC.codes.splice(i, 1); mcSave(); }
+          delete MC.data[code];
+          try { localStorage.removeItem('bs_cls_' + code); } catch(e) {}
+          if (MC.cur >= MC.codes.length) MC.cur = 0;
+        } else MC.err = j.err || '';
+        renderMyClass(); return;
+      }
+      MC.data[code] = j;
+      try { localStorage.setItem('bs_cls_' + code, JSON.stringify(j)); } catch(e) {}
+      if (isNew) {
+        if (mcIndex(code) < 0) MC.codes.push({code: code, cls: j.cls});
+        MC.cur = mcIndex(code); MC.adding = false; MC.hwDate = null;
+        mcSave();
+      }
+      MC.err = '';
+      renderMyClass();
+    }).catch(function(){ MC.pending = false; renderMyClass(); });
+  }
+  function mcHw(d){
+    var items = d.homework || [];
+    if (!MC.hwDate) {
+      var t0 = today();
+      var past = items.filter(function(x){ return x.date <= t0; }).map(function(x){ return x.date; }).sort();
+      MC.hwDate = past.length && past[past.length - 1] >= addDays(t0, -14) ? past[past.length - 1] : t0;
+    }
+    var h = navBtns('uiMcHwDay(-1)', 'uiMcHwDay(1)', esc(fmtDate(MC.hwDate, true)), 'uiMcHwToday()');
+    var list = items.filter(function(x){ return x.date === MC.hwDate; });
+    if (!list.length) return h + '<p class="text-center text-charcoal/60 py-6">📚 ' + esc(t('hw_empty')) + '</p>';
+    return h + '<div class="space-y-3">' + list.map(function(x){
+      return '<div class="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-4"><div class="font-extrabold text-emerald-950">' + esc(L(x.subject)) + '</div><div class="rich mt-1 text-base text-charcoal leading-relaxed">' + clean(L(x.text)) + '</div>' + mediaRow(x.media, 'hw_' + x.id) + '</div>';
+    }).join('') + '</div>';
+  }
+  function mcNews(d){
+    var posts = (d.posts || []).slice().sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0); });
+    if (!posts.length) return '<p class="text-center text-charcoal/60 py-6">📸 ' + esc(t('mc_news_empty')) + '</p>';
+    return '<div class="space-y-5">' + posts.map(function(p){
+      return '<article class="rounded-2xl border border-emerald-900/10 p-4 sm:p-5"><div class="text-xs font-bold text-charcoal/55">' + esc(fmtDate(p.date)) + '</div><h3 class="mt-1 text-lg font-extrabold text-emerald-950">' + esc(L(p.title)) + '</h3>' +
+        (L(p.body) ? '<div class="rich mt-2 text-base text-charcoal/85 leading-relaxed">' + clean(L(p.body)) + '</div>' : '') + mediaRow(p.media, 'cp_' + p.id) + '</article>';
+    }).join('') + '</div>';
+  }
+  function mcQa(d){
+    var me = {};
+    try { me = JSON.parse(localStorage.getItem('bs_parent') || '{}') || {}; } catch(e) {}
+    var inp = 'w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold';
+    var h = '<form onsubmit="return uiMcAsk(this)" class="rounded-2xl bg-gold-50 border border-gold-100 p-4 sm:p-5 space-y-3"><div class="font-extrabold text-emerald-950">✍️ ' + esc(t('qa_ask_title')) + '</div>' +
+      '<div class="grid sm:grid-cols-2 gap-3"><input name="name" required maxlength="80" placeholder="' + esc(t('qa_name')) + '" value="' + esc(me.name || '') + '" class="' + inp + '"><input name="child" maxlength="80" placeholder="' + esc(t('qa_child')) + '" value="' + esc(me.child || '') + '" class="' + inp + '"></div>' +
+      '<textarea name="q" required maxlength="2000" rows="3" placeholder="' + esc(t('qa_text')) + '" class="' + inp + '"></textarea>' +
+      '<div class="flex flex-wrap items-center justify-between gap-2"><span class="text-xs text-charcoal/60">' + esc(t('qa_note')) + '</span><button class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-full">' + esc(t('qa_send')) + '</button></div>' +
+      (MC.sent ? '<p class="text-sm font-bold text-emerald-800">✓ ' + esc(t('qa_sent')) + '</p>' : '') + '</form>';
+    var list = (d.qa || []).slice().sort(function(a, b){ return b.ts - a.ts; });
+    if (!list.length) return h + '<p class="text-center text-charcoal/60 py-6">💬 ' + esc(t('qa_empty')) + '</p>';
+    return h + '<div class="space-y-3 mt-5">' + list.map(function(q){
+      var badge = q.answer ? (q.vis === 'class' ? '👥 ' + t('qa_public') : '🔒 ' + t('qa_private')) : '⏳ ' + t('qa_wait');
+      return '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-charcoal/55"><span>' + esc(q.name) + (q.child ? ' · ' + esc(q.child) : '') + ' · ' + esc(fmtDate(ymd(new Date(q.ts)))) + '</span><span class="rounded-full bg-emerald-50 text-emerald-900 px-2 py-0.5">' + esc(badge) + '</span></div>' +
+        '<div class="mt-2 font-semibold text-emerald-950 whitespace-pre-line">' + esc(q.q) + '</div>' +
+        (q.answer ? '<div class="mt-3 rounded-xl bg-emerald-50 p-3"><div class="text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(t('qa_answer')) + (q.ansBy ? ' · ' + esc(q.ansBy) : '') + '</div><div class="mt-1 text-base text-charcoal whitespace-pre-line">' + esc(q.answer) + '</div></div>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function renderMyClass(){
+    var box = byId('mcBody'); if (!box) return;
+    var form = '<form onsubmit="return uiMcEnter(this)" class="flex flex-wrap gap-2 justify-center">' +
+      '<input name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="' + esc(t('mc_code_ph')) + '" class="w-44 rounded-xl border border-emerald-900/20 px-4 py-3 text-center font-mono text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-gold">' +
+      '<button class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-3 rounded-xl"' + (MC.pending ? ' disabled' : '') + '>' + esc(MC.pending ? t('loading') : t('mc_enter')) + '</button></form>';
+    var err = MC.err ? '<p class="mt-3 text-center text-sm font-semibold text-rose-700">' + esc(MC.err) + '</p>' : '';
+    if (!MC.codes.length) {
+      box.innerHTML = '<div class="bg-white rounded-3xl border border-emerald-900/10 shadow-card p-6 sm:p-8 text-center"><div class="text-4xl">🔐</div><p class="mt-3 text-charcoal/80 max-w-lg mx-auto">' + esc(t('mc_desc')) + '</p><div class="mt-6">' + form + '</div>' + err + '</div>';
+      return;
+    }
+    if (MC.cur >= MC.codes.length || MC.cur < 0) MC.cur = 0;
+    var cur = MC.codes[MC.cur], d = MC.data[cur.code];
+    var h = '<div class="flex flex-wrap items-center justify-center gap-2 mb-5">' + MC.codes.map(function(c, i){
+      return '<button type="button" class="chip' + (i === MC.cur ? ' active' : '') + '" onclick="uiMcPick(' + i + ')">🏫 ' + esc(c.cls) + '</button>';
+    }).join('') + '<button type="button" class="chip" onclick="uiMcAdd()">' + esc(t('mc_add')) + '</button></div>';
+    if (MC.adding) h += '<div class="bg-white rounded-2xl border border-emerald-900/10 p-4 mb-5">' + form + err + '</div>';
+    else h += err;
+    h += '<div class="bg-white rounded-3xl border border-emerald-900/10 shadow-card p-5 sm:p-8">' +
+      '<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><div class="text-2xl font-extrabold text-emerald-950">' + esc(cur.cls) + '</div>' +
+      (d && d.teachers && d.teachers.length ? '<div class="text-sm text-charcoal/70">' + esc(t('mc_teacher')) + ': <b>' + esc(d.teachers.join(', ')) + '</b></div>' : '') + '</div>' +
+      '<button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiMcRemove()">' + esc(t('mc_remove')) + '</button></div>' +
+      '<div class="flex flex-wrap gap-2 mb-6">' + [['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa']].map(function(x){
+        return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + x[1] + esc(t(x[2])) + '</button>';
+      }).join('') + '</div>';
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    box.innerHTML = h + '</div>';
+  }
+  window.uiMcEnter = function(f){
+    var code = String(f.code.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code) { MC.err = ''; mcLoad(code, true); }
+    return false;
+  };
+  window.uiMcPick = function(i){ MC.cur = i; MC.hwDate = null; MC.sent = false; MC.err = ''; renderMyClass(); mcLoad(MC.codes[i].code); };
+  window.uiMcAdd = function(){ MC.adding = !MC.adding; MC.err = ''; renderMyClass(); };
+  window.uiMcRemove = function(){
+    var cur = MC.codes[MC.cur]; if (!cur) return;
+    if (!confirm(t('mc_remove') + ' (' + cur.cls + ')?')) return;
+    MC.codes.splice(MC.cur, 1); mcSave(); MC.cur = 0; MC.hwDate = null;
+    try { localStorage.removeItem('bs_cls_' + cur.code); } catch(e) {}
+    renderMyClass();
+  };
+  window.uiMcTab = function(tab){ MC.tab = tab; MC.sent = false; renderMyClass(); };
+  window.uiMcHwDay = function(n){
+    var d = MC.hwDate;
+    do { d = addDays(d, n); } while (parse(d).getDay() === 0 || parse(d).getDay() === 6);
+    MC.hwDate = d; renderMyClass();
+  };
+  window.uiMcHwToday = function(){ MC.hwDate = today(); renderMyClass(); };
+  window.uiMcAsk = function(f){
+    var cur = MC.codes[MC.cur]; if (!cur) return false;
+    var name = f.name.value.trim(), child = f.child.value.trim(), text = f.q.value.trim();
+    if (!name || !text) return false;
+    try { localStorage.setItem('bs_parent', JSON.stringify({name: name, child: child})); } catch(e) {}
+    var btn = f.querySelector('button'); btn.disabled = true; btn.textContent = t('loading');
+    post({a:'ask', code: cur.code, name: name, child: child, text: text, token: mcToken()}).then(function(j){
+      if (!j.ok) { MC.err = String(j.err).indexOf('CODE') >= 0 ? t('mc_bad') : j.err; renderMyClass(); return; }
+      MC.sent = true; mcLoad(cur.code);
+    }).catch(function(){ btn.disabled = false; btn.textContent = t('qa_send'); });
+    return false;
+  };
   function hashTab(){
-    var m = {'#menu':'menu', '#homework':'hw', '#week':'week'}[location.hash];
+    var hsh = location.hash;
+    var code = (hsh.match(/^#c=([A-Za-z0-9]+)/) || [])[1];
+    if (code) {
+      history.replaceState(null, '', location.pathname + location.search + '#myclass');
+      mcLoad(code.toUpperCase(), true);
+      var s0 = byId('myclass'); if (s0) s0.scrollIntoView();
+      return;
+    }
+    if (hsh === '#homework') { MC.tab = 'hw'; renderMyClass(); var s1 = byId('myclass'); if (s1) s1.scrollIntoView(); return; }
+    var m = {'#menu':'menu', '#week':'week'}[hsh];
     if (m) { dailyTab = m; renderDaily(); var s = byId('daily'); if (s) s.scrollIntoView(); }
   }
   window.addEventListener('hashchange', hashTab);
@@ -422,7 +545,7 @@
   // ---------- тіл, мәзір, өтінім формасы ----------
   function renderAll(){
     applyTexts(); renderContacts(); renderImages(); renderDay(); renderGallery();
-    renderFaq(); renderTeam(); renderNews(); renderDaily();
+    renderFaq(); renderTeam(); renderNews(); renderDaily(); renderMyClass();
   }
   window.uiSetLang = function(l){
     lang = I18N[l] ? l : 'kz';
@@ -462,6 +585,7 @@
   try { cached = localStorage.getItem('bs_data'); if (cached) data = JSON.parse(cached) || {}; } catch(e) { data = {}; }
   window.uiSetLang(lang);
   hashTab();
+  if (MC.codes.length && !/^#c=/.test(location.hash)) mcLoad(MC.codes[MC.cur].code);
   if (API) {
     fetch(API + '?a=data', {cache:'no-store'}).then(function(r){ return r.text(); }).then(function(txt){
       var j = JSON.parse(txt);

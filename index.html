@@ -102,6 +102,7 @@
 
       <nav class="hidden lg:flex items-center gap-1 bg-emerald-900 rounded-full shadow-sm px-1.5 py-1.5">
         <a href="#daily" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_daily">Күнделікті</a>
+        <a href="#myclass" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-gold hover:bg-white/15 transition" data-i18n="nav_myclass">Сыныбым</a>
         <a href="#news" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_news">Жаңалықтар</a>
         <a href="#faq" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_faq">Ата-анаға ақпарат</a>
         <a href="#team" class="whitespace-nowrap px-3 py-2 rounded-full text-sm font-semibold text-white hover:bg-white/15 transition" data-i18n="nav_team">Ұжым</a>
@@ -125,6 +126,7 @@
     <!-- mobile menu -->
     <div id="mobileMenu" class="hidden-panel lg:hidden bg-white border-t border-emerald-900/10 px-5 py-4 space-y-1">
       <a onclick="uiCloseMobileMenu()" href="#daily" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_daily">Күнделікті</a>
+      <a onclick="uiCloseMobileMenu()" href="#myclass" class="block px-3 py-2.5 rounded-lg font-bold text-gold-600 hover:bg-emerald-50" data-i18n="nav_myclass">Сыныбым</a>
       <a onclick="uiCloseMobileMenu()" href="#news" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_news">Жаңалықтар</a>
       <a onclick="uiCloseMobileMenu()" href="#faq" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_faq">Ата-анаға ақпарат</a>
       <a onclick="uiCloseMobileMenu()" href="#team" class="block px-3 py-2.5 rounded-lg font-semibold text-emerald-900 hover:bg-emerald-50" data-i18n="nav_team">Ұжым</a>
@@ -216,10 +218,20 @@
       </div>
       <div class="mt-8 flex flex-wrap justify-center gap-2" id="dailyTabs">
         <button type="button" class="daily-tab chip" style="font-size:.95rem; padding:.65rem 1.2rem" data-tab="menu" onclick="uiDailyTab('menu')"><span>🍽</span> <span data-i18n="tab_menu">Ас мәзірі</span></button>
-        <button type="button" class="daily-tab chip" style="font-size:.95rem; padding:.65rem 1.2rem" data-tab="hw" onclick="uiDailyTab('hw')"><span>📚</span> <span data-i18n="tab_hw">Үй тапсырмасы</span></button>
         <button type="button" class="daily-tab chip" style="font-size:.95rem; padding:.65rem 1.2rem" data-tab="week" onclick="uiDailyTab('week')"><span>🗓</span> <span data-i18n="tab_week">Апта жоспары</span></button>
       </div>
       <div id="dailyBody" class="mt-8 max-w-3xl mx-auto bg-white rounded-3xl border border-emerald-900/10 shadow-card p-5 sm:p-8 min-h-[12rem]"></div>
+    </section>
+
+    <!-- MY CLASS: сынып кодымен ашылатын жабық бөлім -->
+    <section id="myclass" class="bg-emerald-50/60 border-t-4 border-emerald-700 py-16 scroll-mt-20">
+      <div class="max-w-7xl mx-auto px-5 sm:px-8">
+        <div class="max-w-2xl mx-auto text-center">
+          <span class="text-xs font-bold uppercase tracking-widest text-gold-600" data-i18n="mc_label">Ата-аналарға</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold text-emerald-950 tracking-tight" data-i18n="mc_title">Сыныбыңыздың жеке беті</h2>
+        </div>
+        <div id="mcBody" class="mt-8 max-w-3xl mx-auto"></div>
+      </div>
     </section>
 
     <!-- NEWS -->
@@ -527,6 +539,7 @@
         <h4 class="text-white font-bold text-sm mb-3" data-i18n="nav_faq">Ата-анаға ақпарат</h4>
         <ul class="space-y-2 text-sm">
           <li><a href="#daily" class="hover:text-gold transition" data-i18n="nav_daily">Күнделікті</a></li>
+          <li><a href="#myclass" class="hover:text-gold transition" data-i18n="nav_myclass">Сыныбым</a></li>
           <li><a href="#news" class="hover:text-gold transition" data-i18n="nav_news">Жаңалықтар</a></li>
           <li><a href="#faq" class="hover:text-gold transition" data-i18n="nav_faq">Ата-анаға ақпарат</a></li>
           <li><a href="#team" class="hover:text-gold transition" data-i18n="nav_team">Ұжым</a></li>
