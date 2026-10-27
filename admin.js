@@ -761,7 +761,10 @@
     const list = fbClasses(), clubs = (ME.clubs || []).map(c => 'club:' + c);
     const all = list.concat(clubs);
     view.append(h('div', {class: 'flex flex-wrap items-center justify-between gap-3 mb-4'}, h('h1', {class: 'text-2xl font-extrabold text-emerald-950'}, T('Кері байланыс және даму картасы')),
-      isOwner() ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => fbBulk(view)}, T('📥 Оқушылар тізімін жүктеу (барлық сынып)')) : null));
+      isOwner() ? h('div', {class: 'flex flex-wrap gap-2'},
+        h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => allCodesExport('xlsx')}, T('📤 Барлық балалардың кодтары (Excel)')),
+        h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => allCodesExport('pdf')}, T('🖨 Кодтар (PDF, қиып таратуға)')),
+        h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => fbBulk(view)}, T('📥 Оқушылар тізімін жүктеу (барлық сынып)'))) : null));
     if (!all.length) { view.append(h('p', {class: 'card text-charcoal/70'}, T('Сізге әлі сынып немесе үйірме бекітілмеген. Бас әкімшіге хабарласыңыз.'))); return; }
     if (!curCls || !all.includes(curCls)) curCls = all[0];
     view.append(h('div', {class: 'flex flex-wrap gap-1.5 mb-4'}, all.map(c => h('button', {type: 'button', class: 'chip' + (c === curCls ? ' active' : ''), style: 'padding:.35rem .75rem',
@@ -919,7 +922,8 @@
     box.append(fbBack(),
       hint(T('Әр баланың өз коды бар. Ата-ана сайттағы «Сыныбым» бөліміне осы кодты енгізсе (немесе сілтемені ашса), сынып беті және тек өз баласына жазылған кері байланыс ашылады. Код бөтен адамға тарап кетсе, 🔄 басыңыз — ескі код жұмыс істемей қалады.')),
       h('div', {class: 'flex flex-wrap gap-2 my-4'},
-        h('button', {type: 'button', class: 'btn btn-l', onclick: () => navigator.clipboard.writeText(all).then(() => toast(T('Барлық код көшірілді')))}, T('📋 Барлығын көшіру'))),
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => navigator.clipboard.writeText(all).then(() => toast(T('Барлық код көшірілді')))}, T('📋 Барлығын көшіру')),
+        codesButtons(() => [{cls: F.cls, students}])),
       h('div', {class: 'grid sm:grid-cols-2 gap-3'}, students.map(st => h('div', {class: 'card space-y-2'},
         h('div', {class: 'flex items-center justify-between gap-2'}, h('div', {class: 'font-bold text-emerald-950'}, st.name),
           h('div', {class: 'font-mono text-lg font-extrabold tracking-widest text-gold-600'}, st.code)),
@@ -1302,18 +1306,123 @@
         hint(T('CSV немесе Excel. Бағандар: Аты-жөні; Логин; Рөлі (Сынып жетекшісі / Пән мұғалімі / Үйірме жетекшісі / Педагог-психолог / Әкімшілік); Сыныптар; Пәндері; Үйірмелері; Gmail (міндетті емес). «Бастауыш сайт — жүктеу файлдары» қалтасында сабақ кестесінен дайындалған «Мұғалімдер тізімі (сайтқа жүктеу).csv» бар. Әр адамға пароль автоматты жасалады.')),
         field(T('Файл'), file)), prev));
   }
-  function bulkCreds(creds){
+  function bulkCreds(creds, head){
     const text = c => T('Baiterek ST бастауыш мектебі сайтының мұғалім беті:\n') + SITE_URL + T('admin.html\nЛогин: ') + c.u.login + T('\nПароль: ') + c.pw + howTo(c.u);
     const all = creds.map(c => c.u.name + T(' — логин: ') + c.u.login + T(', пароль: ') + c.pw).join('\n');
     const close = modal(
-      h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, T('✅ Қосылды: ') + creds.length + T(' қызметкер')),
+      h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, (head || T('✅ Қосылды: ')) + creds.length + T(' қызметкер')),
       h('p', {class: 'text-sm text-charcoal/70 mt-1'}, T('Парольдер қайта көрсетілмейді. Тізімді көшіріп алыңыз немесе әр адамға WhatsApp арқылы жіберіңіз.')),
       h('div', {class: 'mt-3 space-y-1 max-h-[55vh] overflow-y-auto'}, creds.map(c => h('div', {class: 'flex flex-wrap items-center gap-2 border-b border-emerald-900/5 py-1 text-sm'},
         h('span', {class: 'flex-1 min-w-[12rem]'}, h('b', {}, c.u.name), ' · ', c.u.login, ' · ', h('span', {class: 'font-mono'}, c.pw)),
         h('a', {class: 'btn btn-p btn-s', target: '_blank', href: 'https://wa.me/?text=' + encodeURIComponent(text(c))}, 'WhatsApp')))),
       h('div', {class: 'flex flex-wrap gap-2 justify-end mt-4'},
+        credsButtons(creds),
         h('button', {type: 'button', class: 'btn btn-l', onclick: () => navigator.clipboard.writeText(all).then(() => toast(T('Көшірілді')))}, T('📋 Барлығын көшіру')),
-        h('button', {type: 'button', class: 'btn btn-g', onclick: () => { close(); go('users', true); }}, T('Дайын'))));
+        h('button', {type: 'button', class: 'btn btn-g', onclick: () => { if (!creds.length || confirm(T('Парольдер қайта көрсетілмейді. Excel немесе PDF түсіріп алдыңыз ба?'))) { close(); go('users', true); } }}, T('Дайын'))));
+  }
+
+  // ---------- 📤 Тізімдерді Excel / PDF етіп шығару ----------
+  const fileDate = () => today().split('-').reverse().join('.');
+  async function saveXlsx(filename, sheets){
+    await run(T('Excel дайындалуда…'), loadXlsx);
+    const wb = XLSX.utils.book_new();
+    sheets.forEach(sh => {
+      const ws = XLSX.utils.aoa_to_sheet(sh.rows);
+      ws['!cols'] = sh.rows[0].map((_, i) => ({wch: Math.min(60, Math.max(8, ...sh.rows.map(r => String(r[i] == null ? '' : r[i]).length + 2)))}));
+      XLSX.utils.book_append_sheet(wb, ws, String(sh.name).replace(/[\\/?*\[\]:]/g, '').slice(0, 31) || 'Sheet');
+    });
+    XLSX.writeFile(wb, filename);
+  }
+  const escH = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]);
+  function printHtml(titleText, body, css){
+    const w = window.open('', '_blank');
+    if (!w) { toast(T('Жаңа терезе бұғатталды. Браузерде қалқымалы терезелерге (pop-up) рұқсат беріңіз.'), true); return; }
+    w.document.open();
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + escH(titleText) + '</title><style>' +
+      '@page{size:A4;margin:12mm}body{font-family:Arial,"Segoe UI",sans-serif;color:#1A202C;margin:0;padding:16px;font-size:12px}h1{font-size:18px;color:#0F382C;margin:0 0 4px}.sub{color:#5b6b66;margin-bottom:10px}' +
+      'table{width:100%;border-collapse:collapse}th,td{border:1px solid #CFE0D8;padding:5px 7px;text-align:left;vertical-align:top}th{background:#0F382C;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}tr{page-break-inside:avoid}.mono{font-family:Consolas,monospace;font-size:13px;font-weight:700}' +
+      '.tb{position:sticky;top:0;text-align:center;padding:8px;background:#FBF6E7;margin:-16px -16px 14px}.tb button{font:inherit;font-weight:700;padding:8px 18px;border-radius:999px;border:0;background:#0F382C;color:#fff;cursor:pointer}@media print{.tb{display:none}body{padding:0}}' +
+      (css || '') + '</style></head><body><div class="tb"><button onclick="window.print()">🖨 PDF / ' + escH(T('Басып шығару')) + '</button></div>' + body +
+      '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>');
+    w.document.close();
+  }
+  // Қызметкерлердің логин-паролі
+  const credRows = creds => [[T('Аты-жөні'), T('Логин'), T('Пароль'), T('Рөлі'), T('Сыныптар'), T('Пәндері / үйірмелері')]].concat(creds.map(c =>
+    [c.u.name, c.u.login, c.pw || '', ROLE_NAMES[c.u.role] || c.u.role, (c.u.classes || []).join(', '), (c.u.subjects || []).concat(c.u.clubs || []).join(', ')]));
+  function credsExcel(creds){ saveXlsx(T('Логиндер') + ' ' + fileDate() + '.xlsx', [{name: T('Логиндер'), rows: credRows(creds)}]); }
+  function credsPdf(creds){
+    const rows = credRows(creds);
+    printHtml(T('Логиндер'), '<h1>Baiterek ST — ' + escH(T('қызметкерлердің кіру мәліметтері')) + '</h1><div class="sub">' + escH(SITE_URL + 'admin.html') + ' · ' + fileDate() + ' · ' + escH(T('Құпия: тек бас әкімшіге')) + '</div>' +
+      '<table><tr>' + rows[0].map(x => '<th>' + escH(x) + '</th>').join('') + '</tr>' + rows.slice(1).map(r => '<tr>' + r.map((x, i) => '<td' + (i === 1 || i === 2 ? ' class="mono"' : '') + '>' + escH(x) + '</td>').join('') + '</tr>').join('') + '</table>');
+  }
+  const credsButtons = creds => [
+    h('button', {type: 'button', class: 'btn btn-l', onclick: () => credsExcel(creds)}, T('📥 Excel')),
+    h('button', {type: 'button', class: 'btn btn-l', onclick: () => credsPdf(creds)}, T('🖨 PDF'))];
+  // Логиндерді шығару / жаңа пароль беру
+  function usersExport(view){
+    view.innerHTML = '';
+    const roles = [['teacher', T('Сынып жетекшілері')], ['subject', T('Пән мұғалімдері және үйірме жетекшілері')], ['psych', T('Педагог-психологтар')], ['admin', T('Әкімшілер')], ['viewer', T('Әкімшілік мүшелері (тек қарау)')]];
+    const checks = new Map();
+    const list = h('div', {class: 'space-y-4'}, roles.map(([role, name]) => {
+      const us = USERS.filter(u => u.role === role && u.active !== false).sort((a, b) => a.name.localeCompare(b.name, 'kk'));
+      if (!us.length) return null;
+      const all = h('input', {type: 'checkbox', checked: true});
+      const rows = us.map(u => { const c = h('input', {type: 'checkbox', checked: true}); checks.set(u.id, c); return h('label', {class: 'flex items-center gap-2 text-sm border-b border-emerald-900/5 py-1'}, c, h('b', {}, u.name), ' · ', u.login, (u.classes || []).length ? ' · ' + u.classes.join(', ') : ''); });
+      all.addEventListener('change', () => us.forEach(u => { checks.get(u.id).checked = all.checked; }));
+      return section(null, h('label', {class: 'flex items-center gap-2 font-extrabold text-emerald-950'}, all, name + ' (' + us.length + ')'), h('div', {}, rows));
+    }));
+    const chosen = () => USERS.filter(u => checks.get(u.id) && checks.get(u.id).checked);
+    view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('users')}, T('← Қызметкерлер')), title(T('Логиндер мен парольдерді шығару')),
+      hint(T('Парольдер қауіпсіздік үшін шифрланып сақталады, сондықтан бұрынғы парольді ешкім көре алмайды. Белгіленген адамдарға жаңа пароль беріліп, тізім Excel немесе PDF болып шығады. Бұрынғы пароль жұмыс істемей қалады — адамдар әлі кірмеген болса, бұл қиындық тудырмайды.')),
+      h('div', {class: 'flex flex-wrap gap-2 my-4'},
+        h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
+          const us = chosen();
+          if (!us.length) { toast(T('Ешкім белгіленбеген'), true); return; }
+          if (!confirm(us.length + T(' адамның паролі жаңасына ауысады, бұрынғы пароль жұмыс істемей қалады. Жалғастырайын ба?'))) return;
+          const creds = [];
+          for (let k = 0; k < us.length; k++) {
+            busy(T('Жаңа пароль: ') + (k + 1) + ' / ' + us.length, Math.round(k * 100 / us.length));
+            const pw = genPw();
+            try { const j = await api('userSave', {user: us[k], newpw: pw}); USERS = USERS.filter(x => x.id !== j.user.id).concat([j.user]); creds.push({u: j.user, pw}); }
+            catch (e) { toast(us[k].name + ': ' + T(e.message), true); }
+          }
+          done();
+          bulkCreds(creds, T('🔑 Жаңа пароль берілді: '));
+        }}, T('🔑 Белгіленгендерге жаңа пароль беріп, тізімді шығару')),
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => credsExcel(chosen().map(u => ({u, pw: ''})))}, T('📥 Тек логиндер (Excel, парольсіз)'))),
+      list);
+  }
+  // Балалардың жеке кодтары: Excel және ата-аналарға қиып таратуға арналған PDF
+  const codeLink = st => SITE_URL + '#c=' + st.code;
+  function codesExcel(groups){
+    saveXlsx(T('Балалардың кодтары') + ' ' + fileDate() + '.xlsx', groups.map(g => ({name: g.cls, rows: [[T('Сынып'), T('Аты-жөні'), T('Жеке код'), T('Сілтеме')]].concat(
+      g.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk')).map(st => [g.cls, st.name, st.code, codeLink(st)]))})));
+  }
+  function codesPdf(groups){
+    const slip = (cls, st) => '<div class="slip"><div class="sch">Baiterek ST · «Сыныбым / Мой класс»</div><div class="nm">' + escH(st.name) + '</div><div class="cl">' + escH(cls) + '</div>' +
+      '<div class="cd">' + escH(st.code) + '</div><div class="lk">' + escH(codeLink(st)) + '</div>' +
+      '<div class="tx">Сайттағы «Сыныбым» бөліміне кодты енгізіңіз немесе сілтемені ашыңыз. Кодты басқа адамдарға бермеңіз.<br>Введите код в разделе «Мой класс» на сайте или откройте ссылку. Не передавайте код другим.</div></div>';
+    printHtml(T('Балалардың кодтары'), groups.map(g => '<h1>' + escH(g.cls) + ' · ' + escH(T('балалардың жеке кодтары')) + '</h1><div class="grid">' +
+      g.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk')).map(st => slip(g.cls, st)).join('') + '</div>').join('<div class="pb"></div>'),
+      '.grid{display:grid;grid-template-columns:1fr 1fr;gap:0}.slip{border:1px dashed #9FBFB2;padding:10px 12px;page-break-inside:avoid}.sch{font-size:10px;font-weight:800;color:#B8952A;text-transform:uppercase;letter-spacing:.04em}' +
+      '.nm{font-size:14px;font-weight:800;color:#0F382C;margin-top:3px}.cl{font-size:11px;color:#5b6b66}.cd{font-family:Consolas,monospace;font-size:22px;font-weight:800;letter-spacing:.18em;margin:4px 0;color:#0F382C}.lk{font-size:9.5px;color:#5b6b66;word-break:break-all}.tx{font-size:9.5px;margin-top:4px;line-height:1.35}' +
+      '.pb{page-break-after:always;height:0}h1{margin-top:6px}');
+  }
+  const codesButtons = groups => [
+    h('button', {type: 'button', class: 'btn btn-l', onclick: () => codesExcel(groups())}, T('📥 Excel')),
+    h('button', {type: 'button', class: 'btn btn-l', onclick: () => codesPdf(groups())}, T('🖨 PDF (қиып таратуға)'))];
+  // Бас әкімші: барлық сыныптың кодтары (әр сыныпты кезекпен жүктейді)
+  async function allCodesExport(kind){
+    const classes = allClasses(), groups = [];
+    for (let k = 0; k < classes.length; k++) {
+      busy(T('Сыныптар жүктелуде: ') + (k + 1) + ' / ' + classes.length, Math.round(k * 100 / classes.length));
+      try { if (!FBC[classes[k]]) FBC[classes[k]] = await api('fbList', {cls: classes[k]}); } catch (e) { continue; }
+      const st = (FBC[classes[k]].students || []).filter(s => s.code);
+      if (st.length) groups.push({cls: classes[k], students: st});
+    }
+    done();
+    if (!groups.length) { toast(T('Оқушылар тізімі әлі жүктелмеген'), true); return; }
+    kind === 'pdf' ? codesPdf(groups) : codesExcel(groups);
   }
 
   // ---------- 🔑 Ата-ана кодтары ----------
@@ -1345,7 +1454,8 @@
   VIEWS.users = function(view){
     view.append(h('div', {class: 'flex flex-wrap items-center justify-between gap-3 mb-4'},
       h('h1', {class: 'text-2xl font-extrabold text-emerald-950'}, T('Қызметкерлер')),
-      h('div', {class: 'flex flex-wrap gap-2'}, h('button', {type: 'button', class: 'btn btn-l', onclick: () => usersBulk(view)}, T('📥 Тізіммен қосу')),
+      h('div', {class: 'flex flex-wrap gap-2'}, h('button', {type: 'button', class: 'btn btn-l', onclick: () => usersExport(view)}, T('📤 Логиндер мен парольдер (Excel / PDF)')),
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => usersBulk(view)}, T('📥 Тізіммен қосу')),
         h('button', {type: 'button', class: 'btn btn-g', onclick: () => userEditor(view, null)}, T('+ Қызметкер қосу')))));
     view.append(hint(T('Сынып жетекшілері өз сыныбын, әкімшілер өзіңіз белгілеген бөлімдерді ғана басқарады. Әкімшілік мүшелері барлық сыныптың жазбаларын тек қарайды. Пән мұғалімдері мен үйірме жетекшілері тек «Кері байланыс» бөлімінде өз сыныптарының (үйірмесінің) оқушыларына жазады, педагог-психолог барлық сыныптың даму картасын көреді. Email (Gmail) жазылса, адамға Google Drive-тағы «Бастауыш-Началка» ішінен тек өз қалтасына қолжетімділік беріледі.')));
     if (INFO.classFolder) view.append(h('div', {class: 'my-3'}, h('a', {href: INFO.classFolder, target: '_blank', class: 'btn btn-l btn-s'}, T('📁 «Бастауыш-Началка» қалтасын ашу ↗'))));
