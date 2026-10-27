@@ -587,7 +587,305 @@
       qa_empty:"No questions yet", qa_answer:"Answer", qa_note:"A private answer is visible only on the device you sent the question from."
     }
   };
-  ['kz','ru','en'].forEach(function(l){ for(var k in EXTRA[l]) I18N[l][k] = EXTRA[l][k]; for(var m in MYCLASS[l]) I18N[l][m] = MYCLASS[l][m]; });
+  // «Кері байланыс» — мұғалімдердің әр оқушыға жазған пікірі (баланың жеке кодымен ашылады)
+  var FEEDBACK = {
+    kz:{
+      mc_desc:"Сынып жетекшісі берген кодты енгізіңіз: сынып коды немесе баланың жеке коды. Үй тапсырмасы, сыныптың фото-видеолары және сұрақ-жауап тек сіздің сыныбыңыздың ата-аналарына көрінеді, ал мұғалімдердің кері байланысы — тек баланың жеке кодымен.",
+      mc_code_ph:"Код",
+      fb_tab:"Кері байланыс", card_tab:"Даму картасы", fb_empty:"Әзірге мұғалімдерден кері байланыс жоқ", fb_print:"PDF / Басып шығару",
+      fb_title:"Мұғалімдердің кері байланысы", fb_subj:"Пән", fb_text:"Кері байланыс", fb_rec:"Ата-аналарға арналған ұсыныстар",
+      fb_teacher:"Мұғалім", fb_main:"Пәндер", fb_extra:"Қосымша сабақтар", fb_club:"Үйірмелер", fb_child:"Оқушы", fb_cls:"Сынып",
+      fb_period:"Кезең", fb_all:"Барлық уақыт", fb_printed:"Басып шығарылған күні",
+      fb_note:"Бұл жазбаларды тек сіз (баланың жеке коды бар ата-ана), жазған мұғалім және мектеп әкімшілігі көреді."
+    },
+    ru:{
+      mc_desc:"Введите код от классного руководителя: код класса или личный код ребёнка. Домашние задания, фото и видео класса и вопросы-ответы видят только родители вашего класса, а отзывы учителей — только по личному коду ребёнка.",
+      mc_code_ph:"Код",
+      fb_tab:"Обратная связь", card_tab:"Карта развития", fb_empty:"Пока нет отзывов учителей", fb_print:"PDF / Печать",
+      fb_title:"Обратная связь от учителей", fb_subj:"Предмет", fb_text:"Обратная связь", fb_rec:"Рекомендации родителям",
+      fb_teacher:"Учитель", fb_main:"Предметы", fb_extra:"Дополнительные занятия", fb_club:"Кружки", fb_child:"Ученик", fb_cls:"Класс",
+      fb_period:"Период", fb_all:"За всё время", fb_printed:"Дата печати",
+      fb_note:"Эти записи видите только вы (родитель с личным кодом ребёнка), написавший учитель и администрация школы."
+    },
+    en:{
+      mc_desc:"Enter the code from your class teacher: the class code or your child's personal code. Homework, class photos and videos, and Q&A are visible only to parents of your class; teachers' feedback is opened only with the child's personal code.",
+      mc_code_ph:"Code",
+      fb_tab:"Feedback", card_tab:"Development profile", fb_empty:"No feedback from teachers yet", fb_print:"PDF / Print",
+      fb_title:"Teachers' feedback", fb_subj:"Subject", fb_text:"Feedback", fb_rec:"Recommendations for parents",
+      fb_teacher:"Teacher", fb_main:"Subjects", fb_extra:"Extra lessons", fb_club:"Clubs", fb_child:"Student", fb_cls:"Class",
+      fb_period:"Period", fb_all:"All time", fb_printed:"Printed on",
+      fb_note:"Only you (the parent with the child's personal code), the teacher who wrote it and the school administration can see these notes."
+    }
+  };
+  ['kz','ru','en'].forEach(function(l){
+    for(var k in EXTRA[l]) I18N[l][k] = EXTRA[l][k];
+    for(var m in MYCLASS[l]) I18N[l][m] = MYCLASS[l][m];
+    for(var f in FEEDBACK[l]) I18N[l][f] = FEEDBACK[l][f];
+  });
+
+  // Кері байланысты басып шығару / PDF ретінде сақтау (сайт пен әкімші беті ортақ қолданады).
+  // o = {lang, period, blocks: [{name, cls, items: [{date, kind, subj, text, rec, by}]}]}
+  window.FB_PRINT = function(o){
+    var T = I18N[o.lang] || I18N.kz;
+    var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+    var dmy = function(s){ var p = String(s || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : ''; };
+    var now = new Date();
+    var KINDS = [['main', T.fb_main], ['extra', T.fb_extra], ['club', T.fb_club]];
+    var pages = (o.blocks || []).map(function(b){
+      var rows = '';
+      KINDS.forEach(function(k){
+        var list = (b.items || []).filter(function(x){ return (x.kind || 'main') === k[0]; })
+          .sort(function(a, c){ return a.subj < c.subj ? -1 : a.subj > c.subj ? 1 : (a.date < c.date ? 1 : -1); });
+        if (!list.length) return;
+        rows += '<tr class="grp"><th>' + esc(k[0] === 'main' ? T.fb_subj : k[1]) + '</th><th>' + esc(T.fb_text) + '</th><th>' + esc(T.fb_rec) + '</th></tr>';
+        list.forEach(function(x){
+          rows += '<tr><td><b>' + esc(x.subj) + '</b><div class="meta">' + esc(x.by || '') + (x.date ? '<br>' + dmy(x.date) : '') + '</div></td><td>' + esc(x.text) + '</td><td>' + esc(x.rec) + '</td></tr>';
+        });
+      });
+      return '<section><header><div class="sch">Baiterek ST</div><h1>' + esc(T.fb_title) + '</h1>' +
+        '<div class="info"><span>' + esc(T.fb_child) + ': <b>' + esc(b.name) + '</b></span><span>' + esc(T.fb_cls) + ': <b>' + esc(b.cls) + '</b></span><span>' + esc(T.fb_period) + ': <b>' + esc(o.period || T.fb_all) + '</b></span></div></header>' +
+        (rows ? '<table><colgroup><col style="width:22%"><col style="width:44%"><col style="width:34%"></colgroup>' + rows + '</table>' : '<p class="empty">' + esc(T.fb_empty) + '</p>') +
+        '<footer>' + esc(T.fb_printed) + ': ' + dmy(now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2)) + '</footer></section>';
+    }).join('');
+    var title = (o.blocks && o.blocks.length === 1 ? o.blocks[0].name + ' — ' : '') + T.fb_title;
+    var html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(title) + '</title><style>' +
+      '@page{size:A4;margin:14mm 12mm}body{font-family:Arial,"Segoe UI",sans-serif;color:#1A202C;margin:0;padding:16px;background:#fff;font-size:12px}' +
+      'section{page-break-after:always;max-width:900px;margin:0 auto 32px}section:last-child{page-break-after:auto}' +
+      'header{border-bottom:3px solid #D4AF37;padding-bottom:8px;margin-bottom:12px}.sch{font-weight:800;color:#B8952A;letter-spacing:.06em;text-transform:uppercase;font-size:11px}' +
+      'h1{margin:2px 0 6px;font-size:20px;color:#0F382C}.info{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:13px}' +
+      'table{width:100%;border-collapse:collapse;margin-bottom:10px}td,th{border:1px solid #9FBFB2;padding:6px 7px;vertical-align:top;text-align:left;white-space:pre-line;overflow-wrap:anywhere}' +
+      'tr.grp th{background:#0F382C;color:#fff;font-size:12px}tr{page-break-inside:avoid}.meta{color:#5b6b66;font-size:10.5px;margin-top:3px}' +
+      '.empty{color:#666}footer{margin-top:8px;color:#777;font-size:10.5px;text-align:right}' +
+      '.bar{position:sticky;top:0;text-align:center;padding:8px;background:#FBF6E7;margin:-16px -16px 16px}.bar button{font:inherit;font-weight:700;padding:8px 18px;border-radius:999px;border:0;background:#0F382C;color:#fff;cursor:pointer}' +
+      '@media print{.bar{display:none}body{padding:0}}</style></head><body>' +
+      '<div class="bar"><button onclick="window.print()">🖨 ' + esc(T.fb_print) + '</button></div>' + pages +
+      '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>';
+    var w = window.open('', '_blank');
+    if (!w) { alert('Жаңа терезе бұғатталды. Браузерде қалқымалы терезелерге (pop-up) рұқсат беріңіз.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  };
+
+  // ---------- 📊 Оқушының даму картасы ----------
+  // Мұғалімдердің педагогикалық бақылауы (ҚР Оқу-ағарту министрінің 29.04.2025 №92 бұйрығымен бекітілген
+  // ПППС қызметі қағидаларының 15-т.) негізінде толтырылады. Медициналық немесе клиникалық диагноз емес.
+  // Психологиялық диагностика тек ата-ананың жазбаша келісімімен жүргізіледі (сол қағидалардың 12-т.).
+  // Параметр кілттері Code.gs ішіндегі CARD_KEYS-пен бірдей болуы керек.
+  var CARD = {
+    levels: {
+      kz: ['', 'Қолдау қажет', 'Дамып келеді', 'Жеткілікті', 'Жоғары'],
+      ru: ['', 'Нужна поддержка', 'Развивается', 'Достаточный', 'Высокий'],
+      en: ['', 'Needs support', 'Developing', 'Secure', 'Strong']
+    },
+    groups: [
+      {k:'learn', kz:'Оқу іс-әрекеті', ru:'Учебная деятельность', en:'Learning habits'},
+      {k:'cogn', kz:'Танымдық қабілеттер', ru:'Познавательные способности', en:'Cognitive skills'},
+      {k:'behav', kz:'Мінез-құлық және өзін-өзі реттеу', ru:'Поведение и саморегуляция', en:'Behaviour and self-regulation'},
+      {k:'social', kz:'Қарым-қатынас', ru:'Общение', en:'Social skills'},
+      {k:'phys', kz:'Дене белсенділігі', ru:'Физическая активность', en:'Physical activity'}
+    ],
+    // rec — параметр төмен болғанда ата-анаға ұсыныс
+    params: [
+      {k:'motiv', g:'learn', kz:'Оқуға ынтасы, қызығушылығы', ru:'Учебная мотивация, интерес', en:'Motivation to learn',
+        rec:{kz:'Баланың жетістігін жиі мадақтаңыз, оқуды қызықты ойындармен, кітаппен, саяхатпен байланыстырыңыз; күнделікті «бүгін не білдің?» деп әңгімелесіңіз.', ru:'Чаще хвалите успехи ребёнка, связывайте учёбу с играми, книгами, поездками; ежедневно спрашивайте «что нового ты узнал?».', en:'Praise effort often, link learning to games, books and trips, and talk every day about what your child learned.'}},
+      {k:'attn', g:'learn', kz:'Зейіні, назар аудара алуы', ru:'Внимание, сосредоточенность', en:'Attention and focus',
+        rec:{kz:'Үй тапсырмасын тыныш, гаджетсіз ортада 15–20 минуттық бөліктермен орындатыңыз; зейінге арналған ойындар (айырмашылықты тап, лабиринт, мозаика) ойнаңыз.', ru:'Организуйте выполнение уроков в тихой обстановке без гаджетов, частями по 15–20 минут; играйте в игры на внимание (найди отличия, лабиринты, мозаика).', en:'Do homework in a quiet, gadget-free place in 15–20 minute blocks; play attention games (spot the difference, mazes, puzzles).'}},
+      {k:'indep', g:'learn', kz:'Тапсырманы дербес орындауы', ru:'Самостоятельность при выполнении заданий', en:'Working independently',
+        rec:{kz:'Тапсырманы бала өзі бастап, өзі тексерсін; көмекті бірден бермей, бағыттаушы сұрақтар қойыңыз. Күн тәртібінде шағын тұрақты міндеттер беріңіз.', ru:'Пусть ребёнок сам начинает и сам проверяет задание; помогайте наводящими вопросами, а не готовым ответом. Дайте небольшие постоянные обязанности дома.', en:'Let your child start and check tasks alone; help with guiding questions rather than answers, and give small regular chores.'}},
+      {k:'accur', g:'learn', kz:'Ұқыптылығы, жұмыс қарқыны', ru:'Аккуратность, темп работы', en:'Neatness and pace',
+        rec:{kz:'Жұмыс орнын бірге реттеңіз, дәптерді таза жүргізуді әдетке айналдырыңыз; уақытты таймермен бақылап, қарқынды біртіндеп арттырыңыз.', ru:'Вместе наведите порядок на рабочем месте, приучайте к аккуратному ведению тетрадей; используйте таймер и постепенно повышайте темп.', en:'Organise the workspace together, build neat notebook habits and use a timer to raise the pace gradually.'}},
+      {k:'hw', g:'learn', kz:'Үй тапсырмасын орындауы', ru:'Выполнение домашних заданий', en:'Homework',
+        rec:{kz:'Үй тапсырмасына күн сайын бір уақытты бөліңіз, орындалғанын күнделікті тексеріп, сайттағы «Үй тапсырмасы» бөлімін бірге қараңыз.', ru:'Выделите для уроков постоянное время, ежедневно проверяйте выполнение и вместе смотрите раздел «Домашнее задание» на сайте.', en:'Set a fixed daily homework time, check it every day and look at the Homework section together.'}},
+      {k:'logic', g:'cogn', kz:'Логикалық ойлауы', ru:'Логическое мышление', en:'Logical thinking',
+        rec:{kz:'Логикалық жұмбақтар, ребустар, шахмат, конструктор ойындарын ойнаңыз; «неге?», «қалай ойлайсың?» деген сұрақтармен ой қорытуға үйретіңіз.', ru:'Решайте головоломки, ребусы, играйте в шахматы и конструкторы; задавайте вопросы «почему?», «как ты думаешь?».', en:'Do puzzles, riddles, chess and construction toys; ask "why?" and "what do you think?".'}},
+      {k:'memory', g:'cogn', kz:'Есте сақтауы', ru:'Память', en:'Memory',
+        rec:{kz:'Өлең, мақал-мәтел жаттаңыз, оқыған мәтінді өз сөзімен айтқызыңыз; «есте сақта да қайтала» ойындарын ойнаңыз.', ru:'Учите стихи и пословицы, просите пересказать прочитанное своими словами; играйте в игры «запомни и повтори».', en:'Learn poems together, ask for retelling in their own words and play memory games.'}},
+      {k:'speech', g:'cogn', kz:'Сөйлеу тілі, ойын жеткізуі', ru:'Речь, умение выражать мысли', en:'Speaking and expressing ideas',
+        rec:{kz:'Күн сайын баламен еркін әңгімелесіңіз, сурет бойынша әңгіме құрастыртыңыз, сөздік қорын кітап арқылы байытыңыз.', ru:'Ежедневно беседуйте с ребёнком, составляйте рассказы по картинкам, обогащайте словарный запас через книги.', en:'Talk with your child daily, make up stories from pictures and grow vocabulary through books.'}},
+      {k:'read', g:'cogn', kz:'Оқу дағдысы, мәтінді түсінуі', ru:'Навык чтения, понимание текста', en:'Reading and comprehension',
+        rec:{kz:'Күн сайын кемінде 15–20 минут дауыстап бірге оқыңыз, оқығаннан кейін мазмұны бойынша сұрақ қойыңыз; балаға қызықты кітаптарды өзі таңдатыңыз.', ru:'Ежедневно читайте вслух не менее 15–20 минут, после чтения задавайте вопросы по содержанию; позвольте ребёнку самому выбирать интересные книги.', en:'Read aloud together for 15–20 minutes daily, ask questions afterwards and let your child choose books.'}},
+      {k:'creat', g:'cogn', kz:'Шығармашылығы, қиялы', ru:'Творчество, воображение', en:'Creativity and imagination',
+        rec:{kz:'Сурет салу, мүсіндеу, ертегі құрастыру сияқты еркін шығармашылыққа уақыт беріңіз; баланың идеяларын сынамай, қолдаңыз.', ru:'Давайте время на свободное творчество: рисование, лепку, сочинение сказок; поддерживайте идеи ребёнка без критики.', en:'Give time for free creative play — drawing, modelling, story-making — and support ideas without criticism.'}},
+      {k:'disc', g:'behav', kz:'Тәртібі, ережені сақтауы', ru:'Дисциплина, соблюдение правил', en:'Following rules',
+        rec:{kz:'Үйде анық әрі тұрақты ережелер мен күн тәртібін белгілеңіз; ережені орындағанын мадақтап, салдарын алдын ала түсіндіріңіз.', ru:'Установите дома чёткие и постоянные правила и режим дня; хвалите за соблюдение правил и заранее объясняйте последствия.', en:'Set clear, consistent rules and routines at home; praise rule-following and explain consequences in advance.'}},
+      {k:'selfreg', g:'behav', kz:'Өзін-өзі бақылауы, ұстамдылығы', ru:'Самоконтроль, сдержанность', en:'Self-control',
+        rec:{kz:'Эмоцияны сөзбен атауға үйретіңіз («ашуландым», «ренжідім»), тыныс алу жаттығуларын бірге жасаңыз; кезекті күтуге арналған ойындар ойнаңыз.', ru:'Учите называть эмоции словами («я злюсь», «мне обидно»), вместе делайте дыхательные упражнения; играйте в игры на ожидание очереди.', en:'Teach your child to name feelings, practise calm breathing together and play turn-taking games.'}},
+      {k:'resp', g:'behav', kz:'Жауапкершілігі', ru:'Ответственность', en:'Responsibility',
+        rec:{kz:'Портфельді өзі жинауын, өз заттарына өзі жауап беруін талап етіңіз; берілген уәдені орындауды үйге тапсырма ретінде бекітіңіз.', ru:'Пусть ребёнок сам собирает портфель и отвечает за свои вещи; приучайте выполнять обещания.', en:'Let your child pack their own bag and look after their things; encourage keeping promises.'}},
+      {k:'emo', g:'behav', kz:'Эмоционалдық тұрақтылығы', ru:'Эмоциональная устойчивость', en:'Emotional stability',
+        rec:{kz:'Баланың көңіл күйін байқап, сенімді әңгімеге уақыт бөліңіз; ұйқы мен демалыс режимін сақтаңыз. Қажет болса, мектеп педагог-психологына жүгініңіз.', ru:'Следите за настроением ребёнка, находите время для доверительного разговора; соблюдайте режим сна и отдыха. При необходимости обратитесь к школьному педагогу-психологу.', en:'Notice your child\'s mood, make time for trusting talks and keep sleep routines; contact the school psychologist if needed.'}},
+      {k:'peers', g:'social', kz:'Сыныптастарымен қарым-қатынасы', ru:'Отношения с одноклассниками', en:'Relationships with classmates',
+        rec:{kz:'Сыныптастарымен сабақтан тыс кездесулерге, ортақ ойындарға мүмкіндік жасаңыз; достасу, келісу, кешірім сұрау жағдаяттарын бірге талқылаңыз.', ru:'Создавайте возможности для встреч и игр с одноклассниками вне уроков; обсуждайте вместе, как дружить, договариваться и извиняться.', en:'Arrange time with classmates outside school and talk together about making friends, agreeing and apologising.'}},
+      {k:'team', g:'social', kz:'Топта жұмыс істей алуы', ru:'Умение работать в группе', en:'Teamwork',
+        rec:{kz:'Отбасылық ойындарда, ортақ істерде кезекпен рөл бөліп беріңіз; үйірмеде командалық жұмысқа қатысуын қолдаңыз.', ru:'В семейных играх и общих делах распределяйте роли по очереди; поддерживайте командную работу в кружке.', en:'Share roles in family games and tasks, and support team activities in clubs.'}},
+      {k:'adults', g:'social', kz:'Ересектермен қарым-қатынасы, мәдениеті', ru:'Общение со взрослыми, культура поведения', en:'Manners with adults',
+        rec:{kz:'Сәлемдесу, рахмет айту, өтініш жасау әдебін өз үлгіңізбен көрсетіңіз; мұғаліммен сыйластықпен сөйлесуге үйретіңіз.', ru:'Показывайте личным примером, как здороваться, благодарить, вежливо просить; учите уважительному общению с учителем.', en:'Model greetings, thanks and polite requests, and encourage respectful talk with teachers.'}},
+      {k:'active', g:'phys', kz:'Қимыл белсенділігі, дене дамуы', ru:'Двигательная активность, физическое развитие', en:'Movement and physical development',
+        rec:{kz:'Күн сайын кемінде 1 сағат таза ауада қозғалыс ойындарына уақыт беріңіз, спорт үйірмесіне қатысуын қолдаңыз, экран уақытын шектеңіз.', ru:'Ежедневно не менее часа подвижных игр на свежем воздухе, поддерживайте занятия в спортивном кружке, ограничьте экранное время.', en:'Allow at least an hour of active outdoor play daily, support a sports club and limit screen time.'}}
+    ],
+    interests: [
+      {k:'math', kz:'Математика, логикалық ойындар', ru:'Математика, логические игры', en:'Maths and logic games'},
+      {k:'lang', kz:'Тілдер', ru:'Языки', en:'Languages'},
+      {k:'books', kz:'Кітап оқу', ru:'Чтение книг', en:'Reading'},
+      {k:'science', kz:'Табиғат, ғылым, тәжірибе', ru:'Природа, наука, опыты', en:'Nature and science'},
+      {k:'art', kz:'Сурет, қолөнер', ru:'Рисование, рукоделие', en:'Art and crafts'},
+      {k:'music', kz:'Музыка, ән', ru:'Музыка, пение', en:'Music and singing'},
+      {k:'sport', kz:'Спорт, қозғалыс ойындары', ru:'Спорт, подвижные игры', en:'Sport'},
+      {k:'tech', kz:'Техника, робототехника, компьютер', ru:'Техника, робототехника, компьютер', en:'Technology and robotics'},
+      {k:'stage', kz:'Би, сахна өнері', ru:'Танцы, сцена', en:'Dance and stage'},
+      {k:'heritage', kz:'Ұлттық мұра, тарих', ru:'Национальное наследие, история', en:'Heritage and history'}
+    ],
+    // топ деңгейі бойынша жалпы сипаттама: [жоғары, жеткілікті, қолдау қажет]
+    summary: {
+      learn: {kz:['Оқуға ынтасы жоғары, тапсырмаларды дербес әрі ұқыпты орындайды.', 'Оқу іс-әрекеті жалпы тұрақты, кейбір дағдыларды бекіту қажет.', 'Оқу дағдыларын қалыптастыруда ересектердің тұрақты қолдауы қажет.'],
+              ru:['Высокая учебная мотивация, задания выполняет самостоятельно и аккуратно.', 'Учебная деятельность в целом стабильна, отдельные навыки требуют закрепления.', 'Для формирования учебных навыков нужна постоянная поддержка взрослых.'],
+              en:['Highly motivated; completes tasks independently and neatly.', 'Learning habits are generally steady; some skills need consolidating.', 'Learning habits need regular adult support.']},
+      cogn: {kz:['Танымдық қабілеттері жақсы дамыған: ойлауы, есте сақтауы және сөйлеуі жасына сай жоғары деңгейде.', 'Танымдық қабілеттері жасына сай дамып келеді.', 'Кейбір танымдық дағдыларды (ойлау, есте сақтау, оқу) дамытуға көбірек көңіл бөлу керек.'],
+              ru:['Познавательные способности хорошо развиты: мышление, память и речь на высоком для возраста уровне.', 'Познавательные способности развиваются соответственно возрасту.', 'Отдельные познавательные навыки (мышление, память, чтение) требуют большего внимания.'],
+              en:['Cognitive skills are well developed for this age.', 'Cognitive skills are developing in line with age.', 'Some cognitive skills (thinking, memory, reading) need more attention.']},
+      behav: {kz:['Тәртібі үлгілі, өзін-өзі жақсы бақылайды, жауапкершілігі жоғары.', 'Мінез-құлқы жалпы қалыпты, кейде өзін-өзі ұстауда көмек қажет.', 'Тәртіп пен өзін-өзі реттеуді дамытуға отбасы мен мектептің бірлескен жұмысы қажет.'],
+              ru:['Поведение примерное, хороший самоконтроль, высокая ответственность.', 'Поведение в целом нормальное, иногда нужна помощь в самоконтроле.', 'Для развития дисциплины и саморегуляции нужна совместная работа семьи и школы.'],
+              en:['Exemplary behaviour, good self-control and responsibility.', 'Behaviour is generally fine; occasionally needs help with self-control.', 'Discipline and self-regulation need joint work by family and school.']},
+      social: {kz:['Ашық, қарым-қатынасқа оңай түседі, топта жақсы жұмыс істейді.', 'Сыныптастарымен және ересектермен қарым-қатынасы жалпы жақсы.', 'Қарым-қатынас дағдыларын (достасу, топта жұмыс) дамытуға қолдау қажет.'],
+              ru:['Открыт, легко идёт на контакт, хорошо работает в группе.', 'Отношения с одноклассниками и взрослыми в целом хорошие.', 'Нужна поддержка в развитии навыков общения (дружба, работа в группе).'],
+              en:['Open and sociable; works well in a team.', 'Relationships with classmates and adults are generally good.', 'Social skills (friendship, teamwork) need support.']},
+      phys: {kz:['Қимыл белсенділігі жоғары.', 'Дене белсенділігі қалыпты.', 'Қимыл белсенділігін арттыру ұсынылады.'],
+              ru:['Высокая двигательная активность.', 'Физическая активность в норме.', 'Рекомендуется повысить двигательную активность.'],
+              en:['Very active physically.', 'Physical activity is normal.', 'More physical activity is recommended.']}
+    },
+    T: {
+      kz:{title:'Оқушының даму картасы', sub:'Педагогикалық бақылау нәтижелері бойынша', child:'Оқушы', cls:'Сынып', period:'Кезең', raters:'Бағалаған педагогтар саны',
+        param:'Параметр', level:'Деңгей', subjects:'Пәндер бойынша', subject:'Пән', note:'Ескерту',
+        strong:'Күшті жақтары', weak:'Дамытуды қажет ететін жақтары', none:'Айқын белгіленбеген', interests:'Қызығушылықтары', clubs:'Үйірмелері',
+        analysis:'Жан-жақты талдау', recs:'Ата-аналарға ұсыныстар', focusSubj:'Көбірек көңіл бөлу ұсынылатын пәндер', strongSubj:'Жақсы меңгерген пәндер',
+        teacher:'Сынып жетекшісінің қорытындысы', teacherRec:'Сынып жетекшісінің ұсынысы', teacherNotes:'Педагогтардың ескертпелері', psych:'Педагог-психологтың қорытындысы', methods:'Қолданылған әдістемелер',
+        consent:'Ата-ананың жазбаша келісімі', sign:'Сынып жетекшісі', signPsy:'Педагог-психолог', signParent:'Ата-ана (танысты)', date:'Күні', print:'PDF / Басып шығару',
+        empty:'Бұл кезеңге әзірге баға қойылмаған', stage:'Жалпы деңгей', keep:'Жақсы жақтарын әрі қарай дамыту үшін',
+        legal:'Карта мұғалімдердің педагогикалық бақылауы негізінде жасалды (ҚР Оқу-ағарту министрінің 2025 жылғы 29 сәуірдегі №92 бұйрығымен бекітілген Психологиялық-педагогикалық сүйемелдеу қызметі қағидаларының 15-тармағы). Бұл медициналық немесе клиникалық диагноз емес. Психологиялық диагностика тек ата-ананың (заңды өкілдің) жазбаша келісімімен жүргізіледі (12-тармақ). Мәліметтер құпия, тек ата-анаға және баламен жұмыс істейтін педагогтарға арналған («Дербес деректер және оларды қорғау туралы» ҚР Заңы, 7, 8, 11-баптар).',
+        Q1:'1-тоқсан', Q2:'2-тоқсан', Q3:'3-тоқсан', Q4:'4-тоқсан', Y:'Оқу жылы', tab:'Даму картасы', cardEmpty:'Даму картасы әзірге толтырылмаған'},
+      ru:{title:'Карта развития ученика', sub:'По результатам педагогического наблюдения', child:'Ученик', cls:'Класс', period:'Период', raters:'Число оценивших педагогов',
+        param:'Параметр', level:'Уровень', subjects:'По предметам', subject:'Предмет', note:'Примечание',
+        strong:'Сильные стороны', weak:'Стороны, требующие развития', none:'Явно не выделены', interests:'Интересы', clubs:'Кружки',
+        analysis:'Всесторонний анализ', recs:'Рекомендации родителям', focusSubj:'Предметы, которым рекомендуется уделить больше внимания', strongSubj:'Хорошо усвоенные предметы',
+        teacher:'Заключение классного руководителя', teacherRec:'Рекомендация классного руководителя', teacherNotes:'Замечания педагогов', psych:'Заключение педагога-психолога', methods:'Использованные методики',
+        consent:'Письменное согласие родителя', sign:'Классный руководитель', signPsy:'Педагог-психолог', signParent:'Родитель (ознакомлен)', date:'Дата', print:'PDF / Печать',
+        empty:'За этот период оценок пока нет', stage:'Общий уровень', keep:'Чтобы развивать сильные стороны',
+        legal:'Карта составлена на основе педагогического наблюдения учителей (п. 15 Правил деятельности службы психолого-педагогического сопровождения, утв. приказом Министра просвещения РК от 29 апреля 2025 года № 92). Это не медицинский и не клинический диагноз. Психологическая диагностика проводится только с письменного согласия родителя (законного представителя) (п. 12). Сведения конфиденциальны и предназначены только родителю и педагогам, работающим с ребёнком (Закон РК «О персональных данных и их защите», ст. 7, 8, 11).',
+        Q1:'1 четверть', Q2:'2 четверть', Q3:'3 четверть', Q4:'4 четверть', Y:'Учебный год', tab:'Карта развития', cardEmpty:'Карта развития пока не заполнена'},
+      en:{title:'Student development profile', sub:'Based on teachers\' observation', child:'Student', cls:'Class', period:'Period', raters:'Teachers who rated',
+        param:'Area', level:'Level', subjects:'By subject', subject:'Subject', note:'Note',
+        strong:'Strengths', weak:'Areas to develop', none:'None identified', interests:'Interests', clubs:'Clubs',
+        analysis:'Overall analysis', recs:'Recommendations for parents', focusSubj:'Subjects needing more attention', strongSubj:'Strong subjects',
+        teacher:'Class teacher\'s conclusion', teacherRec:'Class teacher\'s recommendation', teacherNotes:'Teachers\' notes', psych:'School psychologist\'s conclusion', methods:'Methods used',
+        consent:'Parent\'s written consent', sign:'Class teacher', signPsy:'School psychologist', signParent:'Parent (acknowledged)', date:'Date', print:'PDF / Print',
+        empty:'No ratings for this period yet', stage:'Overall level', keep:'To keep developing strengths',
+        legal:'Based on teachers\' educational observation (Rules of the psychological and pedagogical support service, Order of the Minister of Enlightenment of the RK No. 92 of 29 April 2025, p. 15). Not a medical or clinical diagnosis. Psychological assessment is carried out only with the written consent of a parent (p. 12). Confidential: for the parent and the child\'s teachers only (RK Law on Personal Data and its Protection, art. 7, 8, 11).',
+        Q1:'Term 1', Q2:'Term 2', Q3:'Term 3', Q4:'Term 4', Y:'School year', tab:'Development profile', cardEmpty:'The development profile has not been filled in yet'}
+    }
+  };
+  CARD.periodName = function(p, lang){ var T = CARD.T[lang] || CARD.T.kz, m = String(p || '').split('/'); return (T[m[1]] || m[1] || '') + (m[0] ? ' · ' + m[0] : ''); };
+  // Ағымдағы оқу жылы мен тоқсан
+  CARD.currentPeriod = function(d){
+    d = d || new Date();
+    var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate(), start = m >= 9 ? y : y - 1;
+    var md = m * 100 + day;
+    var q = (md >= 901 && md < 1103) ? 'Q1' : (md >= 1103 || md < 108) ? 'Q2' : (md >= 108 && md < 330) ? 'Q3' : (md >= 330 && md < 601) ? 'Q4' : 'Y';
+    return start + '-' + (start + 1) + '/' + q;
+  };
+  CARD.periods = function(){
+    var cur = CARD.currentPeriod(), y = cur.split('/')[0], s = +y.split('-')[0];
+    var list = [], ys = [s, s - 1];
+    ys.forEach(function(a){ ['Y','Q4','Q3','Q2','Q1'].forEach(function(q){ list.push(a + '-' + (a + 1) + '/' + q); }); });
+    return list.filter(function(p){ return p <= y + '/Y' || p === cur; });
+  };
+  // Мұғалімдердің бағаларын біріктіру (сервердегі cardAgg_-пен бірдей)
+  CARD.agg = function(ratings){
+    var p = {}, s = {}, i = {}, notes = [];
+    (ratings || []).forEach(function(r){
+      for (var k in (r.vals || {})) { p[k] = p[k] || {sum:0, n:0}; p[k].sum += r.vals[k]; p[k].n++; }
+      for (var j in (r.subj || {})) { s[j] = s[j] || {sum:0, n:0}; s[j].sum += r.subj[j]; s[j].n++; }
+      (r.interests || []).forEach(function(k){ i[k] = (i[k] || 0) + 1; });
+      if (r.note) notes.push(r.note);
+    });
+    var avg = function(o){ var out = {}; for (var k in o) out[k] = {avg: Math.round(o[k].sum / o[k].n * 100) / 100, n: o[k].n}; return out; };
+    return {params: avg(p), subj: avg(s), interests: i, raters: (ratings || []).length, notes: notes};
+  };
+  var lvl = function(a){ return a >= 3.5 ? 4 : a >= 2.75 ? 3 : a >= 2 ? 2 : 1; };
+  // Талдау: күшті / әлсіз жақтар, пәндер, жалпы сипаттама, ұсыныстар
+  CARD.analyse = function(agg, lang){
+    lang = CARD.T[lang] ? lang : 'kz';
+    var P = agg.params || {}, strong = [], weak = [], recs = [], text = [];
+    CARD.params.forEach(function(x){ var v = P[x.k]; if (!v) return; if (v.avg >= 3.5) strong.push(x[lang]); else if (v.avg <= 2.25) { weak.push(x[lang]); recs.push(x.rec[lang]); } });
+    CARD.groups.forEach(function(g){
+      var vals = CARD.params.filter(function(x){ return x.g === g.k && P[x.k]; }).map(function(x){ return P[x.k].avg; });
+      if (!vals.length) return;
+      var a = vals.reduce(function(s, v){ return s + v; }, 0) / vals.length;
+      text.push(CARD.summary[g.k][lang][a >= 3.25 ? 0 : a >= 2.4 ? 1 : 2]);
+    });
+    var S = agg.subj || {}, focus = [], good = [];
+    Object.keys(S).sort().forEach(function(k){ if (S[k].avg <= 2.25) focus.push(k); else if (S[k].avg >= 3.5) good.push(k); });
+    var inter = Object.keys(agg.interests || {}).sort(function(a, b){ return agg.interests[b] - agg.interests[a]; })
+      .map(function(k){ var it = CARD.interests.filter(function(x){ return x.k === k; })[0]; return it ? it[lang] : k; });
+    var all = Object.keys(P).map(function(k){ return P[k].avg; });
+    var overall = all.length ? lvl(all.reduce(function(s, v){ return s + v; }, 0) / all.length) : 0;
+    return {strong: strong, weak: weak, recs: recs, summary: text, focus: focus, good: good, interests: inter, overall: overall};
+  };
+  // Даму картасын басып шығару / PDF. o = {lang, name, cls, period, agg, concl, psych, clubs}
+  window.CARD_PRINT = function(list){
+    list = list instanceof Array ? list : [list];
+    var lang = (list[0] && list[0].lang) || 'kz', T = CARD.T[lang] || CARD.T.kz, LV = CARD.levels[lang] || CARD.levels.kz;
+    var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+    var COL = ['', '#E9A23B', '#F2D06B', '#8CC5A8', '#2E7D5B'];
+    var bar = function(a){ var l = lvl(a), h = ''; for (var i = 1; i <= 4; i++) h += '<span class="c" style="background:' + (i <= l ? COL[l] : '#EEF2F0') + '"></span>'; return '<span class="bar">' + h + '</span>'; };
+    var ul = function(arr){ return arr.length ? '<ul>' + arr.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="muted">' + esc(T.none) + '</p>'; };
+    var now = new Date(), today = ('0' + now.getDate()).slice(-2) + '.' + ('0' + (now.getMonth() + 1)).slice(-2) + '.' + now.getFullYear();
+    var pages = list.map(function(o){
+      var A = CARD.analyse(o.agg || {}, lang), P = (o.agg || {}).params || {};
+      var rows = '';
+      CARD.groups.forEach(function(g){
+        var ps = CARD.params.filter(function(x){ return x.g === g.k && P[x.k]; });
+        if (!ps.length) return;
+        rows += '<tr class="grp"><th colspan="3">' + esc(g[lang]) + '</th></tr>';
+        ps.forEach(function(x){ var v = P[x.k]; rows += '<tr><td>' + esc(x[lang]) + '</td><td class="b">' + bar(v.avg) + '</td><td>' + esc(LV[lvl(v.avg)]) + '</td></tr>'; });
+      });
+      var S = (o.agg || {}).subj || {}, srows = Object.keys(S).sort().map(function(k){ return '<tr><td>' + esc(k) + '</td><td class="b">' + bar(S[k].avg) + '</td><td>' + esc(LV[lvl(S[k].avg)]) + '</td></tr>'; }).join('');
+      var recs = A.recs.slice();
+      if (A.focus.length) recs.push(T.focusSubj + ': ' + A.focus.join(', ') + '.');
+      if (A.good.length || A.interests.length) recs.push(T.keep + ': ' + A.good.concat(A.interests).slice(0, 6).join(', ') + '.');
+      var body = !rows && !srows && !o.concl && !o.psych ? '<p class="muted">' + esc(T.empty) + '</p>' :
+        (rows ? '<h2>' + esc(T.param) + '</h2><table><colgroup><col style="width:52%"><col style="width:26%"><col style="width:22%"></colgroup>' + rows + '</table>' : '') +
+        (srows ? '<h2>' + esc(T.subjects) + '</h2><table><colgroup><col style="width:52%"><col style="width:26%"><col style="width:22%"></colgroup>' + srows + '</table>' : '') +
+        '<div class="two"><div><h2>💪 ' + esc(T.strong) + '</h2>' + ul(A.strong.concat(A.good)) + '</div><div><h2>🌱 ' + esc(T.weak) + '</h2>' + ul(A.weak.concat(A.focus)) + '</div></div>' +
+        '<div class="two"><div><h2>' + esc(T.interests) + '</h2>' + ul(A.interests) + '</div><div><h2>' + esc(T.clubs) + '</h2>' + ul(o.clubs || []) + '</div></div>' +
+        (A.summary.length ? '<h2>' + esc(T.analysis) + '</h2><p>' + (A.overall ? '<b>' + esc(T.stage) + ': ' + esc(LV[A.overall]) + '.</b> ' : '') + esc(A.summary.join(' ')) + '</p>' : '') +
+        ((o.agg || {}).notes && o.agg.notes.length ? '<h2>' + esc(T.teacherNotes) + '</h2>' + ul(o.agg.notes) : '') +
+        (o.concl && o.concl.text ? '<h2>' + esc(T.teacher) + '</h2><p class="pre">' + esc(o.concl.text) + '</p>' : '') +
+        '<h2>' + esc(T.recs) + '</h2>' + ul(recs.concat(o.concl && o.concl.rec ? [o.concl.rec] : [])) +
+        (o.psych ? '<h2>' + esc(T.psych) + '</h2>' + (o.psych.methods ? '<p class="muted">' + esc(T.methods) + ': ' + esc(o.psych.methods) + '</p>' : '') + '<p class="pre">' + esc(o.psych.text) + '</p>' + (o.psych.rec ? '<p class="pre"><b>' + esc(T.recs) + ':</b> ' + esc(o.psych.rec) + '</p>' : '') : '');
+      return '<section><header><div class="sch">Baiterek ST</div><h1>' + esc(T.title) + '</h1><div class="subt">' + esc(T.sub) + '</div>' +
+        '<div class="info"><span>' + esc(T.child) + ': <b>' + esc(o.name) + '</b></span><span>' + esc(T.cls) + ': <b>' + esc(o.cls) + '</b></span><span>' + esc(T.period) + ': <b>' + esc(CARD.periodName(o.period, lang)) + '</b></span>' +
+        ((o.agg || {}).raters ? '<span>' + esc(T.raters) + ': <b>' + o.agg.raters + '</b></span>' : '') + '</div></header>' + body +
+        '<div class="sign"><span>' + esc(T.sign) + ': ____________</span>' + (o.psych ? '<span>' + esc(T.signPsy) + ': ____________</span>' : '') + '<span>' + esc(T.signParent) + ': ____________</span><span>' + esc(T.date) + ': ' + today + '</span></div>' +
+        '<p class="legal">' + esc(T.legal) + '</p></section>';
+    }).join('');
+    var html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc((list.length === 1 ? list[0].name + ' — ' : '') + T.title) + '</title><style>' +
+      '@page{size:A4;margin:12mm}body{font-family:Arial,"Segoe UI",sans-serif;color:#1A202C;margin:0;padding:16px;background:#fff;font-size:12px;line-height:1.45}' +
+      'section{page-break-after:always;max-width:900px;margin:0 auto 32px}section:last-child{page-break-after:auto}' +
+      'header{border-bottom:3px solid #D4AF37;padding-bottom:8px;margin-bottom:10px}.sch{font-weight:800;color:#B8952A;letter-spacing:.06em;text-transform:uppercase;font-size:11px}' +
+      'h1{margin:2px 0 0;font-size:20px;color:#0F382C}.subt{color:#5b6b66;font-size:11px;margin-bottom:6px}.info{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:12.5px}' +
+      'h2{font-size:13.5px;color:#0F382C;margin:14px 0 6px;border-left:4px solid #D4AF37;padding-left:7px}' +
+      'table{width:100%;border-collapse:collapse}td,th{border:1px solid #CFE0D8;padding:4px 7px;text-align:left;vertical-align:middle}tr{page-break-inside:avoid}' +
+      'tr.grp th{background:#0F382C;color:#fff;font-size:11.5px}.bar{display:inline-flex;gap:3px}.c{display:inline-block;width:26px;height:11px;border-radius:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+      '.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}ul{margin:4px 0;padding-left:18px}li{margin:2px 0}.muted{color:#6b7a75}.pre{white-space:pre-line}' +
+      '.sign{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:18px;font-size:12px}.legal{margin-top:12px;font-size:9.5px;color:#6b7a75;border-top:1px solid #E5ECE8;padding-top:6px}' +
+      '.tb{position:sticky;top:0;text-align:center;padding:8px;background:#FBF6E7;margin:-16px -16px 16px}.tb button{font:inherit;font-weight:700;padding:8px 18px;border-radius:999px;border:0;background:#0F382C;color:#fff;cursor:pointer}' +
+      '@media (max-width:600px){.two{grid-template-columns:1fr}.c{width:16px}}@media print{.tb{display:none}body{padding:0}}</style></head><body>' +
+      '<div class="tb"><button onclick="window.print()">🖨 ' + esc(T.print) + '</button></div>' + pages +
+      '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>';
+    var w = window.open('', '_blank');
+    if (!w) { alert('Жаңа терезе бұғатталды. Браузерде қалқымалы терезелерге (pop-up) рұқсат беріңіз.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  };
+  window.CARD = CARD;
 
   function L3(key){ return {kz:I18N.kz[key]||'', ru:I18N.ru[key]||'', en:I18N.en[key]||''}; }
 

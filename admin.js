@@ -1,4 +1,4 @@
-// Сайт әкімшісінің беті. Рөлдер: бас әкімші, әкімші (белгіленген бөлімдер), сынып жетекшісі, әкімшілік мүшесі (тек қарау).
+// Сайт әкімшісінің беті. Рөлдер: бас әкімші, әкімші (белгіленген бөлімдер), сынып жетекшісі, пән мұғалімі, әкімшілік мүшесі (тек қарау).
 (function(){
   'use strict';
   const D = window.SITE_DEFAULTS;
@@ -47,14 +47,14 @@
   }
 
   // ---------- рөлдер мен рұқсаттар ----------
-  const ROLE_NAMES = {owner: 'Бас әкімші', admin: 'Әкімші', teacher: 'Сынып жетекшісі', viewer: 'Әкімшілік мүшесі (тек қарау)'};
+  const ROLE_NAMES = {owner: 'Бас әкімші', admin: 'Әкімші', teacher: 'Сынып жетекшісі', subject: 'Пән мұғалімі / үйірме жетекшісі', psych: 'Педагог-психолог', viewer: 'Әкімшілік мүшесі (тек қарау)'};
   const PERM_NAMES = {posts: '📰 Жаңалықтар', menu: '🍽 Ас мәзірі', week: '🗓 Апта жоспары', photos: '🖼 Суреттер', team: '👥 Ұжым',
-    faq: '❓ Ата-анаға ақпарат', texts: '✏️ Мәтіндер', contacts: '☎ Байланыс', classes: '🏫 Сыныптарды қарау', log: '📜 Журнал'};
+    faq: '❓ Ата-анаға ақпарат', texts: '✏️ Мәтіндер', contacts: '☎ Байланыс', classes: '🏫 Сыныптарды қарау', log: '📜 Журнал', feedback: '📝 Кері байланысты көру'};
   const isOwner = () => ME.role === 'owner';
   const can = p => isOwner() || (ME.role === 'admin' && (ME.perms || []).includes(p));
   const seesClasses = () => isOwner() || ME.role === 'viewer' || ME.role === 'teacher' || can('classes');
   const allClasses = () => get('settings').classes || [];
-  const classList = () => ME.role === 'teacher' ? (ME.classes || []) : allClasses();
+  const classList = () => (ME.role === 'teacher' || ME.role === 'subject') ? (ME.classes || []) : allClasses();
   const canEditClass = c => isOwner() || (ME.role === 'teacher' && (ME.classes || []).includes(c));
 
   function toast(msg, err){
@@ -361,9 +361,10 @@
     ['posts', '📰 Жаңалықтар', () => can('posts')],
     ['menu', '🍽 Ас мәзірі', () => can('menu')],
     ['week', '🗓 Апта жоспары', () => can('week')],
-    ['cposts', '🏫 Сынып жаңалықтары', seesClasses],
+    ['cposts', '🏫 Сынып жаңалықтары', () => seesClasses() || ME.role === 'psych'],
     ['hw', '📚 Үй тапсырмасы', seesClasses],
     ['qa', '💬 Ата-ана сұрақтары', seesClasses],
+    ['fb', '📝 Кері байланыс', () => isOwner() || ['teacher', 'subject', 'psych'].includes(ME.role) || (ME.perms || []).includes('feedback')],
     ['codes', '🔑 Ата-ана кодтары', () => isOwner() || ME.role === 'teacher'],
     ['users', '👤 Қызметкерлер', isOwner],
     ['log', '📜 Журнал', () => isOwner() || ME.role === 'viewer' || can('log')],
@@ -399,10 +400,10 @@
   function savedToast(){ toast('Сақталды ✓ Сайтта бірнеше секундтан кейін көрінеді.'); }
   const title = text => h('h1', {class: 'text-2xl font-extrabold text-emerald-950 mb-4'}, text);
   // Сынып таңдау жолағы (сынып бөлімдерінің жоғарғы жағында)
-  function classBar(onpick, badgeFn){
-    const list = classList();
+  function classBar(onpick, badgeFn, list){
+    list = list || classList();
     if (!curCls || !list.includes(curCls)) curCls = list[0] || null;
-    if (!list.length) return h('p', {class: 'card text-charcoal/70'}, ME.role === 'teacher' ? 'Сізге әлі сынып бекітілмеген. Бас әкімшіге хабарласыңыз.' : 'Баптауларда сыныптар тізімі бос.');
+    if (!list.length) return h('p', {class: 'card text-charcoal/70'}, (ME.role === 'teacher' || ME.role === 'subject') ? 'Сізге әлі сынып бекітілмеген. Бас әкімшіге хабарласыңыз.' : 'Баптауларда сыныптар тізімі бос.');
     return h('div', {class: 'flex flex-wrap gap-1.5 mb-4'}, list.map(c => {
       const b = badgeFn ? badgeFn(c) : 0;
       return h('button', {type: 'button', class: 'chip' + (c === curCls ? ' active' : ''), style: 'padding:.35rem .75rem', onclick: () => { if (dirty && !confirm('Сақталмаған өзгерістер жоғалады. Жалғастырайын ба?')) return; curCls = c; dirty = false; onpick(); }},
@@ -584,10 +585,13 @@
   VIEWS.cposts = function(view){
     view.append(title('Сынып жаңалықтары'), classBar(() => go('cposts', true)));
     if (!curCls) return;
-    const edit = canEditClass(curCls);
+    const psy = ME.role === 'psych';
+    const edit = canEditClass(curCls) || psy;
+    const mineOnly = p => !psy || p.by === ME.name;
     const posts = (CLS.cposts || []).filter(p => p.cls === curCls).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0));
     const box = h('div', {class: 'space-y-3'});
-    view.append(hint('Бұл жазбалар тек ' + curCls + ' сыныбының ата-аналарына (сынып кодымен кіргендерге) көрінеді.'),
+    view.append(hint('Бұл жазбалар тек ' + curCls + ' сыныбының ата-аналарына (сынып кодымен кіргендерге) көрінеді.' +
+      (psy ? ' Педагог-психолог мұнда барлық ата-анаға арналған жалпы кеңес жазады; нақты бала туралы мәлімет жазуға болмайды (ол тек ата-ана келісімімен, даму картасындағы жеке бөлімде).' : '')),
       edit ? h('div', {class: 'my-4'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => cpostEditor(view, null)}, '+ Жаңа жазба (' + curCls + ')')) : h('div', {class: 'my-4'}),
       box);
     if (!posts.length) box.append(h('p', {class: 'text-charcoal/60'}, 'Әзірге жазба жоқ.'));
@@ -598,7 +602,7 @@
           h('div', {class: 'font-bold text-emerald-950'}, L(p.title) || '(атаусыз)'),
           h('div', {class: 'text-sm text-charcoal/75 line-clamp-3'}, strip(L(p.body))),
           mediaThumbs(p.media)),
-        edit ? h('div', {class: 'flex flex-col gap-2 shrink-0'},
+        edit && mineOnly(p) ? h('div', {class: 'flex flex-col gap-2 shrink-0'},
           h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => cpostEditor(view, p)}, 'Өзгерту'),
           h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: () => removeItem('cremove', 'cposts', p, () => go('cposts', true))}, 'Өшіру')) : null))));
   };
@@ -717,6 +721,586 @@
     })));
   };
 
+  // ---------- 📝 Кері байланыс (мұғалімдердің әр оқушыға жазған пікірі) ----------
+  const FB_KINDS = {main: 'Пән', extra: 'Қосымша сабақ', club: 'Үйірме'};
+  const FB_SUBJECTS = ['Математика','Қазақ тілі','Орыс тілі','Ағылшын тілі','Жаратылыстану','Тарих','Әдебиеттік оқу','Сауат ашу','Дүниетану','Цифрлық сауаттылық','Көркем еңбек','Музыка','Дене шынықтыру','Сынып жетекшісі'];
+  const FBC = {};                   // сынып → {students, items, manage, write, all}
+  const FBF = {from: '', to: ''};   // кезең сүзгісі
+  const fbSeesAll = () => isOwner() || ((ME.role === 'admin' || ME.role === 'viewer') && (ME.perms || []).includes('feedback'));
+  const fbClasses = () => fbSeesAll() || ME.role === 'psych' ? allClasses() : (ME.classes || []);
+  const fbMine = x => x.uid === ME.id || isOwner();
+  const inPeriod = x => (!FBF.from || x.date >= FBF.from) && (!FBF.to || x.date <= FBF.to);
+  const dmy = s => String(s || '').split('-').reverse().join('.');
+  const periodText = () => (FBF.from || FBF.to) ? (FBF.from ? dmy(FBF.from) : '…') + ' — ' + (FBF.to ? dmy(FBF.to) : '…') : '';
+  const fbItemsOf = (F, sid) => F.items.filter(x => x.sid === sid && inPeriod(x)).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0));
+  const fbSubjectList = () => h('datalist', {id: 'fbsubjects'}, [...new Set((ME.subjects || []).concat(FB_SUBJECTS))].map(s => h('option', {value: s})));
+  function fbPrint(F, students){
+    window.FB_PRINT({lang: 'kz', period: periodText(), blocks: students.map(st => ({name: st.name, cls: F.cls, items: fbItemsOf(F, st.id)}))});
+  }
+  function fbMerge(F, items){
+    const ids = new Set(items.map(x => x.id));
+    F.items = F.items.filter(x => !ids.has(x.id)).concat(items);
+  }
+  const fbBack = () => h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('fb')}, '← Сынып тізіміне');
+
+  VIEWS.fb = async function(view){
+    const list = fbClasses(), clubs = (ME.clubs || []).map(c => 'club:' + c);
+    const all = list.concat(clubs);
+    view.append(h('div', {class: 'flex flex-wrap items-center justify-between gap-3 mb-4'}, h('h1', {class: 'text-2xl font-extrabold text-emerald-950'}, 'Кері байланыс және даму картасы'),
+      isOwner() ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => fbBulk(view)}, '📥 Оқушылар тізімін жүктеу (барлық сынып)') : null));
+    if (!all.length) { view.append(h('p', {class: 'card text-charcoal/70'}, 'Сізге әлі сынып немесе үйірме бекітілмеген. Бас әкімшіге хабарласыңыз.')); return; }
+    if (!curCls || !all.includes(curCls)) curCls = all[0];
+    view.append(h('div', {class: 'flex flex-wrap gap-1.5 mb-4'}, all.map(c => h('button', {type: 'button', class: 'chip' + (c === curCls ? ' active' : ''), style: 'padding:.35rem .75rem',
+      onclick: () => { if (dirty && !confirm('Сақталмаған өзгерістер жоғалады. Жалғастырайын ба?')) return; curCls = c; dirty = false; go('fb', true); }}, c.startsWith('club:') ? '🎯 ' + c.slice(5) : c))));
+    if (curCls.startsWith('club:')) { const cb = h('div'); view.append(cb); fbClubView(cb, curCls.slice(5)); return; }
+    const cls = curCls;
+    const box = h('div', {}, h('p', {class: 'text-charcoal/60'}, 'Жүктелуде…'));
+    view.append(box);
+    try { if (!FBC[cls]) FBC[cls] = await api('fbList', {cls}); }
+    catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, e.message)); return; }
+    if (!box.isConnected) return;
+    fbClassView(box, FBC[cls]);
+  };
+  function fbClassView(box, F){
+    box.innerHTML = '';
+    const from = h('input', {type: 'date', class: 'inp', value: FBF.from}), to = h('input', {type: 'date', class: 'inp', value: FBF.to});
+    const setPeriod = () => { FBF.from = from.value; FBF.to = to.value; fbClassView(box, F); };
+    from.addEventListener('change', setPeriod); to.addEventListener('change', setPeriod);
+    box.append(
+      hint(F.all ? 'Сіз осы сыныптағы барлық мұғалімнің жазбаларын көресіз.' :
+        'Сіз тек өзіңіз жазған жазбаларды көресіз. Әр жазбаны тек жазған мұғалім, сол баланың ата-анасы (баланың жеке коды арқылы), бас әкімші және құқық берілген әкімшілік көреді.'),
+      h('div', {class: 'flex flex-wrap gap-2 my-4'},
+        F.write && F.students.length ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => fbClassForm(box, F)}, '✍️ Бүкіл сыныпқа жазу') : null,
+        F.manage ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbRoster(box, F)}, '👧 Оқушылар тізімі') : null,
+        F.manage && F.students.length ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbCodes(box, F)}, '🔑 Балалардың кодтары') : null,
+        F.manage ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbImport(box, F)}, '📥 Excel-ден көшіру') : null,
+        F.students.length ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => fbCards(box, F)}, '📊 Даму картасы') : null,
+        F.students.length ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbPrint(F, F.students)}, '🖨 Бүкіл сынып (PDF)') : null,
+        h('button', {type: 'button', class: 'btn btn-l', title: 'Жаңарту', onclick: () => { delete FBC[F.cls]; go('fb', true); }}, '🔄')),
+      h('div', {class: 'card mb-4'}, h('div', {class: 'grid sm:grid-cols-3 gap-3 items-end'},
+        field('Кезең: басы', from), field('Кезең: соңы', to),
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => { FBF.from = FBF.to = ''; fbClassView(box, F); }}, 'Барлық уақыт'))));
+    if (!F.students.length) {
+      box.append(h('p', {class: 'card text-charcoal/70'}, F.cls + ' сыныбының оқушылар тізімі әлі енгізілмеген. ' +
+        (F.manage ? '«👧 Оқушылар тізімі» батырмасымен қосыңыз немесе «📥 Excel-ден көшіру» арқылы жүктеңіз.' : 'Тізімді сынып жетекшісі немесе бас әкімші енгізеді.')));
+      return;
+    }
+    const students = F.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk'));
+    box.append(h('div', {class: 'grid sm:grid-cols-2 lg:grid-cols-3 gap-2'}, students.map(st => {
+      const items = fbItemsOf(F, st.id);
+      return h('button', {type: 'button', class: 'card text-left hover:border-gold', style: 'padding:.85rem 1rem', onclick: () => fbStudent(box, F, st)},
+        h('div', {class: 'font-bold text-emerald-950'}, st.name),
+        h('div', {class: 'text-xs text-charcoal/60 mt-0.5'}, items.length ? items.length + ' жазба · соңғысы ' + fmt(items[0].date) : 'Жазба жоқ'),
+        st.note ? h('div', {class: 'text-xs text-gold-600 font-semibold mt-0.5'}, st.note) : null);
+    })));
+  }
+  function fbStudent(box, F, st){
+    box.innerHTML = '';
+    const formBox = h('div');
+    const items = fbItemsOf(F, st.id);
+    box.append(fbBack(),
+      h('div', {class: 'flex flex-wrap items-center justify-between gap-3 mb-4'},
+        h('div', {}, h('h2', {class: 'text-xl font-extrabold text-emerald-950'}, st.name), h('div', {class: 'text-sm text-charcoal/60'}, F.cls + ' сынып' + (periodText() ? ' · ' + periodText() : '')),
+          (st.clubs || []).length ? h('div', {class: 'text-xs text-charcoal/60'}, '🎯 Үйірмелері: ' + st.clubs.join(', ')) : null,
+          st.note ? h('div', {class: 'text-xs text-gold-600 font-semibold'}, st.note) : null),
+        h('div', {class: 'flex flex-wrap gap-2'},
+          F.write ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => fbForm(formBox, box, F, st, null)}, '+ Жаңа жазба') : null,
+          h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbPrint(F, [st])}, '🖨 PDF'))),
+      formBox);
+    if (!items.length) { box.append(h('p', {class: 'text-charcoal/60'}, 'Әзірге жазба жоқ.')); return; }
+    box.append(h('div', {class: 'space-y-3'}, items.map(x => h('div', {class: 'card'},
+      h('div', {class: 'flex gap-3 items-start'},
+        h('div', {class: 'flex-1 min-w-0'},
+          h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmt(x.date) + ' ' + x.date.slice(0, 4) + ' · ' + (FB_KINDS[x.kind] || 'Пән') + ' · ✍️ ' + (x.by || '') + (x.imported ? ' (Excel)' : '')),
+          h('div', {class: 'font-bold text-emerald-950'}, x.subj),
+          x.text ? h('div', {class: 'text-sm text-charcoal/85 whitespace-pre-line mt-1'}, x.text) : null,
+          x.rec ? h('div', {class: 'text-sm mt-2 rounded-xl bg-gold-50 border border-gold-100 p-2 whitespace-pre-line'}, h('b', {}, 'Ата-анаға ұсыныс: '), x.rec) : null),
+        fbMine(x) ? h('div', {class: 'flex flex-col gap-2 shrink-0'},
+          F.write ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { fbForm(formBox, box, F, st, x); window.scrollTo(0, 0); }}, 'Өзгерту') : null,
+          h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => {
+            if (!confirm('Жазба өшірілсін бе?')) return;
+            await run('Өшірілуде…', () => api('fbDel', {cls: F.cls, ids: [x.id]}));
+            F.items = F.items.filter(y => y.id !== x.id); toast('Өшірілді'); fbStudent(box, F, st);
+          }}, 'Өшіру')) : null)))));
+  }
+  function fbKindSelect(val){ const el = h('select', {class: 'inp'}, Object.entries(FB_KINDS).map(([k, v]) => h('option', {value: k}, v))); el.value = val || 'main'; return el; }
+  function fbSubjInput(val){ const el = h('input', {class: 'inp', type: 'text', list: 'fbsubjects', placeholder: 'мысалы: Математика'}); el.value = val || ''; return el; }
+  function fbForm(formBox, box, F, st, x){
+    x = x ? clone(x) : {date: today(), kind: 'main', subj: (ME.subjects || [])[0] || ''};
+    const date = dateInput(x.date), kind = fbKindSelect(x.kind), subj = fbSubjInput(x.subj);
+    const text = h('textarea', {class: 'inp', rows: 4, placeholder: 'Сабақ оқуы, тәртібі, ынтасы, мінез-құлқы…'}); text.value = x.text || '';
+    const rec = h('textarea', {class: 'inp', rows: 3, placeholder: 'Ата-анаға не ұсынасыз (міндетті емес)'}); rec.value = x.rec || '';
+    formBox.innerHTML = '';
+    formBox.append(fbSubjectList(), h('div', {class: 'mb-4'}, section(x.id ? 'Жазбаны өзгерту' : 'Жаңа жазба · ' + st.name,
+      h('div', {class: 'grid sm:grid-cols-3 gap-3'}, field('Күні', date), field('Түрі', kind), field('Пән / үйірме *', subj)),
+      field('Кері байланыс *', text), field('Ата-аналарға арналған ұсыныс', rec),
+      h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => { formBox.innerHTML = ''; dirty = false; }}, 'Бас тарту'),
+        h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
+          if (!subj.value.trim()) { toast('Пәнін жазыңыз', true); return; }
+          if (!text.value.trim() && !rec.value.trim()) { toast('Кері байланысты жазыңыз', true); return; }
+          const item = {id: x.id, sid: st.id, date: date.value || today(), kind: kind.value, subj: subj.value.trim(), text: text.value.trim(), rec: rec.value.trim()};
+          const j = await run('Сақталуда…', () => api('fbSave', {cls: F.cls, items: [item]}));
+          fbMerge(F, j.items); dirty = false; toast('Сақталды ✓ Ата-ана өз бетінде көреді.'); fbStudent(box, F, st);
+        }}, '💾 Сақтау')))));
+    text.focus();
+  }
+  // Бір пән бойынша бүкіл сыныпқа бірден жазу
+  function fbClassForm(box, F){
+    box.innerHTML = '';
+    const date = dateInput(today()), kind = fbKindSelect('main'), subj = fbSubjInput((ME.subjects || [])[0] || '');
+    const students = F.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk'));
+    const rows = students.map(st => {
+      const text = h('textarea', {class: 'inp', rows: 3, placeholder: 'Кері байланыс'});
+      const rec = h('textarea', {class: 'inp', rows: 3, placeholder: 'Ата-анаға ұсыныс (міндетті емес)'});
+      return {st, text, rec, el: h('div', {class: 'rounded-2xl border border-emerald-900/10 bg-white p-3'},
+        h('div', {class: 'font-bold text-emerald-950 mb-2'}, st.name), h('div', {class: 'grid sm:grid-cols-2 gap-2'}, text, rec))};
+    });
+    box.append(fbBack(), fbSubjectList(), h('div', {class: 'space-y-4'},
+      section('Бүкіл сыныпқа жазу · ' + F.cls,
+        hint('Бір пән бойынша бірнеше оқушыға бірден жазуға болады. Бос қалған оқушыларға ештеңе жазылмайды. Әр ата-ана тек өз баласына жазылғанды көреді.'),
+        h('div', {class: 'grid sm:grid-cols-3 gap-3'}, field('Күні', date), field('Түрі', kind), field('Пән / үйірме *', subj))),
+      h('div', {class: 'space-y-2'}, rows.map(r => r.el)),
+      saveBar('Сақтау', async () => {
+        if (!subj.value.trim()) { toast('Пәнін жазыңыз', true); return; }
+        const items = rows.filter(r => r.text.value.trim() || r.rec.value.trim()).map(r => ({sid: r.st.id, date: date.value || today(), kind: kind.value, subj: subj.value.trim(), text: r.text.value.trim(), rec: r.rec.value.trim()}));
+        if (!items.length) { toast('Ешбір оқушыға жазылмаған', true); return; }
+        const j = await run('Сақталуда…', () => api('fbSave', {cls: F.cls, items}));
+        fbMerge(F, j.items); dirty = false; toast('Сақталды ✓ ' + j.items.length + ' оқушы'); go('fb', true);
+      })));
+  }
+  // Оқушылар тізімі (бас әкімші және сынып жетекшісі)
+  function fbRoster(box, F){
+    box.innerHTML = '';
+    const students = F.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk'));
+    const inputs = students.map(st => { const el = h('input', {class: 'inp', type: 'text'}); el.value = st.name; return {st, el}; });
+    const add = h('textarea', {class: 'inp', rows: 5, placeholder: 'Әр жолға бір оқушының аты-жөні'});
+    box.append(fbBack(), h('div', {class: 'space-y-4'},
+      section('Оқушылар тізімі · ' + F.cls + ' (' + students.length + ')',
+        students.length ? h('div', {class: 'space-y-2'}, inputs.map(({st, el}) => h('div', {class: 'flex gap-2 items-center'}, el,
+          h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => {
+            if (!confirm(st.name + ' тізімнен өшірілсін бе? Оған жазылған барлық кері байланыс та өшіріледі.')) return;
+            await run('Өшірілуде…', () => api('stuDel', {id: st.id}));
+            F.students = F.students.filter(s => s.id !== st.id); F.items = F.items.filter(x => x.sid !== st.id); fbRoster(box, F);
+          }}, 'Өшіру')))) : h('p', {class: 'text-charcoal/60 text-sm'}, 'Әзірге оқушы жоқ.')),
+      section('Жаңа оқушыларды қосу', add),
+      saveBar('Тізімді сақтау', async () => {
+        const list = inputs.filter(r => r.el.value.trim() && r.el.value.trim() !== r.st.name).map(r => ({id: r.st.id, name: r.el.value.trim()}))
+          .concat(add.value.split('\n').map(s => s.trim()).filter(Boolean).map(name => ({name})));
+        if (!list.length) { toast('Өзгеріс жоқ'); return; }
+        const j = await run('Сақталуда…', () => api('stuSave', {cls: F.cls, students: list}));
+        F.students = j.students.map(s => ({id: s.id, name: s.name, code: s.code})); dirty = false; savedToast(); fbRoster(box, F);
+      })));
+  }
+  // Әр баланың жеке коды: ата-ана осы кодпен тек өз баласының кері байланысын көреді
+  function fbCodes(box, F){
+    box.innerHTML = '';
+    const students = F.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk'));
+    const msgOf = st => {
+      const link = SITE_URL + '#c=' + st.code;
+      return 'Құрметті ата-ана! ' + st.name + ' (' + F.cls + ' сынып) бойынша мұғалімдердің кері байланысы және сынып беті: ' + link + '\nБаланың жеке коды: ' + st.code + '\nКодты басқа адамдарға бермеңіз.' +
+        '\n\nУважаемый родитель! Обратная связь учителей по ученику ' + st.name + ' (' + F.cls + ' класс) и страница класса: ' + link + '\nЛичный код ребёнка: ' + st.code + '\nНе передавайте код другим.';
+    };
+    const all = students.map(st => st.name + ' — ' + st.code + ' — ' + SITE_URL + '#c=' + st.code).join('\n');
+    box.append(fbBack(),
+      hint('Әр баланың өз коды бар. Ата-ана сайттағы «Сыныбым» бөліміне осы кодты енгізсе (немесе сілтемені ашса), сынып беті және тек өз баласына жазылған кері байланыс ашылады. Код бөтен адамға тарап кетсе, 🔄 басыңыз — ескі код жұмыс істемей қалады.'),
+      h('div', {class: 'flex flex-wrap gap-2 my-4'},
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => navigator.clipboard.writeText(all).then(() => toast('Барлық код көшірілді'))}, '📋 Барлығын көшіру')),
+      h('div', {class: 'grid sm:grid-cols-2 gap-3'}, students.map(st => h('div', {class: 'card space-y-2'},
+        h('div', {class: 'flex items-center justify-between gap-2'}, h('div', {class: 'font-bold text-emerald-950'}, st.name),
+          h('div', {class: 'font-mono text-lg font-extrabold tracking-widest text-gold-600'}, st.code)),
+        h('div', {class: 'flex flex-wrap gap-2'},
+          h('a', {class: 'btn btn-p btn-s', target: '_blank', href: 'https://wa.me/?text=' + encodeURIComponent(msgOf(st))}, 'WhatsApp-қа жіберу'),
+          h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(msgOf(st)).then(() => toast('Көшірілді'))}, 'Көшіру'),
+          h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => {
+            if (!confirm(st.name + ': жаңа код жасалса, ескі код (' + st.code + ') жұмыс істемей қалады. Жалғастырайын ба?')) return;
+            const j = await run('Код жасалуда…', () => api('stuCode', {ids: [st.id]}));
+            st.code = j.codes[st.id]; fbCodes(box, F);
+          }}, '🔄 Жаңа код'))))));
+  }
+  // Excel файлынан көшіру: әр оқушыға жеке парақ, ішінде «Пән | Кері байланыс | Ата-аналарға арналған ұсыныстар»
+  function loadXlsx(){
+    if (window.XLSX) return Promise.resolve();
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res; s.onerror = () => rej(new Error('Excel оқитын бағдарлама жүктелмеді. Интернетті тексеріңіз.'));
+      document.head.append(s);
+    });
+  }
+  function parseFbWorkbook(wb){
+    const seen = new Set(), out = [], skipped = [];
+    wb.SheetNames.forEach(sn => {
+      const name = sn.replace(/\s+/g, ' ').trim();
+      if (/\((копия|copy|көшірме|\d+)\)$/i.test(name)) { skipped.push(name + ' — көшірме парақ'); return; }
+      if (seen.has(name.toLowerCase())) { skipped.push(name + ' — қайталанған'); return; }
+      seen.add(name.toLowerCase());
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header: 1, defval: '', raw: false});
+      let kind = 'main', headers = 0;
+      const items = [];
+      rows.forEach(r => {
+        const a = String(r[0] || '').trim(), b = String(r[1] || '').trim(), c = String(r[2] || '').trim();
+        const al = a.toLowerCase();
+        if (/^(пән|пәндер|предмет|предметы)$/.test(al)) { headers++; kind = headers === 1 ? 'main' : 'extra'; return; }
+        if (/^(үйірме|үйірмелер|кружок|кружки)$/.test(al)) { kind = 'club'; return; }
+        if (!a || (!b && !c)) return;
+        items.push({kind: /қосымша|дополнит/i.test(a) && kind === 'main' ? 'extra' : kind, subj: a, text: b, rec: c});
+      });
+      out.push({name, rows: items});
+    });
+    return {students: out, skipped};
+  }
+  function fbImport(box, F){
+    box.innerHTML = '';
+    const file = h('input', {type: 'file', accept: '.xlsx,.xls', class: 'inp'});
+    const date = dateInput(today());
+    const prev = h('div');
+    let parsed = null;
+    file.addEventListener('change', async () => {
+      prev.innerHTML = ''; parsed = null;
+      const f = file.files[0]; if (!f) return;
+      try {
+        await run('Excel оқылуда…', loadXlsx);
+        parsed = parseFbWorkbook(XLSX.read(await f.arrayBuffer(), {type: 'array'}));
+      } catch (e) { toast(e.message || 'Файлды оқу мүмкін болмады', true); return; }
+      const known = new Set(F.students.map(s => s.name.toLowerCase()));
+      const total = parsed.students.reduce((n, s) => n + s.rows.length, 0);
+      prev.append(section('Алдын ала қарау: ' + parsed.students.length + ' оқушы, ' + total + ' жазба',
+        h('div', {class: 'space-y-1 text-sm'}, parsed.students.map(s => h('div', {class: 'flex justify-between gap-2 border-b border-emerald-900/5 py-1'},
+          h('span', {class: 'font-semibold'}, s.name, known.has(s.name.toLowerCase()) ? '' : h('span', {class: 'ml-2 text-xs text-gold-600 font-bold'}, 'жаңа оқушы')),
+          h('span', {class: 'text-charcoal/60'}, s.rows.length + ' жазба')))),
+        parsed.skipped.length ? h('p', {class: 'text-sm text-charcoal/65'}, 'Өткізілді: ' + parsed.skipped.join('; ')) : null,
+        h('div', {class: 'flex justify-end'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
+          if (!confirm(F.cls + ' сыныбына ' + parsed.students.length + ' оқушы және ' + total + ' жазба қосылсын ба?')) return;
+          const j = await run('Көшірілуде…', () => api('fbImport', {cls: F.cls, date: date.value || today(), students: parsed.students}));
+          toast('Көшірілді ✓ ' + j.added.students + ' жаңа оқушы, ' + j.added.items + ' жазба');
+          delete FBC[F.cls]; go('fb', true);
+        }}, '📥 Көшіру'))));
+    });
+    box.append(fbBack(), h('div', {class: 'space-y-4'},
+      section('Excel-ден көшіру · ' + F.cls,
+        hint('Файлда әр оқушыға жеке парақ болуы керек (парақтың аты — оқушының аты-жөні). Парақ ішінде: Пән | Кері байланыс | Ата-аналарға арналған ұсыныстар. Екінші «Пән» тақырыбынан кейінгі жолдар қосымша сабақ, «Үйірме» тақырыбынан кейінгілері үйірме болып жазылады. «(копия)» деген парақтар өткізіліп жіберіледі.'),
+        h('p', {class: 'text-sm text-charcoal/65'}, 'Көшірілген жазбалардың авторы ретінде сіздің атыңыз көрсетіледі. Бір файлды екі рет көшірсеңіз, жазбалар қайталанады.'),
+        h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field('Excel файлы (.xlsx)', file), field('Жазбалардың күні', date))),
+      prev));
+  }
+
+  // ---------- кесте файлдарын оқу (CSV немесе Excel) ----------
+  function parseCsv(text){
+    text = text.replace(/^﻿/, '');
+    const first = text.split(/\r?\n/)[0] || '';
+    const sep = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ';' : ',';
+    const rows = []; let row = [], cur = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; continue; }
+      if (c === '"') q = true;
+      else if (c === sep) { row.push(cur); cur = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+      else cur += c;
+    }
+    if (cur || row.length) { row.push(cur); rows.push(row); }
+    return rows.filter(r => r.some(x => String(x).trim()));
+  }
+  async function readTable(file){
+    if (/\.csv$|\.txt$/i.test(file.name)) return parseCsv(await file.text());
+    await run('Excel оқылуда…', loadXlsx);
+    const wb = XLSX.read(await file.arrayBuffer(), {type: 'array'});
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: '', raw: false}).filter(r => r.some(x => String(x).trim()));
+  }
+  // «17.10.2026» → «2026-10-17»
+  const isoDate = s => { s = String(s || '').trim(); let m = s.match(/^(\d{4})-(\d\d)-(\d\d)$/); if (m) return s; m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/); return m ? m[3] + '-' + pad(+m[2]) + '-' + pad(+m[1]) : ''; };
+
+  // ---------- 👧 Барлық сыныптың оқушылар тізімін жүктеу (бас әкімші) ----------
+  function fbBulk(view){
+    view.innerHTML = '';
+    const file = h('input', {type: 'file', accept: '.csv,.xlsx,.xls', class: 'inp'});
+    const prev = h('div');
+    file.addEventListener('change', async () => {
+      prev.innerHTML = '';
+      const f = file.files[0]; if (!f) return;
+      let rows;
+      try { rows = await readTable(f); } catch (e) { toast(e.message || 'Файлды оқу мүмкін болмады', true); return; }
+      const head = rows[0].map(x => String(x).toLowerCase());
+      const col = re => head.findIndex(x => re.test(x));
+      const ci = {cls: col(/сынып|класс/), name: col(/аты|фио|имя/), clubs: col(/үйірме|кружк/), since: col(/келген|дата|күні/), note: col(/ескерту|примеч/)};
+      if (ci.cls < 0 || ci.name < 0) { toast('Файлда «Сынып» және «Аты-жөні» бағандары болуы керек', true); return; }
+      const list = rows.slice(1).map(r => ({cls: String(r[ci.cls] || '').trim().toUpperCase().replace(/[«»"\s]/g, ''), name: String(r[ci.name] || '').trim(),
+        clubs: ci.clubs >= 0 ? String(r[ci.clubs] || '').split('|').map(x => x.trim()).filter(Boolean) : undefined,
+        since: ci.since >= 0 ? isoDate(r[ci.since]) : undefined, note: ci.note >= 0 ? String(r[ci.note] || '').trim() : undefined})).filter(x => x.cls && x.name);
+      const by = {};
+      list.forEach(x => { by[x.cls] = (by[x.cls] || 0) + 1; });
+      const known = new Set(allClasses());
+      prev.append(section('Алдын ала қарау: ' + list.length + ' оқушы, ' + Object.keys(by).length + ' сынып',
+        h('div', {class: 'flex flex-wrap gap-1.5'}, Object.keys(by).sort().map(c => h('span', {class: 'chip', style: 'padding:.3rem .7rem'}, c + ': ' + by[c], known.has(c) ? '' : ' (жаңа сынып)'))),
+        list.some(x => x.note) ? h('div', {class: 'text-sm'}, h('b', {}, 'Ескертулер: '), list.filter(x => x.note).map(x => x.cls + ' · ' + x.name + ' — ' + x.note).join('; ')) : null,
+        h('p', {class: 'text-sm text-charcoal/65'}, 'Тізімде бар оқушылар жаңартылады (сыныбы, үйірмелері), жоқтары қосылады. Басқа сыныпқа ауысқан баланың кері байланысы мен картасы жаңа сыныбына бірге көшеді. Тізімде жоқ оқушылар өшірілмейді.'),
+        h('div', {class: 'flex justify-end'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
+          const j = await run('Жүктелуде…', () => api('stuBulk', {students: list}));
+          if (j.res.classes) { DATA.settings = Object.assign({}, DATA.settings || {}, {classes: j.res.classes}); }
+          Object.keys(FBC).forEach(k => delete FBC[k]);
+          toast('Дайын ✓ ' + j.res.added + ' жаңа, ' + j.res.updated + ' жаңартылды' + (j.res.newClasses.length ? '; жаңа сыныптар: ' + j.res.newClasses.join(', ') : ''));
+          if (j.res.moved.length) toast('Ауысқандар: ' + j.res.moved.join('; '));
+          go('fb', true);
+        }}, '📥 Жүктеу'))));
+    });
+    view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('fb')}, '← Кері байланыс'), title('Оқушылар тізімін жүктеу'),
+      h('div', {class: 'space-y-4'}, section(null,
+        hint('CSV немесе Excel файлы. Бағандар: Сынып; Аты-жөні; Үйірмелер (« | » арқылы); Келген күні; Ескерту. Жұмыс үстеліндегі «Бастауыш сайт — жүктеу файлдары» қалтасында сабақ кестесінен дайындалған «Оқушылар тізімі (сайтқа жүктеу).csv» файлы бар.'),
+        field('Файл', file)), prev));
+  }
+
+  // ---------- 🎯 Үйірме жетекшісі: өз үйірмесінің балалары ----------
+  async function fbClubView(box, club){
+    box.innerHTML = '';
+    box.append(h('p', {class: 'text-charcoal/60'}, 'Жүктелуде…'));
+    let C;
+    try { C = FBC['club:' + club] || (FBC['club:' + club] = await api('fbClub', {club})); }
+    catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, e.message)); return; }
+    if (!box.isConnected) return;
+    box.innerHTML = '';
+    const students = C.students.slice().sort((a, b) => a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : a.name.localeCompare(b.name, 'kk'));
+    const groupOf = st => (st.clubs || []).find(k => k.split(' — ')[0].toLowerCase() === club.toLowerCase()) || club;
+    box.append(hint('«' + club + '» үйірмесінің барлық сыныптағы балалары. Жазбаңызды тек сіз, баланың ата-анасы және мектеп әкімшілігі көреді.'),
+      h('div', {class: 'flex flex-wrap gap-2 my-4'},
+        students.length ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => fbClubForm(box, C, club, students, groupOf)}, '✍️ Үйірме балаларына жазу') : null,
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => { delete FBC['club:' + club]; fbClubView(box, club); }}, '🔄')));
+    if (!students.length) { box.append(h('p', {class: 'card text-charcoal/70'}, 'Бұл үйірмеге жазылған бала табылмады. Оқушылар тізімін бас әкімші жүктеуі керек.')); return; }
+    const groups = {};
+    students.forEach(st => { (groups[groupOf(st)] = groups[groupOf(st)] || []).push(st); });
+    Object.keys(groups).sort().forEach(g => box.append(section(g + ' (' + groups[g].length + ')', h('div', {class: 'space-y-2'}, groups[g].map(st => {
+      const items = C.items.filter(x => x.sid === st.id).sort((a, b) => a.date < b.date ? 1 : -1);
+      return h('div', {class: 'rounded-2xl border border-emerald-900/10 p-3'},
+        h('div', {class: 'font-bold text-emerald-950'}, st.name, h('span', {class: 'ml-2 text-xs text-gold-600 font-bold'}, st.cls)),
+        items.length ? h('div', {class: 'mt-1 space-y-1'}, items.map(x => h('div', {class: 'text-sm flex gap-2 items-start'},
+          h('div', {class: 'flex-1'}, h('span', {class: 'text-xs font-bold text-charcoal/55'}, fmt(x.date) + ' · '), x.text, x.rec ? h('span', {class: 'text-gold-600'}, ' — ' + x.rec) : null),
+          fbMine(x) ? h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => {
+            if (!confirm('Жазба өшірілсін бе?')) return;
+            await run('Өшірілуде…', () => api('fbDel', {cls: x.cls, ids: [x.id]}));
+            C.items = C.items.filter(y => y.id !== x.id); fbClubView(box, club);
+          }}, '✕') : null))) : h('div', {class: 'text-xs text-charcoal/50 mt-1'}, 'Жазба жоқ'));
+    })))));
+  }
+  function fbClubForm(box, C, club, students, groupOf){
+    box.innerHTML = '';
+    const date = dateInput(today());
+    const rows = students.map(st => {
+      const text = h('textarea', {class: 'inp', rows: 2, placeholder: 'Кері байланыс'}), rec = h('textarea', {class: 'inp', rows: 2, placeholder: 'Ата-анаға ұсыныс (міндетті емес)'});
+      return {st, text, rec, el: h('div', {class: 'rounded-2xl border border-emerald-900/10 bg-white p-3'},
+        h('div', {class: 'font-bold text-emerald-950 mb-2'}, st.name, h('span', {class: 'ml-2 text-xs text-gold-600 font-bold'}, st.cls + ' · ' + groupOf(st).split(' — ')[1])), h('div', {class: 'grid sm:grid-cols-2 gap-2'}, text, rec))};
+    });
+    box.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('fb')}, '← Үйірме тізіміне'), h('div', {class: 'space-y-4'},
+      section('«' + club + '» үйірмесі бойынша жазу', hint('Бос қалған балаларға ештеңе жазылмайды. Әр ата-ана тек өз баласына жазылғанды көреді.'), h('div', {class: 'grid sm:grid-cols-3 gap-3'}, field('Күні', date))),
+      h('div', {class: 'space-y-2'}, rows.map(r => r.el)),
+      saveBar('Сақтау', async () => {
+        const items = rows.filter(r => r.text.value.trim() || r.rec.value.trim()).map(r => ({sid: r.st.id, date: date.value || today(), subj: club, text: r.text.value.trim(), rec: r.rec.value.trim()}));
+        if (!items.length) { toast('Ешбір балаға жазылмаған', true); return; }
+        const j = await run('Сақталуда…', () => api('fbSaveClub', {club, items}));
+        C.items = C.items.concat(j.items); dirty = false; toast('Сақталды ✓ ' + j.items.length + ' бала'); go('fb', true);
+      })));
+  }
+
+  // ---------- 📊 Даму картасы ----------
+  const LV = CARD.levels.kz;
+  const LV_COL = ['', '#E9A23B', '#F2D06B', '#8CC5A8', '#2E7D5B'];
+  let CARD_PERIOD = CARD.currentPeriod();
+  async function cardLoad(F, force){
+    F.cards = F.cards || {};
+    if (!F.cards[CARD_PERIOD] || force) F.cards[CARD_PERIOD] = await api('cardList', {cls: F.cls, period: CARD_PERIOD});
+    return F.cards[CARD_PERIOD];
+  }
+  function periodSelect(onchange){
+    const el = h('select', {class: 'inp'}, CARD.periods().map(p => h('option', {value: p}, CARD.periodName(p, 'kz'))));
+    el.value = CARD_PERIOD;
+    el.addEventListener('change', () => { CARD_PERIOD = el.value; onchange(); });
+    return el;
+  }
+  const cardFor = (K, sid) => ({ratings: K.ratings.filter(r => r.sid === sid), concl: K.concl.find(c => c.sid === sid) || null});
+  function cardPrintData(F, K, st){
+    const c = cardFor(K, st.id);
+    const ps = c.concl && c.concl.psych && c.concl.psych.consent && (c.concl.psych.text || c.concl.psych.rec) ? c.concl.psych : null;
+    return {lang: 'kz', name: st.name, cls: F.cls, period: CARD_PERIOD, agg: CARD.agg(c.ratings), clubs: st.clubs || [],
+      concl: c.concl && (c.concl.text || c.concl.rec) ? c.concl : null, psych: ps};
+  }
+  async function fbCards(box, F){
+    box.innerHTML = '';
+    box.append(fbBack(), h('p', {class: 'text-charcoal/60'}, 'Жүктелуде…'));
+    let K;
+    try { K = await cardLoad(F); } catch (e) { box.lastChild.textContent = e.message; return; }
+    if (!box.isConnected) return;
+    box.innerHTML = '';
+    const students = F.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk'));
+    box.append(fbBack(),
+      h('div', {class: 'flex flex-wrap items-end justify-between gap-3 mb-3'},
+        h('div', {}, h('h2', {class: 'text-xl font-extrabold text-emerald-950'}, '📊 Даму картасы · ' + F.cls), h('div', {class: 'w-56 mt-2'}, periodSelect(() => fbCards(box, F)))),
+        K.all ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => window.CARD_PRINT(students.map(st => cardPrintData(F, K, st)))}, '🖨 Бүкіл сыныптың карталары (PDF)') : null),
+      hint('Әр педагог баланы өз бақылауы бойынша 4 деңгеймен бағалайды: 4 — жоғары, 3 — жеткілікті, 2 — дамып келеді, 1 — қолдау қажет. Карта барлық педагогтың бағасын біріктіріп, күшті және дамытуды қажет ететін жақтарын, ата-анаға ұсыныстарды өзі шығарады. ' +
+        (K.all ? 'Сіз барлық педагогтың бағасын көресіз.' : 'Сіз тек өз бағаңызды көресіз; жиынтық картаны сынып жетекшісі мен ата-ана көреді.') +
+        ' Педагог-психолог бөлімі тек ата-ананың жазбаша келісімі белгіленгенде толтырылады.'));
+    box.append(h('div', {class: 'grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4'}, students.map((st, i) => {
+      const c = cardFor(K, st.id), mine = c.ratings.some(r => r.uid === ME.id);
+      return h('button', {type: 'button', class: 'card text-left hover:border-gold', style: 'padding:.85rem 1rem', onclick: () => fbCardStudent(box, F, students, i)},
+        h('div', {class: 'font-bold text-emerald-950'}, st.name),
+        h('div', {class: 'text-xs text-charcoal/60 mt-0.5'}, (mine ? '✅ Бағаладыңыз' : '⏳ Бағаланбаған') + (K.all ? ' · педагогтар: ' + c.ratings.length + (c.concl && c.concl.text ? ' · қорытынды ✓' : '') : '')));
+    })));
+  }
+  function levelPicker(val){
+    let cur = val || 0;
+    const wrap = h('div', {class: 'flex gap-1'});
+    const render = () => { wrap.innerHTML = ''; [1, 2, 3, 4].forEach(n => wrap.append(h('button', {type: 'button', title: LV[n],
+      class: 'w-9 h-8 rounded-lg text-sm font-extrabold border', style: n === cur ? 'background:' + LV_COL[n] + ';border-color:' + LV_COL[n] + ';color:' + (n >= 3 ? '#fff' : '#3b2a00') : 'background:#fff;border-color:rgba(15,56,44,.2);color:#0F382C',
+      onclick: () => { cur = cur === n ? 0 : n; dirty = true; render(); }}, n))); };
+    render();
+    return {el: wrap, get: () => cur};
+  }
+  function fbCardStudent(box, F, students, i){
+    const st = students[i], K = F.cards[CARD_PERIOD];
+    const c = cardFor(K, st.id), my = c.ratings.find(r => r.uid === ME.id) || {vals: {}, subj: {}, interests: [], note: ''};
+    box.innerHTML = '';
+    const pickers = {};
+    const paramRows = CARD.groups.map(g => h('div', {class: 'space-y-1.5'}, h('div', {class: 'lbl mt-2'}, g.kz),
+      CARD.params.filter(p => p.g === g.k).map(p => { pickers[p.k] = levelPicker(my.vals[p.k]); return h('div', {class: 'flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/5 pb-1.5'}, h('span', {class: 'text-sm font-semibold'}, p.kz), pickers[p.k].el); })));
+    const subjNames = [...new Set((ME.subjects || []).concat(Object.keys(my.subj || {})))];
+    const subjPick = {};
+    const subjBox = h('div', {class: 'space-y-1.5'});
+    const addSubj = name => { if (!name || subjPick[name]) return; subjPick[name] = levelPicker((my.subj || {})[name]); subjBox.append(h('div', {class: 'flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/5 pb-1.5'}, h('span', {class: 'text-sm font-semibold'}, name), subjPick[name].el)); };
+    subjNames.forEach(addSubj);
+    const newSubj = fbSubjInput('');
+    const interests = {};
+    const interBox = h('div', {class: 'flex flex-wrap gap-1.5'}, CARD.interests.map(x => { interests[x.k] = h('input', {type: 'checkbox', checked: (my.interests || []).includes(x.k)}); return h('label', {class: 'chip', style: 'padding:.3rem .7rem'}, interests[x.k], x.kz); }));
+    const note = h('textarea', {class: 'inp', rows: 3, placeholder: 'Қысқаша ескерту (ата-ана жиынтық картада атыңызсыз көреді)'}); note.value = my.note || '';
+    const nav = h('div', {class: 'flex flex-wrap gap-2'},
+      i > 0 ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { if (!dirty || confirm('Сақталмаған өзгерістер жоғалады. Жалғастырайын ба?')) { dirty = false; fbCardStudent(box, F, students, i - 1); } }}, '← ' + students[i - 1].name) : null,
+      i < students.length - 1 ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { if (!dirty || confirm('Сақталмаған өзгерістер жоғалады. Жалғастырайын ба?')) { dirty = false; fbCardStudent(box, F, students, i + 1); } }}, students[i + 1].name + ' →') : null);
+    const saveRating = async goNext => {
+      const vals = {}; Object.keys(pickers).forEach(k => { if (pickers[k].get()) vals[k] = pickers[k].get(); });
+      const subj = {}; Object.keys(subjPick).forEach(k => { if (subjPick[k].get()) subj[k] = subjPick[k].get(); });
+      const item = {sid: st.id, vals, subj, interests: Object.keys(interests).filter(k => interests[k].checked), note: note.value.trim()};
+      const j = await run('Сақталуда…', () => api('cardRate', {cls: F.cls, period: CARD_PERIOD, items: [item]}));
+      K.ratings = K.ratings.filter(r => !(r.sid === st.id && r.uid === ME.id)).concat(j.items);
+      dirty = false; toast('Сақталды ✓');
+      fbCardStudent(box, F, students, goNext && i < students.length - 1 ? i + 1 : i);
+    };
+    // жиынтық (бүкіл педагогтар бойынша)
+    const agg = CARD.agg(c.ratings), A = CARD.analyse(agg, 'kz');
+    const summary = K.all && c.ratings.length ? section('Жиынтық карта (' + c.ratings.length + ' педагог)',
+      h('div', {class: 'grid sm:grid-cols-2 gap-3 text-sm'},
+        h('div', {}, h('b', {}, '💪 Күшті жақтары: '), A.strong.concat(A.good).join(', ') || '—'),
+        h('div', {}, h('b', {}, '🌱 Дамыту керек: '), A.weak.concat(A.focus).join(', ') || '—')),
+      A.summary.length ? h('p', {class: 'text-sm text-charcoal/80'}, A.summary.join(' ')) : null,
+      h('div', {class: 'text-xs text-charcoal/60'}, 'Бағалағандар: ' + c.ratings.map(r => r.by).join(', '))) : null;
+    // сынып жетекшісінің қорытындысы және психолог бөлімі
+    const cc = c.concl || {};
+    let conclSec = null;
+    if (K.canConcl || K.canPsych) {
+      const text = h('textarea', {class: 'inp', rows: 4, placeholder: 'Баланың мінез-құлқы, қабілеті, қызығушылығы туралы жалпы қорытынды'}); text.value = cc.text || '';
+      const rec = h('textarea', {class: 'inp', rows: 3, placeholder: 'Ата-анаға қосымша ұсыныс'}); rec.value = cc.rec || '';
+      const ps = cc.psych || {};
+      const consent = h('input', {type: 'checkbox', checked: !!ps.consent});
+      const cdate = h('input', {type: 'date', class: 'inp', value: ps.consentDate || ''});
+      const methods = h('input', {type: 'text', class: 'inp', placeholder: 'мысалы: бақылау, Тулуз-Пьерон, «Үй–ағаш–адам», социометрия'}); methods.value = ps.methods || '';
+      const ptext = h('textarea', {class: 'inp', rows: 4, placeholder: 'Педагог-психологтың қорытындысы'}); ptext.value = ps.text || '';
+      const prec = h('textarea', {class: 'inp', rows: 3, placeholder: 'Ата-анаға ұсыныс'}); prec.value = ps.rec || '';
+      const psyFields = h('div', {class: 'space-y-3'}, field('Қолданылған әдістемелер', methods), field('Қорытынды', ptext), field('Ұсыныс', prec));
+      const syncConsent = () => { psyFields.hidden = !consent.checked; };
+      consent.addEventListener('change', syncConsent);
+      conclSec = h('div', {class: 'space-y-4'},
+        K.canConcl ? section('Сынып жетекшісінің қорытындысы', field('Қорытынды', text), field('Ата-анаға ұсыныс', rec)) : null,
+        K.canPsych ? section('Педагог-психолог бөлімі',
+          hint('Психологиялық диагностика тек ата-ананың (заңды өкілдің) жазбаша келісімімен жүргізіледі (ПППС қызметі қағидалары, 12-т.). Келісім қағазы мектепте сақталады.'),
+          h('div', {class: 'grid sm:grid-cols-2 gap-3 items-end'}, h('label', {class: 'flex items-center gap-2 font-semibold text-sm'}, consent, 'Ата-ананың жазбаша келісімі алынды'), field('Келісім күні', cdate)),
+          psyFields) : null,
+        h('div', {class: 'flex justify-end'}, h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+          const data = {};
+          if (K.canConcl) { data.text = text.value.trim(); data.rec = rec.value.trim(); }
+          if (K.canPsych) {
+            if (consent.checked && !cdate.value) { toast('Келісім күнін көрсетіңіз', true); return; }
+            data.psych = {consent: consent.checked, consentDate: cdate.value, methods: methods.value.trim(), text: ptext.value.trim(), rec: prec.value.trim()};
+          }
+          const j = await run('Сақталуда…', () => api('cardConcl', {cls: F.cls, period: CARD_PERIOD, sid: st.id, data}));
+          K.concl = K.concl.filter(x => x.sid !== st.id).concat([j.item]); dirty = false; toast('Қорытынды сақталды ✓');
+        }}, '💾 Қорытындыны сақтау')));
+      syncConsent();
+    }
+    box.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => { if (!dirty || confirm('Сақталмаған өзгерістер жоғалады. Жалғастырайын ба?')) { dirty = false; fbCards(box, F); } }}, '← Карталар тізіміне'),
+      h('div', {class: 'flex flex-wrap items-center justify-between gap-3 mb-4'},
+        h('div', {}, h('h2', {class: 'text-xl font-extrabold text-emerald-950'}, st.name), h('div', {class: 'text-sm text-charcoal/60'}, F.cls + ' · ' + CARD.periodName(CARD_PERIOD, 'kz') + ((st.clubs || []).length ? ' · үйірмелері: ' + st.clubs.join(', ') : ''))),
+        h('div', {class: 'flex flex-wrap gap-2'}, h('button', {type: 'button', class: 'btn btn-l', onclick: () => window.CARD_PRINT(cardPrintData(F, K, st))}, '🖨 Карта (PDF)'))),
+      nav, h('div', {class: 'space-y-4 mt-4'},
+        summary,
+        F.write ? section('Менің бағам', hint('Тек өзіңіз байқаған параметрлерді бағалаңыз; білмейтін параметрді бос қалдырыңыз. Батырманы қайта бассаңыз, баға алынады.'), paramRows,
+          h('div', {class: 'lbl mt-3'}, 'Пәндер бойынша меңгеруі'), subjBox,
+          h('div', {class: 'flex gap-2'}, newSubj, h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { addSubj(newSubj.value.trim()); newSubj.value = ''; }}, '+ Пән')),
+          h('div', {class: 'lbl mt-3'}, 'Қызығушылықтары'), interBox, field('Ескерту', note),
+          h('div', {class: 'flex flex-wrap justify-end gap-2'},
+            h('button', {type: 'button', class: 'btn btn-l', onclick: () => saveRating(false)}, '💾 Сақтау'),
+            i < students.length - 1 ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => saveRating(true)}, '💾 Сақтау және келесі →') : null)) : null,
+        conclSec), fbSubjectList());
+  }
+
+  // ---------- 👥 Қызметкерлерді тізіммен қосу (бас әкімші) ----------
+  const ROLE_BY_WORD = [[/психолог/i, 'psych'], [/үйірме|кружк/i, 'subject'], [/сынып жетекшісі|классн/i, 'teacher'], [/пән|предмет|мұғалім|учит/i, 'subject'], [/әкімшілік|администр|қарау/i, 'viewer']];
+  function usersBulk(view){
+    view.innerHTML = '';
+    const file = h('input', {type: 'file', accept: '.csv,.xlsx,.xls', class: 'inp'});
+    const prev = h('div');
+    file.addEventListener('change', async () => {
+      prev.innerHTML = '';
+      const f = file.files[0]; if (!f) return;
+      let rows;
+      try { rows = await readTable(f); } catch (e) { toast(e.message || 'Файлды оқу мүмкін болмады', true); return; }
+      const head = rows[0].map(x => String(x).toLowerCase());
+      const col = re => head.findIndex(x => re.test(x));
+      const ci = {name: col(/аты|фио/), login: col(/логин/), role: col(/рөл|роль/), cls: col(/сынып|класс/), subj: col(/пән|предмет/), clubs: col(/үйірме|кружк/), email: col(/gmail|email|пошта/)};
+      if (ci.name < 0) { toast('Файлда «Аты-жөні» бағаны болуы керек', true); return; }
+      const split = v => String(v || '').split(/[,;|]/).map(x => x.trim()).filter(Boolean);
+      const taken = new Set(USERS.map(u => u.login));
+      const list = rows.slice(1).map(r => {
+        const roleWord = String(r[ci.role] || '');
+        const role = (ROLE_BY_WORD.find(([re]) => re.test(roleWord)) || [0, 'subject'])[1];
+        return {name: String(r[ci.name] || '').trim(), login: String(r[ci.login] || '').trim().toLowerCase(), role,
+          classes: role === 'teacher' || role === 'subject' ? split(r[ci.cls]).map(c => c.toUpperCase()) : [], subjects: split(r[ci.subj]), clubs: split(r[ci.clubs]), email: ci.email >= 0 ? String(r[ci.email] || '').trim() : ''};
+      }).filter(x => x.name && x.login);
+      const fresh = list.filter(x => !taken.has(x.login)), skip = list.filter(x => taken.has(x.login));
+      const checks = fresh.map(() => h('input', {type: 'checkbox', checked: true}));
+      prev.append(section('Алдын ала қарау: ' + fresh.length + ' жаңа қызметкер' + (skip.length ? ' (' + skip.length + ' логин бұрыннан бар — өткізіледі)' : ''),
+        h('div', {class: 'space-y-1 text-sm max-h-[50vh] overflow-y-auto'}, fresh.map((x, k) => h('label', {class: 'flex gap-2 items-start border-b border-emerald-900/5 py-1'}, checks[k],
+          h('span', {}, h('b', {}, x.name), ' · ', x.login, ' · ', ROLE_NAMES[x.role], x.classes.length ? ' · ' + x.classes.join(', ') : '', x.clubs.length ? ' · 🎯 ' + x.clubs.join(', ') : '')))),
+        h('div', {class: 'flex justify-end'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
+          const chosen = fresh.filter((x, k) => checks[k].checked);
+          if (!chosen.length) return;
+          const creds = [];
+          for (let k = 0; k < chosen.length; k++) {
+            busy('Қосылуда: ' + (k + 1) + ' / ' + chosen.length, Math.round(k * 100 / chosen.length));
+            const pw = genPw();
+            try {
+              const j = await api('userSave', {user: Object.assign({active: true, perms: []}, chosen[k]), newpw: pw});
+              USERS = USERS.filter(u => u.id !== j.user.id).concat([j.user]); creds.push({u: j.user, pw});
+            } catch (e) { toast(chosen[k].name + ': ' + e.message, true); }
+          }
+          done();
+          bulkCreds(creds);
+        }}, '👥 Белгіленгендерді қосу'))));
+    });
+    view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('users')}, '← Қызметкерлер'), title('Қызметкерлерді тізіммен қосу'),
+      h('div', {class: 'space-y-4'}, section(null,
+        hint('CSV немесе Excel. Бағандар: Аты-жөні; Логин; Рөлі (Сынып жетекшісі / Пән мұғалімі / Үйірме жетекшісі / Педагог-психолог / Әкімшілік); Сыныптар; Пәндері; Үйірмелері; Gmail (міндетті емес). «Бастауыш сайт — жүктеу файлдары» қалтасында сабақ кестесінен дайындалған «Мұғалімдер тізімі (сайтқа жүктеу).csv» бар. Әр адамға пароль автоматты жасалады.'),
+        field('Файл', file)), prev));
+  }
+  function bulkCreds(creds){
+    const text = c => 'Baiterek ST бастауыш мектебі сайтының мұғалім беті:\n' + SITE_URL + 'admin.html\nЛогин: ' + c.u.login + '\nПароль: ' + c.pw;
+    const all = creds.map(c => c.u.name + ' — логин: ' + c.u.login + ', пароль: ' + c.pw).join('\n');
+    const close = modal(
+      h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, '✅ Қосылды: ' + creds.length + ' қызметкер'),
+      h('p', {class: 'text-sm text-charcoal/70 mt-1'}, 'Парольдер қайта көрсетілмейді. Тізімді көшіріп алыңыз немесе әр адамға WhatsApp арқылы жіберіңіз.'),
+      h('div', {class: 'mt-3 space-y-1 max-h-[55vh] overflow-y-auto'}, creds.map(c => h('div', {class: 'flex flex-wrap items-center gap-2 border-b border-emerald-900/5 py-1 text-sm'},
+        h('span', {class: 'flex-1 min-w-[12rem]'}, h('b', {}, c.u.name), ' · ', c.u.login, ' · ', h('span', {class: 'font-mono'}, c.pw)),
+        h('a', {class: 'btn btn-p btn-s', target: '_blank', href: 'https://wa.me/?text=' + encodeURIComponent(text(c))}, 'WhatsApp')))),
+      h('div', {class: 'flex flex-wrap gap-2 justify-end mt-4'},
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => navigator.clipboard.writeText(all).then(() => toast('Көшірілді'))}, '📋 Барлығын көшіру'),
+        h('button', {type: 'button', class: 'btn btn-g', onclick: () => { close(); go('users', true); }}, 'Дайын')));
+  }
+
   // ---------- 🔑 Ата-ана кодтары ----------
   VIEWS.codes = function(view){
     const list = isOwner() ? allClasses() : (ME.classes || []);
@@ -746,28 +1330,29 @@
   VIEWS.users = function(view){
     view.append(h('div', {class: 'flex flex-wrap items-center justify-between gap-3 mb-4'},
       h('h1', {class: 'text-2xl font-extrabold text-emerald-950'}, 'Қызметкерлер'),
-      h('button', {type: 'button', class: 'btn btn-g', onclick: () => userEditor(view, null)}, '+ Қызметкер қосу')));
-    view.append(hint('Сынып жетекшілері өз сыныбын, әкімшілер өзіңіз белгілеген бөлімдерді ғана басқарады. Әкімшілік мүшелері барлық сыныптың жазбаларын тек қарайды. Email (Gmail) жазылса, адамға Google Drive-тағы «Бастауыш-Началка» ішінен тек өз қалтасына қолжетімділік беріледі.'));
+      h('div', {class: 'flex flex-wrap gap-2'}, h('button', {type: 'button', class: 'btn btn-l', onclick: () => usersBulk(view)}, '📥 Тізіммен қосу'),
+        h('button', {type: 'button', class: 'btn btn-g', onclick: () => userEditor(view, null)}, '+ Қызметкер қосу'))));
+    view.append(hint('Сынып жетекшілері өз сыныбын, әкімшілер өзіңіз белгілеген бөлімдерді ғана басқарады. Әкімшілік мүшелері барлық сыныптың жазбаларын тек қарайды. Пән мұғалімдері мен үйірме жетекшілері тек «Кері байланыс» бөлімінде өз сыныптарының (үйірмесінің) оқушыларына жазады, педагог-психолог барлық сыныптың даму картасын көреді. Email (Gmail) жазылса, адамға Google Drive-тағы «Бастауыш-Началка» ішінен тек өз қалтасына қолжетімділік беріледі.'));
     if (INFO.classFolder) view.append(h('div', {class: 'my-3'}, h('a', {href: INFO.classFolder, target: '_blank', class: 'btn btn-l btn-s'}, '📁 «Бастауыш-Началка» қалтасын ашу ↗')));
-    const groups = [['teacher', 'Сынып жетекшілері'], ['admin', 'Әкімшілер'], ['viewer', 'Әкімшілік мүшелері (тек қарау)']];
+    const groups = [['teacher', 'Сынып жетекшілері'], ['subject', 'Пән мұғалімдері және үйірме жетекшілері'], ['psych', 'Педагог-психологтар'], ['admin', 'Әкімшілер'], ['viewer', 'Әкімшілік мүшелері (тек қарау)']];
     groups.forEach(([role, name]) => {
       const list = USERS.filter(u => u.role === role).sort((a, b) => ((a.classes || [])[0] || a.name) < ((b.classes || [])[0] || b.name) ? -1 : 1);
       view.append(section(name + ' (' + list.length + ')', list.length ? h('div', {class: 'space-y-2'}, list.map(u => h('div', {class: 'flex gap-3 items-center rounded-2xl border border-emerald-900/10 p-3' + (u.active ? '' : ' opacity-50')},
         h('div', {class: 'flex-1 min-w-0'},
           h('div', {class: 'font-bold text-emerald-950'}, u.name + (u.active ? '' : ' (өшірулі)')),
-          h('div', {class: 'text-xs text-charcoal/65'}, 'Логин: ' + u.login + (u.classes.length ? ' · Сынып: ' + u.classes.join(', ') : '') + (u.perms.length ? ' · ' + u.perms.map(p => PERM_NAMES[p]).join(', ') : '') + (u.email ? ' · ' + u.email : ''))),
+          h('div', {class: 'text-xs text-charcoal/65'}, 'Логин: ' + u.login + (u.classes.length ? ' · Сынып: ' + u.classes.join(', ') : '') + ((u.subjects || []).length ? ' · Пәні: ' + u.subjects.join(', ') : '') + ((u.clubs || []).length ? ' · 🎯 ' + u.clubs.join(', ') : '') + (u.perms.length ? ' · ' + u.perms.map(p => PERM_NAMES[p]).join(', ') : '') + (u.email ? ' · ' + u.email : ''))),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => userEditor(view, u)}, 'Өзгерту')))) : h('p', {class: 'text-charcoal/60 text-sm'}, 'Әзірге жоқ.')));
     });
   };
   function userEditor(view, u){
     dirty = false;
     const isNew = !u;
-    u = u ? clone(u) : {role: 'teacher', classes: [], perms: [], active: true};
+    u = u ? clone(u) : {role: 'teacher', classes: [], perms: [], subjects: [], clubs: [], active: true};
     view.innerHTML = '';
     const name = h('input', {class: 'inp', type: 'text'}); name.value = u.name || '';
     const login = h('input', {class: 'inp', type: 'text', autocapitalize: 'none', spellcheck: 'false'}); login.value = u.login || '';
     const email = h('input', {class: 'inp', type: 'email', placeholder: 'mysaly@gmail.com'}); email.value = u.email || '';
-    const role = h('select', {class: 'inp'}, ['teacher', 'admin', 'viewer'].map(r => h('option', {value: r}, ROLE_NAMES[r])));
+    const role = h('select', {class: 'inp'}, ['teacher', 'subject', 'psych', 'admin', 'viewer'].map(r => h('option', {value: r}, ROLE_NAMES[r])));
     role.value = u.role;
     const active = h('input', {type: 'checkbox', checked: u.active !== false});
     const pw = h('input', {class: 'inp font-mono', type: 'text', placeholder: isNew ? '' : 'Өзгертпесеңіз бос қалдырыңыз'});
@@ -778,9 +1363,20 @@
       perms[k] = h('input', {type: 'checkbox', checked: (u.perms || []).includes(k)});
       return h('label', {class: 'flex items-center gap-2 text-sm font-semibold rounded-xl border border-emerald-900/10 px-3 py-2'}, perms[k], v);
     }));
-    const clsSec = section('Сыныптары', h('p', {class: 'text-sm text-charcoal/65'}, 'Сынып жетекшісі тек осы сыныптардың жазбаларын, үй тапсырмасын, ата-ана сұрақтарын және Drive қалтасын көреді.'), cls.el);
+    const clsNote = h('p', {class: 'text-sm text-charcoal/65'});
+    const subjects = h('input', {class: 'inp', type: 'text', placeholder: 'мысалы: Математика, Математика (қосымша)'}); subjects.value = (u.subjects || []).join(', ');
+    const clubsInp = h('input', {class: 'inp', type: 'text', placeholder: 'мысалы: Шахматы, Робототехника'}); clubsInp.value = (u.clubs || []).join(', ');
+    const clsSec = section('Сыныптары', clsNote, cls.el, field('Пәндері (үтір арқылы; «Кері байланыс» жазғанда өзі шығады)', subjects),
+      field('Үйірмелері (үйірме жетекшісі болса; үйірме атауы оқушылар тізіміндегідей)', clubsInp));
     const permSec = section('Қай бөлімдерді басқарады', permBox);
-    const syncRole = () => { clsSec.hidden = role.value !== 'teacher'; permSec.hidden = role.value !== 'admin'; };
+    const fbView = h('input', {type: 'checkbox', checked: (u.perms || []).includes('feedback')});
+    const viewSec = section('Қосымша құқық', h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, fbView, '📝 Барлық сыныптың кері байланысын көру (оқушыларға мұғалімдер жазған пікірлер)'));
+    const syncRole = () => {
+      const r = role.value;
+      clsSec.hidden = r !== 'teacher' && r !== 'subject'; permSec.hidden = r !== 'admin'; viewSec.hidden = r !== 'viewer';
+      clsNote.textContent = r === 'subject' ? 'Пән мұғалімі тек осы сыныптардың оқушыларына кері байланыс жазып, даму картасына баға қояды және тек өз жазғанын көреді. Үйірме жетекшісі үшін сыныпты таңдамай, тек үйірмесін жазуға болады.'
+        : 'Сынып жетекшісі тек осы сыныптардың жазбаларын, үй тапсырмасын, ата-ана сұрақтарын, Drive қалтасын және оқушылар тізімін басқарады, кері байланыс жаза алады.';
+    };
     role.addEventListener('change', syncRole);
     name.addEventListener('input', () => { if (isNew && !login.dataset.touched) { const c = cls.get()[0]; login.value = c ? c.toLowerCase() : ''; } });
     login.addEventListener('input', () => { login.dataset.touched = '1'; });
@@ -793,12 +1389,16 @@
             field('Логин * (латынша, мысалы: 1a немесе aigul)', login), field('Gmail (Drive қалтасына қолжетімділік үшін)', email),
             field(isNew ? 'Пароль *' : 'Жаңа пароль', h('div', {class: 'flex gap-2'}, pw, h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { pw.value = genPw(); dirty = true; }}, '🎲')))),
           h('label', {class: 'flex items-center gap-2 font-semibold text-sm'}, active, 'Белсенді (өшірсеңіз, сайтқа кіре алмайды және Drive қолжетімділігі алынады)')),
-        clsSec, permSec,
+        clsSec, permSec, viewSec,
         saveBar('Сақтау', async () => {
           const rec = {id: u.id, name: name.value.trim(), login: login.value.trim().toLowerCase(), email: email.value.trim(), role: role.value, active: active.checked,
-            classes: role.value === 'teacher' ? cls.get() : [], perms: role.value === 'admin' ? Object.keys(perms).filter(k => perms[k].checked) : []};
+            classes: (role.value === 'teacher' || role.value === 'subject') ? cls.get() : [],
+            subjects: (role.value === 'teacher' || role.value === 'subject') ? subjects.value.split(',').map(x => x.trim()).filter(Boolean) : [],
+            clubs: (role.value === 'teacher' || role.value === 'subject') ? clubsInp.value.split(',').map(x => x.trim()).filter(Boolean) : [],
+            perms: role.value === 'admin' ? Object.keys(perms).filter(k => perms[k].checked) : role.value === 'viewer' && fbView.checked ? ['feedback'] : []};
           if (!rec.name || !rec.login) { toast('Аты-жөні мен логинін жазыңыз', true); return; }
           if (rec.role === 'teacher' && !rec.classes.length) { toast('Сыныбын таңдаңыз', true); return; }
+          if (rec.role === 'subject' && !rec.classes.length && !rec.clubs.length) { toast('Сыныбын немесе үйірмесін көрсетіңіз', true); return; }
           const newpw = pw.value.trim();
           const j = await run('Сақталуда…', () => api('userSave', {user: rec, newpw: newpw || null}));
           USERS = USERS.filter(x => x.id !== j.user.id).concat([j.user]);
@@ -1041,6 +1641,8 @@
     view.append(title('Менің парольім'), h('div', {class: 'space-y-4'},
       section(null, h('p', {}, 'Аты-жөні: ', h('b', {}, ME.name)), h('p', {}, 'Логин: ', h('b', {}, ME.login)), h('p', {}, 'Рөлі: ', ROLE_NAMES[ME.role]),
         ME.classes && ME.classes.length ? h('p', {}, 'Сынып: ', h('b', {}, ME.classes.join(', '))) : null,
+        ME.subjects && ME.subjects.length ? h('p', {}, 'Пәні: ', h('b', {}, ME.subjects.join(', '))) : null,
+        ME.clubs && ME.clubs.length ? h('p', {}, 'Үйірмесі: ', h('b', {}, ME.clubs.join(', '))) : null,
         ME.folder ? h('a', {href: ME.folder, target: '_blank', class: 'btn btn-l btn-s'}, '📁 Drive қалтам ↗') : null),
       pwSection()));
   };
@@ -1067,7 +1669,7 @@
     $('login').hidden = true;
     $('app').hidden = false;
     const tabs = visibleTabs();
-    go(tabs.some(t => t[0] === TAB) ? TAB : (ME.role === 'teacher' ? 'qa' : tabs[0][0]), true);
+    go(tabs.some(t => t[0] === TAB) ? TAB : (ME.role === 'teacher' ? 'qa' : (ME.role === 'subject' || ME.role === 'psych') ? 'fb' : tabs[0][0]), true);
   }
   const loginInput = $('loginName');
   document.getElementById('loginForm').addEventListener('submit', async e => {

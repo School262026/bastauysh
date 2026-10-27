@@ -421,8 +421,11 @@
       if (isNew) {
         if (mcIndex(code) < 0) MC.codes.push({code: code, cls: j.cls});
         MC.cur = mcIndex(code); MC.adding = false; MC.hwDate = null;
-        mcSave();
+        if (j.child) MC.tab = 'fb';
       }
+      var ci = mcIndex(code);
+      if (ci >= 0) { MC.codes[ci].cls = j.cls; MC.codes[ci].child = j.child ? j.child.name : ''; }
+      mcSave();
       MC.err = '';
       renderMyClass();
     }).catch(function(){ MC.pending = false; renderMyClass(); });
@@ -454,7 +457,7 @@
     try { me = JSON.parse(localStorage.getItem('bs_parent') || '{}') || {}; } catch(e) {}
     var inp = 'w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold';
     var h = '<form onsubmit="return uiMcAsk(this)" class="rounded-2xl bg-gold-50 border border-gold-100 p-4 sm:p-5 space-y-3"><div class="font-extrabold text-emerald-950">✍️ ' + esc(t('qa_ask_title')) + '</div>' +
-      '<div class="grid sm:grid-cols-2 gap-3"><input name="name" required maxlength="80" placeholder="' + esc(t('qa_name')) + '" value="' + esc(me.name || '') + '" class="' + inp + '"><input name="child" maxlength="80" placeholder="' + esc(t('qa_child')) + '" value="' + esc(me.child || '') + '" class="' + inp + '"></div>' +
+      '<div class="grid sm:grid-cols-2 gap-3"><input name="name" required maxlength="80" placeholder="' + esc(t('qa_name')) + '" value="' + esc(me.name || '') + '" class="' + inp + '"><input name="child" maxlength="80" placeholder="' + esc(t('qa_child')) + '" value="' + esc((d.child && d.child.name) || me.child || '') + '" class="' + inp + '"></div>' +
       '<textarea name="q" required maxlength="2000" rows="3" placeholder="' + esc(t('qa_text')) + '" class="' + inp + '"></textarea>' +
       '<div class="flex flex-wrap items-center justify-between gap-2"><span class="text-xs text-charcoal/60">' + esc(t('qa_note')) + '</span><button class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-full">' + esc(t('qa_send')) + '</button></div>' +
       (MC.sent ? '<p class="text-sm font-bold text-emerald-800">✓ ' + esc(t('qa_sent')) + '</p>' : '') + '</form>';
@@ -467,6 +470,74 @@
         (q.answer ? '<div class="mt-3 rounded-xl bg-emerald-50 p-3"><div class="text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(t('qa_answer')) + (q.ansBy ? ' · ' + esc(q.ansBy) : '') + '</div><div class="mt-1 text-base text-charcoal whitespace-pre-line">' + esc(q.answer) + '</div></div>' : '') + '</div>';
     }).join('') + '</div>';
   }
+  // Мұғалімдердің кері байланысы (тек баланың жеке кодымен)
+  var FB_KIND = {main: 'fb_main', extra: 'fb_extra', club: 'fb_club'};
+  function mcFb(d){
+    var items = (d.feedback || []).slice().sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0); });
+    var h = '<div class="flex flex-wrap items-center justify-between gap-3 mb-4"><p class="text-sm text-charcoal/65">🔒 ' + esc(t('fb_note')) + '</p>' +
+      (items.length ? '<button type="button" onclick="uiMcFbPrint()" class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-full text-sm">🖨 ' + esc(t('fb_print')) + '</button>' : '') + '</div>';
+    if (!items.length) return h + '<p class="text-center text-charcoal/60 py-6">📝 ' + esc(t('fb_empty')) + '</p>';
+    var cur = '';
+    return h + '<div class="space-y-3">' + items.map(function(x){
+      var head = '';
+      if (x.date !== cur) { cur = x.date; head = '<h3 class="pt-2 font-extrabold text-emerald-900">' + esc(fmtDate(x.date, true)) + '</h3>'; }
+      return head + '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="flex flex-wrap items-center justify-between gap-2"><div class="font-extrabold text-emerald-950">' + esc(x.subj) + '</div>' +
+        '<span class="text-xs font-bold rounded-full bg-emerald-50 text-emerald-900 px-2 py-0.5">' + esc(t(FB_KIND[x.kind] || 'fb_main')) + '</span></div>' +
+        '<div class="text-xs font-bold text-charcoal/55 mt-0.5">' + esc(t('fb_teacher')) + ': ' + esc(x.by || '') + '</div>' +
+        (x.text ? '<div class="mt-2 text-base text-charcoal leading-relaxed whitespace-pre-line">' + esc(x.text) + '</div>' : '') +
+        (x.rec ? '<div class="mt-3 rounded-xl bg-gold-50 border border-gold-100 p-3"><div class="text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(t('fb_rec')) + '</div><div class="mt-1 text-sm text-charcoal whitespace-pre-line">' + esc(x.rec) + '</div></div>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  // Даму картасы: педагогтардың бағасы жиынтықталып көрсетіледі (мұғалімдердің аты көрсетілмейді)
+  var CARD_COL = ['', '#E9A23B', '#F2D06B', '#8CC5A8', '#2E7D5B'];
+  function mcCard(d){
+    var C = window.CARD, T = C.T[lang] || C.T.kz, LV = C.levels[lang] || C.levels.kz, cards = d.cards || [];
+    if (!cards.length) return '<p class="text-center text-charcoal/60 py-6">📊 ' + esc(T.cardEmpty) + '</p>';
+    if (MC.cardIdx == null || MC.cardIdx >= cards.length) MC.cardIdx = 0;
+    var c = cards[MC.cardIdx], A = C.analyse(c.agg || {}, lang), P = (c.agg || {}).params || {};
+    var lv = function(a){ return a >= 3.5 ? 4 : a >= 2.75 ? 3 : a >= 2 ? 2 : 1; };
+    var chip = function(a){ var l = lv(a); return '<span class="inline-block rounded-full px-2 py-0.5 text-xs font-bold" style="background:' + CARD_COL[l] + ';color:' + (l >= 3 ? '#fff' : '#3b2a00') + '">' + esc(LV[l]) + '</span>'; };
+    var list = function(arr){ return arr.length ? '<ul class="list-disc pl-5 space-y-1">' + arr.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="text-charcoal/55">' + esc(T.none) + '</p>'; };
+    var h = '<div class="flex flex-wrap items-center justify-between gap-3 mb-4"><div class="flex flex-wrap gap-2">' + cards.map(function(x, i){
+      return '<button type="button" class="chip' + (i === MC.cardIdx ? ' active' : '') + '" onclick="uiMcCard(' + i + ')">' + esc(C.periodName(x.period, lang)) + '</button>';
+    }).join('') + '</div><button type="button" onclick="uiMcCardPrint()" class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-full text-sm">🖨 ' + esc(T.print) + '</button></div>';
+    var rows = '';
+    C.groups.forEach(function(g){
+      var ps = C.params.filter(function(x){ return x.g === g.k && P[x.k]; });
+      if (!ps.length) return;
+      rows += '<div class="mt-3 text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(g[lang]) + '</div>' + ps.map(function(x){
+        return '<div class="flex items-center justify-between gap-3 border-b border-emerald-900/5 py-1.5"><span class="text-sm">' + esc(x[lang]) + '</span>' + chip(P[x.k].avg) + '</div>';
+      }).join('');
+    });
+    var S = (c.agg || {}).subj || {}, srows = Object.keys(S).sort().map(function(k){ return '<div class="flex items-center justify-between gap-3 border-b border-emerald-900/5 py-1.5"><span class="text-sm">' + esc(k) + '</span>' + chip(S[k].avg) + '</div>'; }).join('');
+    var recs = A.recs.slice();
+    if (A.focus.length) recs.push(T.focusSubj + ': ' + A.focus.join(', ') + '.');
+    if (c.concl && c.concl.rec) recs.push(c.concl.rec);
+    h += '<p class="text-sm text-charcoal/65 mb-4">🔒 ' + esc(T.sub) + '. ' + esc(t('fb_note')) + '</p>' +
+      '<div class="grid md:grid-cols-2 gap-5"><div class="rounded-2xl border border-emerald-900/10 p-4">' + (rows || '<p class="text-charcoal/55">' + esc(T.empty) + '</p>') +
+      (srows ? '<div class="mt-4 text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(T.subjects) + '</div>' + srows : '') + '</div>' +
+      '<div class="space-y-4"><div class="rounded-2xl bg-emerald-50/60 p-4"><div class="font-extrabold text-emerald-950 mb-1">💪 ' + esc(T.strong) + '</div>' + list(A.strong.concat(A.good)) + '</div>' +
+      '<div class="rounded-2xl bg-gold-50 border border-gold-100 p-4"><div class="font-extrabold text-emerald-950 mb-1">🌱 ' + esc(T.weak) + '</div>' + list(A.weak.concat(A.focus)) + '</div>' +
+      (A.interests.length || (d.child.clubs || []).length ? '<div class="rounded-2xl border border-emerald-900/10 p-4 text-sm"><b>' + esc(T.interests) + ':</b> ' + esc(A.interests.join(', ') || '—') + '<br><b>' + esc(T.clubs) + ':</b> ' + esc((d.child.clubs || []).join(', ') || '—') + '</div>' : '') + '</div></div>' +
+      (A.summary.length ? '<div class="mt-5"><div class="font-extrabold text-emerald-950 mb-1">' + esc(T.analysis) + '</div><p class="text-base leading-relaxed">' + esc(A.summary.join(' ')) + '</p></div>' : '') +
+      (c.concl && c.concl.text ? '<div class="mt-5"><div class="font-extrabold text-emerald-950 mb-1">' + esc(T.teacher) + '</div><p class="whitespace-pre-line">' + esc(c.concl.text) + '</p></div>' : '') +
+      '<div class="mt-5"><div class="font-extrabold text-emerald-950 mb-1">' + esc(T.recs) + '</div>' + list(recs) + '</div>' +
+      (c.psych ? '<div class="mt-5 rounded-2xl border border-emerald-900/10 p-4"><div class="font-extrabold text-emerald-950 mb-1">' + esc(T.psych) + '</div><p class="whitespace-pre-line">' + esc(c.psych.text) + '</p>' + (c.psych.rec ? '<p class="mt-2 whitespace-pre-line"><b>' + esc(T.recs) + ':</b> ' + esc(c.psych.rec) + '</p>' : '') + '</div>' : '') +
+      '<p class="mt-5 text-xs text-charcoal/50">' + esc(T.legal) + '</p>';
+    return h;
+  }
+  window.uiMcCard = function(i){ MC.cardIdx = i; renderMyClass(); };
+  window.uiMcCardPrint = function(){
+    var cur = MC.codes[MC.cur], d = cur && MC.data[cur.code];
+    if (!d || !d.child || !(d.cards || []).length) return;
+    var c = d.cards[MC.cardIdx || 0];
+    window.CARD_PRINT({lang: lang, name: d.child.name, cls: d.cls, period: c.period, agg: c.agg, concl: c.concl, psych: c.psych, clubs: d.child.clubs || []});
+  };
+  window.uiMcFbPrint = function(){
+    var cur = MC.codes[MC.cur], d = cur && MC.data[cur.code];
+    if (!d || !d.child) return;
+    window.FB_PRINT({lang: lang, blocks: [{name: d.child.name, cls: d.cls, items: d.feedback || []}]});
+  };
   function renderMyClass(){
     var box = byId('mcBody'); if (!box) return;
     var form = '<form onsubmit="return uiMcEnter(this)" class="flex flex-wrap gap-2 justify-center">' +
@@ -479,19 +550,20 @@
     }
     if (MC.cur >= MC.codes.length || MC.cur < 0) MC.cur = 0;
     var cur = MC.codes[MC.cur], d = MC.data[cur.code];
+    if ((MC.tab === 'fb' || MC.tab === 'card') && d && !d.child) MC.tab = 'hw';
     var h = '<div class="flex flex-wrap items-center justify-center gap-2 mb-5">' + MC.codes.map(function(c, i){
-      return '<button type="button" class="chip' + (i === MC.cur ? ' active' : '') + '" onclick="uiMcPick(' + i + ')">🏫 ' + esc(c.cls) + '</button>';
+      return '<button type="button" class="chip' + (i === MC.cur ? ' active' : '') + '" onclick="uiMcPick(' + i + ')">' + (c.child ? '👧 ' + esc(c.cls) + ' · ' + esc(c.child) : '🏫 ' + esc(c.cls)) + '</button>';
     }).join('') + '<button type="button" class="chip" onclick="uiMcAdd()">' + esc(t('mc_add')) + '</button></div>';
     if (MC.adding) h += '<div class="bg-white rounded-2xl border border-emerald-900/10 p-4 mb-5">' + form + err + '</div>';
     else h += err;
     h += '<div class="bg-white rounded-3xl border border-emerald-900/10 shadow-card p-5 sm:p-8">' +
-      '<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><div class="text-2xl font-extrabold text-emerald-950">' + esc(cur.cls) + '</div>' +
+      '<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><div class="text-2xl font-extrabold text-emerald-950">' + esc(cur.cls) + (cur.child ? ' · ' + esc(cur.child) : '') + '</div>' +
       (d && d.teachers && d.teachers.length ? '<div class="text-sm text-charcoal/70">' + esc(t('mc_teacher')) + ': <b>' + esc(d.teachers.join(', ')) + '</b></div>' : '') + '</div>' +
       '<button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiMcRemove()">' + esc(t('mc_remove')) + '</button></div>' +
-      '<div class="flex flex-wrap gap-2 mb-6">' + [['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa']].map(function(x){
+      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']] : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa']]).map(function(x){
         return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + x[1] + esc(t(x[2])) + '</button>';
       }).join('') + '</div>';
-    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
     box.innerHTML = h + '</div>';
   }
   window.uiMcEnter = function(f){
@@ -499,7 +571,7 @@
     if (code) { MC.err = ''; mcLoad(code, true); }
     return false;
   };
-  window.uiMcPick = function(i){ MC.cur = i; MC.hwDate = null; MC.sent = false; MC.err = ''; renderMyClass(); mcLoad(MC.codes[i].code); };
+  window.uiMcPick = function(i){ MC.cur = i; MC.hwDate = null; MC.sent = false; MC.err = ''; if (MC.codes[i].child) MC.tab = 'fb'; renderMyClass(); mcLoad(MC.codes[i].code); };
   window.uiMcAdd = function(){ MC.adding = !MC.adding; MC.err = ''; renderMyClass(); };
   window.uiMcRemove = function(){
     var cur = MC.codes[MC.cur]; if (!cur) return;
