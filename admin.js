@@ -43,7 +43,11 @@
   const DOW = [T('Жексенбі'),T('Дүйсенбі'),T('Сейсенбі'),T('Сәрсенбі'),T('Бейсенбі'),T('Жұма'),T('Сенбі')];
   const fmt = (s, dow) => { const d = parse(s); return d.getDate() + ' ' + MONTHS[d.getMonth()] + (dow ? ', ' + DOW[d.getDay()] : ''); };
   const fmtTs = ts => { const d = new Date(ts); return d.getDate() + ' ' + MONTHS[d.getMonth()] + ', ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
-  const get = key => (DATA[key] !== undefined && DATA[key] !== null) ? DATA[key] : (D[key] ? D[key]() : null);
+  const get = key => {
+    const v = (DATA[key] !== undefined && DATA[key] !== null) ? DATA[key] : null;
+    if (key === 'settings') return Object.assign(D.settings(), v || {});
+    return v !== null ? v : (D[key] ? D[key]() : null);
+  };
   function thumbUrl(m, w){
     w = w || 400;
     if (m.t === 'yt') return 'https://i.ytimg.com/vi/' + m.id + '/hqdefault.jpg';
@@ -493,7 +497,7 @@
     function dayCard(d, src, copied){
       const m = src || {};
       const fields = meals.map((ml, i) => mlField(L(ml), (m.m || [])[i], {rows: 2}));
-      const note = mlField(T('Ескерту (міндетті емес)'), m.note);
+      const note = mlField(T('Ескерту (міндетті емес)'), m.note, {rows: 4});
       const img = singleImg(copied ? '' : m.img);
       const c = {d, fields, note, img};
       c.el = section(fmt(d, true) + (d === today() ? T(' · бүгін') : ''),
@@ -595,6 +599,9 @@
     const mineOnly = p => !psy || p.by === ME.name;
     const posts = (CLS.cposts || []).filter(p => p.cls === curCls).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0));
     const box = h('div', {class: 'space-y-3'});
+    if ((INFO.classFolders || {})[curCls]) view.append(h('div', {class: 'flex flex-wrap items-center gap-2 mb-3'},
+      h('a', {href: INFO.classFolders[curCls], target: '_blank', class: 'btn btn-l btn-s'}, '📁 ' + curCls + T(' сыныбының Drive қалтасы ↗')),
+      h('span', {class: 'text-xs text-charcoal/60'}, T('Қалта Gmail-ыңызбен ашылады. Сайттағы «📷 Фото қосу» арқылы салынған фото мен видео осы қалтаға өзі түседі.'))));
     view.append(hint(T('Бұл жазбалар тек ') + curCls + T(' сыныбының ата-аналарына (сынып кодымен кіргендерге) көрінеді.') +
       (psy ? T(' Педагог-психолог мұнда барлық ата-анаға арналған жалпы кеңес жазады; нақты бала туралы мәлімет жазуға болмайды (ол тек ата-ана келісімімен, даму картасындағы жеке бөлімде).') : '')),
       edit ? h('div', {class: 'my-4'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => cpostEditor(view, null)}, T('+ Жаңа жазба (') + curCls + ')')) : h('div', {class: 'my-4'}),
@@ -1768,7 +1775,20 @@
         h('div', {class: 'flex flex-wrap gap-2'},
           INFO.folder ? h('a', {href: INFO.folder, target: '_blank', class: 'btn btn-l btn-s'}, T('📁 Сайттың Drive қалтасы ↗')) : null,
           INFO.classFolder ? h('a', {href: INFO.classFolder, target: '_blank', class: 'btn btn-l btn-s'}, T('📁 «Бастауыш-Началка» ↗')) : null),
-        h('p', {class: 'text-sm text-charcoal/65'}, T('Сыныптардың фото мен видеолары «Бастауыш-Началка» ішіндегі сынып қалталарында, ал сайттың күнделікті резерв көшірмелері «Резерв» ішінде сақталады.'))),
+        h('p', {class: 'text-sm text-charcoal/65'}, T('Сыныптардың фото мен видеолары «Бастауыш-Началка» ішіндегі сынып қалталарында, ал сайттың күнделікті резерв көшірмелері «Резерв» ішінде сақталады.')),
+        (() => {
+          const out = h('div', {class: 'grid grid-cols-2 sm:grid-cols-4 gap-2'});
+          return h('div', {class: 'space-y-2'},
+            h('button', {type: 'button', class: 'btn btn-p btn-s', onclick: async () => {
+              const j = await run(T('Қалталар жасалуда…'), () => api('mkFolders'));
+              out.innerHTML = '';
+              Object.keys(j.folders).sort().forEach(c => out.append(h('a', {href: j.folders[c], target: '_blank', class: 'btn btn-l btn-s'}, '📁 ' + c + ' ↗')));
+              toast(T('Дайын ✓ Сынып қалталары: ') + Object.keys(j.folders).length + (j.shared ? T('; Gmail-ы бар сынып жетекшілеріне ашылды: ') + j.shared : ''));
+              if (j.warn && j.warn.length) toast(T('Drive қолжетімділігі берілмеді: ') + j.warn.join('; '), true);
+            }}, T('📁 Әр сыныпқа Drive қалтасын жасау')),
+            h('p', {class: 'text-xs text-charcoal/60'}, T('«Бастауыш-Началка» ішінде әр сыныпқа «<сынып> сынып» қалтасы жасалады (бар болса, қайта жасалмайды). Сынып жетекшісінің Gmail-ы жазылған болса, оған тек өз сыныбының қалтасы ашылады.')),
+            out);
+        })()),
       section(T('Кіру логині'), h('p', {class: 'text-sm'}, T('Сіздің логиніңіз: '), h('b', {}, 'admin'))),
       pwSection()));
   };
@@ -1778,7 +1798,9 @@
         ME.classes && ME.classes.length ? h('p', {}, T('Сынып: '), h('b', {}, ME.classes.join(', '))) : null,
         ME.subjects && ME.subjects.length ? h('p', {}, T('Пәні: '), h('b', {}, ME.subjects.join(', '))) : null,
         ME.clubs && ME.clubs.length ? h('p', {}, T('Үйірмесі: '), h('b', {}, ME.clubs.join(', '))) : null,
-        ME.folder ? h('a', {href: ME.folder, target: '_blank', class: 'btn btn-l btn-s'}, T('📁 Drive қалтам ↗')) : null),
+        ME.folder ? h('a', {href: ME.folder, target: '_blank', class: 'btn btn-l btn-s'}, T('📁 Drive қалтам ↗')) : null,
+        Object.keys(INFO.classFolders || {}).length ? h('div', {class: 'flex flex-wrap gap-2'}, Object.keys(INFO.classFolders).map(c =>
+          h('a', {href: INFO.classFolders[c], target: '_blank', class: 'btn btn-l btn-s'}, '📁 ' + c + T(' сыныбының Drive қалтасы ↗')))) : null),
       pwSection()));
   };
 
@@ -1795,7 +1817,7 @@
     const j = await api('full');
     ME = j.me; DATA = j.data || {}; CLS = j.cls || {cposts: [], homework: [], qa: [], codes: {}};
     USERS = j.users || []; TEACHERS = j.teachers || {};
-    INFO = {storage: j.storage, folder: j.folder, classFolder: j.classFolder};
+    INFO = {storage: j.storage, folder: j.folder, classFolder: j.classFolder, classFolders: j.classFolders || {}};
     if (DATA.posts === undefined && can('posts')) {
       const r = await api('set', {values: {posts: D.posts()}});
       DATA.posts = r.values.posts;

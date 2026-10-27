@@ -105,8 +105,16 @@
     return withDow ? txt + ', ' + DOW[lang][d.getDay()] : txt;
   }
   function get(key){
+    if (key === 'settings') return Object.assign(D.settings(), data.settings || {});
     if (data[key] !== undefined && data[key] !== null) return data[key];
     return D[key] ? D[key]() : null;
+  }
+  // WhatsApp-тан бір жолға көшірілген мәзір: әр эмодзиден жаңа жол басталады
+  var EMOJI_START = /\s+(?=[\u2600-\u27BF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDEFF]|\uD83E[\uDD00-\uDEFF])/g;
+  function menuLines(s){
+    s = String(s || '');
+    if (/\n/.test(s) || (s.match(EMOJI_START) || []).length < 3) return s;
+    return s.replace(EMOJI_START, '\n');
   }
   function byId(id){ return document.getElementById(id); }
 
@@ -405,10 +413,10 @@
     else {
       var rows = (m.m || []).map(function(x, i){
         var txt = L(x); if (!txt) return '';
-        return '<li class="flex gap-4 py-3 border-b border-emerald-900/10 last:border-0"><span class="w-36 shrink-0 text-sm font-extrabold uppercase tracking-wide text-gold-600">' + esc(L(meals[i]) || ('#' + (i + 1))) + '</span><span class="text-base font-medium text-charcoal whitespace-pre-line">' + esc(txt) + '</span></li>';
+        return '<li class="flex flex-col sm:flex-row gap-1 sm:gap-4 py-3 border-b border-emerald-900/10 last:border-0"><span class="sm:w-36 shrink-0 text-sm font-extrabold uppercase tracking-wide text-gold-600">' + esc(L(meals[i]) || ('#' + (i + 1))) + '</span><span class="text-base font-medium text-charcoal whitespace-pre-line">' + esc(menuLines(txt)) + '</span></li>';
       }).join('');
       if (rows) h += '<ul>' + rows + '</ul>';
-      if (L(m.note)) h += '<p class="mt-4 text-sm text-charcoal/75"><b>' + esc(t('menu_note')) + ':</b> ' + esc(L(m.note)) + '</p>';
+      if (L(m.note)) h += '<div class="mt-4 rounded-2xl bg-emerald-50/50 p-4"><div class="text-xs font-extrabold uppercase tracking-wide text-gold-600 mb-1">' + esc(t('menu_note')) + '</div><div class="text-base text-charcoal leading-relaxed whitespace-pre-line">' + esc(menuLines(L(m.note))) + '</div></div>';
       if (m.img) { LISTS.menu = [{t:'img', id:m.img}]; h += '<div class="mt-5 max-w-md mx-auto">' + mediaThumb({t:'img', id:m.img}, '', 'uiOpenList(\'menu\',0)') + '</div>'; }
     }
     return h;
