@@ -592,6 +592,7 @@
     kz:{
       mc_desc:"Сынып жетекшісі берген кодты енгізіңіз: сынып коды немесе баланың жеке коды. Үй тапсырмасы, сыныптың фото-видеолары және сұрақ-жауап тек сіздің сыныбыңыздың ата-аналарына көрінеді, ал мұғалімдердің кері байланысы — тек баланың жеке кодымен.",
       mc_code_ph:"Код",
+      arch_month:"Ай", arch_day:"Күн", arch_all:"Барлық күндер", arch_cur:"Осы ай", arch_empty:"Бұл айда әзірге жаңалық жоқ.", arch_prev:"Өткен айлардың жаңалықтары — архивте", arch_load:"Архив жүктелуде…", arch_title:"📚 Архив",
       fb_tab:"Кері байланыс", card_tab:"Даму картасы", fb_empty:"Әзірге мұғалімдерден кері байланыс жоқ", fb_print:"PDF / Басып шығару",
       fb_title:"Мұғалімдердің кері байланысы", fb_subj:"Пән", fb_text:"Кері байланыс", fb_rec:"Ата-аналарға арналған ұсыныстар",
       fb_teacher:"Мұғалім", fb_main:"Пәндер", fb_extra:"Қосымша сабақтар", fb_club:"Үйірмелер", fb_child:"Оқушы", fb_cls:"Сынып",
@@ -601,6 +602,7 @@
     ru:{
       mc_desc:"Введите код от классного руководителя: код класса или личный код ребёнка. Домашние задания, фото и видео класса и вопросы-ответы видят только родители вашего класса, а отзывы учителей — только по личному коду ребёнка.",
       mc_code_ph:"Код",
+      arch_month:"Месяц", arch_day:"День", arch_all:"Все дни", arch_cur:"Этот месяц", arch_empty:"В этом месяце пока нет новостей.", arch_prev:"Новости прошлых месяцев — в архиве", arch_load:"Загрузка архива…", arch_title:"📚 Архив",
       fb_tab:"Обратная связь", card_tab:"Карта развития", fb_empty:"Пока нет отзывов учителей", fb_print:"PDF / Печать",
       fb_title:"Обратная связь от учителей", fb_subj:"Предмет", fb_text:"Обратная связь", fb_rec:"Рекомендации родителям",
       fb_teacher:"Учитель", fb_main:"Предметы", fb_extra:"Дополнительные занятия", fb_club:"Кружки", fb_child:"Ученик", fb_cls:"Класс",
@@ -610,6 +612,7 @@
     en:{
       mc_desc:"Enter the code from your class teacher: the class code or your child's personal code. Homework, class photos and videos, and Q&A are visible only to parents of your class; teachers' feedback is opened only with the child's personal code.",
       mc_code_ph:"Code",
+      arch_month:"Month", arch_day:"Day", arch_all:"All days", arch_cur:"This month", arch_empty:"No news this month yet.", arch_prev:"Earlier news is in the archive", arch_load:"Loading archive…", arch_title:"📚 Archive",
       fb_tab:"Feedback", card_tab:"Development profile", fb_empty:"No feedback from teachers yet", fb_print:"PDF / Print",
       fb_title:"Teachers' feedback", fb_subj:"Subject", fb_text:"Feedback", fb_rec:"Recommendations for parents",
       fb_teacher:"Teacher", fb_main:"Subjects", fb_extra:"Extra lessons", fb_club:"Clubs", fb_child:"Student", fb_cls:"Class",

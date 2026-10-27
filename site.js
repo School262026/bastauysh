@@ -264,17 +264,79 @@
     });
     return posts;
   }
+  // ---------- архив: өткен айлардың жаңалығы, ас мәзірі, апта жоспары ай-айымен жүктеледі ----------
+  var MONTHS_N = {
+    kz: ['Қаңтар','Ақпан','Наурыз','Сәуір','Мамыр','Маусым','Шілде','Тамыз','Қыркүйек','Қазан','Қараша','Желтоқсан'],
+    ru: ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
+    en: ['January','February','March','April','May','June','July','August','September','October','November','December']
+  };
+  function curMonth(){ return today().slice(0, 7); }
+  function fmtMonth(m){ var p = m.split('-'); return MONTHS_N[lang][+p[1] - 1] + ' ' + p[0]; }
+  function shiftMonth(m, n){ var p = m.split('-'), d = new Date(+p[0], +p[1] - 1 + n, 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1); }
+  var ARCH = {}, archWait = {};
+  function archLoad(m, done){
+    if (ARCH[m] || !API) { if (done) done(); return; }
+    if (archWait[m]) { if (done) archWait[m].push(done); return; }
+    archWait[m] = done ? [done] : [];
+    // сервер жауап бермесе (немесе ескі нұсқа болса) — қолдағы мәліметтен сол айды аламыз
+    var local = function(){ return {posts: (get('posts') || []).filter(function(p){ return String(p.date || '').slice(0, 7) === m; }), menu: {}, week: []}; };
+    fetch(API + '?a=arch&m=' + m).then(function(r){ return r.json(); }).then(function(j){
+      ARCH[m] = j && j.ok && j.posts ? {posts: j.posts, menu: j.menu || {}, week: j.week || []} : local();
+    }).catch(function(){ ARCH[m] = local(); }).then(function(){
+      var cbs = archWait[m]; delete archWait[m]; cbs.forEach(function(f){ f(); });
+    });
+  }
+  // Ағымдағы мәлімет + жүктелген архив айлары
+  function menuAll(){ var m = {}, k, base = get('menu') || {}; for (k in ARCH) for (var day in ARCH[k].menu) m[day] = ARCH[k].menu[day]; for (k in base) m[k] = base[k]; return m; }
+  function weekAll(){ var seen = {}, out = []; (get('week') || []).concat([].concat.apply([], Object.keys(ARCH).map(function(k){ return ARCH[k].week || []; }))).forEach(function(x){ var id = x.id || x.date + x.title; if (!seen[id]) { seen[id] = 1; out.push(x); } }); return out; }
+  // Ескі айға жылжығанда сол айды архивтен сұрау
+  function needArch(day){
+    var m = String(day).slice(0, 7), idx = data.archive || {};
+    if (m >= curMonth() || ARCH[m]) return false;
+    if (!((idx.menu || {})[m] || (idx.week || {})[m] || (idx.posts || {})[m])) return false;
+    archLoad(m, function(){ renderDaily(); });
+    return true;
+  }
+  var newsMonth = null, newsDay = '';
+  function newsMonths(){
+    var set = {}, idx = (data.archive || {}).posts || {};
+    set[curMonth()] = 1;
+    for (var k in idx) set[k] = 1;
+    (get('posts') || []).forEach(function(p){ if (p.date) set[String(p.date).slice(0, 7)] = 1; });
+    return Object.keys(set).sort().reverse();
+  }
   function renderNews(){
     var tabs = byId('newsTabs'), list = byId('newsList'), more = byId('newsMore');
     if (!list) return;
-    var all = sortedPosts();
+    if (!newsMonth) newsMonth = curMonth();
+    var isCur = newsMonth === curMonth(), months = newsMonths();
+    // ағымдағы айда «маңызды» жазбалар да көрінеді; архив айы сұралады
+    var src;
+    if (isCur || newsMonth > curMonth()) src = sortedPosts().filter(function(p){ return p.pinned || String(p.date || '').slice(0, 7) === newsMonth; });
+    else if (ARCH[newsMonth]) src = ARCH[newsMonth].posts.slice().sort(function(a, b){ return a.date !== b.date ? (a.date < b.date ? 1 : -1) : (b.ts || 0) - (a.ts || 0); });
+    else { list.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-charcoal/60">' + esc(t('arch_load')) + '</p>'; archLoad(newsMonth, renderNews); }
+    var bar = '<div class="w-full flex flex-wrap items-center justify-center gap-2 mb-2">' +
+      '<button type="button" class="chip" onclick="uiNewsMonth(-1)"' + (months.indexOf(newsMonth) >= months.length - 1 ? ' disabled style="opacity:.4"' : '') + '>‹</button>' +
+      '<select onchange="uiNewsPick(this.value)" class="rounded-full border border-emerald-900/15 bg-white px-4 py-2 font-bold text-emerald-950">' + months.map(function(m){
+        return '<option value="' + m + '"' + (m === newsMonth ? ' selected' : '') + '>' + esc(fmtMonth(m) + (m === curMonth() ? ' · ' + t('arch_cur') : '')) + '</option>';
+      }).join('') + '</select>' +
+      '<button type="button" class="chip" onclick="uiNewsMonth(1)"' + (newsMonth >= curMonth() ? ' disabled style="opacity:.4"' : '') + '>›</button>' +
+      '<label class="flex items-center gap-1 text-sm font-semibold text-charcoal/70">' + esc(t('arch_day')) + ': <input type="date" value="' + esc(newsDay) + '" min="' + newsMonth + '-01" max="' + newsMonth + '-31" onchange="uiNewsDay(this.value)" class="rounded-full border border-emerald-900/15 bg-white px-3 py-1.5"></label>' +
+      (newsDay ? '<button type="button" class="chip" onclick="uiNewsDay(\'\')">' + esc(t('arch_all')) + ' ✕</button>' : '') + '</div>';
+    if (!src) { tabs.innerHTML = bar; more.classList.add('hidden-panel'); return; }
+    var all = newsDay ? src.filter(function(p){ return p.date === newsDay; }) : src;
     var counts = {};
     all.forEach(function(p){ counts[p.cat] = (counts[p.cat] || 0) + 1; });
-    tabs.innerHTML = CATS.filter(function(c){ return c === 'all' || counts[c]; }).map(function(c){
+    tabs.innerHTML = bar + CATS.filter(function(c){ return c === 'all' || counts[c]; }).map(function(c){
       return '<button type="button" class="chip' + (c === newsCat ? ' active' : '') + '" onclick="uiNewsCat(\'' + c + '\')">' + esc(t('cat_' + c)) + '</button>';
     }).join('');
     var posts = all.filter(function(p){ return newsCat === 'all' || p.cat === newsCat; });
-    if (!posts.length) { list.innerHTML = '<p class="md:col-span-2 lg:col-span-3 text-center text-charcoal/60">' + esc(t('news_empty')) + '</p>'; more.classList.add('hidden-panel'); return; }
+    if (!posts.length) {
+      var older = months.filter(function(m){ return m < newsMonth; })[0];
+      list.innerHTML = '<div class="md:col-span-2 lg:col-span-3 text-center text-charcoal/60">' + esc(isCur && !newsDay ? t('arch_empty') : t('news_empty')) +
+        (older && !newsDay ? '<div class="mt-4"><button type="button" class="chip" onclick="uiNewsPick(\'' + older + '\')">' + esc(t('arch_title') + ': ' + fmtMonth(older)) + ' →</button></div>' : '') + '</div>';
+      more.classList.add('hidden-panel'); return;
+    }
     list.innerHTML = posts.slice(0, newsShown).map(function(p){
       var media = p.media || [];
       var key = 'post_' + p.id;
@@ -300,6 +362,9 @@
     more.classList.toggle('hidden-panel', posts.length <= newsShown);
   }
   window.uiNewsCat = function(c){ newsCat = c; newsShown = 6; renderNews(); };
+  window.uiNewsPick = function(m){ newsMonth = m; newsDay = ''; newsShown = 6; renderNews(); };
+  window.uiNewsMonth = function(n){ var ms = newsMonths(), i = ms.indexOf(newsMonth) - n; if (i >= 0 && i < ms.length) window.uiNewsPick(ms[i]); };
+  window.uiNewsDay = function(d){ newsDay = d || ''; if (d && d.slice(0, 7) !== newsMonth) newsMonth = d.slice(0, 7); newsShown = 6; renderNews(); };
   window.uiNewsMore = function(){ newsShown += 6; renderNews(); };
   window.uiReadMore = function(btn){
     var body = btn.previousElementSibling;
@@ -322,10 +387,11 @@
     return '<div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3">' + media.map(function(m, i){ return mediaThumb(m, 'aspect-square', 'uiOpenList(\'' + key + '\',' + i + ')'); }).join('') + '</div>';
   }
   function renderMenu(){
-    var menu = get('menu') || {};
+    var menu = menuAll();
     var meals = (get('settings').meals) || [];
     if (!menuDate) menuDate = schoolDay(today());
     var mon = monday(menuDate);
+    if (needArch(mon) || needArch(addDays(mon, 4))) return '<p class="text-center text-charcoal/60 py-6">' + esc(t('arch_load')) + '</p>';
     var days = [0,1,2,3,4].map(function(i){ return addDays(mon, i); });
     if (menu[addDays(mon, 5)]) days.push(addDays(mon, 5));
     var h = navBtns('uiMenuWeek(-1)', 'uiMenuWeek(1)', esc(fmtDate(days[0]) + ' — ' + fmtDate(days[days.length - 1])), 'uiMenuToday()');
@@ -355,7 +421,8 @@
   function renderWeek(){
     if (!weekStart) weekStart = monday(today());
     var end = addDays(weekStart, 6);
-    var ev = (get('week') || []).filter(function(x){ return x.date >= weekStart && x.date <= end; });
+    if (needArch(weekStart) || needArch(end)) return '<p class="text-center text-charcoal/60 py-6">' + esc(t('arch_load')) + '</p>';
+    var ev = weekAll().filter(function(x){ return x.date >= weekStart && x.date <= end; });
     ev.sort(function(a, b){ return (a.date + (a.time || '')) < (b.date + (b.time || '')) ? -1 : 1; });
     var h = navBtns('uiWeek(-1)', 'uiWeek(1)', esc(fmtDate(weekStart) + ' — ' + fmtDate(end)), 'uiWeekToday()');
     if (!ev.length) return h + '<p class="text-center text-charcoal/60 py-6">🗓 ' + esc(t('week_empty')) + '</p>';
@@ -445,9 +512,19 @@
     }).join('') + '</div>';
   }
   function mcNews(d){
-    var posts = (d.posts || []).slice().sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0); });
-    if (!posts.length) return '<p class="text-center text-charcoal/60 py-6">📸 ' + esc(t('mc_news_empty')) + '</p>';
-    return '<div class="space-y-5">' + posts.map(function(p){
+    var all = (d.posts || []).slice().sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0); });
+    var ms = {}; ms[curMonth()] = 1; all.forEach(function(p){ if (p.date) ms[p.date.slice(0, 7)] = 1; });
+    ms = Object.keys(ms).sort().reverse();
+    if (!MC.newsMonth || ms.indexOf(MC.newsMonth) < 0) MC.newsMonth = curMonth();
+    var bar = ms.length > 1 ? '<div class="flex flex-wrap items-center gap-2 mb-4"><span class="text-sm font-semibold text-charcoal/70">' + esc(t('arch_month')) + ':</span><select onchange="uiMcNewsMonth(this.value)" class="rounded-full border border-emerald-900/15 bg-white px-4 py-2 font-bold text-emerald-950">' +
+      ms.map(function(m){ return '<option value="' + m + '"' + (m === MC.newsMonth ? ' selected' : '') + '>' + esc(fmtMonth(m) + (m === curMonth() ? ' · ' + t('arch_cur') : '')) + '</option>'; }).join('') + '</select></div>' : '';
+    var posts = all.filter(function(p){ return String(p.date || '').slice(0, 7) === MC.newsMonth; });
+    if (!posts.length) {
+      var older = ms.filter(function(m){ return m < MC.newsMonth; })[0];
+      return bar + '<p class="text-center text-charcoal/60 py-6">📸 ' + esc(all.length ? t('arch_empty') : t('mc_news_empty')) + '</p>' +
+        (older ? '<p class="text-center"><button type="button" class="chip" onclick="uiMcNewsMonth(\'' + older + '\')">' + esc(t('arch_title') + ': ' + fmtMonth(older)) + ' →</button></p>' : '');
+    }
+    return bar + '<div class="space-y-5">' + posts.map(function(p){
       return '<article class="rounded-2xl border border-emerald-900/10 p-4 sm:p-5"><div class="text-xs font-bold text-charcoal/55">' + esc(fmtDate(p.date)) + '</div><h3 class="mt-1 text-lg font-extrabold text-emerald-950">' + esc(L(p.title)) + '</h3>' +
         (L(p.body) ? '<div class="rich mt-2 text-base text-charcoal/85 leading-relaxed">' + clean(L(p.body)) + '</div>' : '') + mediaRow(p.media, 'cp_' + p.id) + '</article>';
     }).join('') + '</div>';
@@ -581,6 +658,7 @@
     try { localStorage.removeItem('bs_cls_' + cur.code); } catch(e) {}
     renderMyClass();
   };
+  window.uiMcNewsMonth = function(m){ MC.newsMonth = m; renderMyClass(); };
   window.uiMcTab = function(tab){ MC.tab = tab; MC.sent = false; renderMyClass(); };
   window.uiMcHwDay = function(n){
     var d = MC.hwDate;
