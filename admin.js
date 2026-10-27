@@ -886,7 +886,7 @@
       section('Жаңа оқушыларды қосу', add),
       saveBar('Тізімді сақтау', async () => {
         const list = inputs.filter(r => r.el.value.trim() && r.el.value.trim() !== r.st.name).map(r => ({id: r.st.id, name: r.el.value.trim()}))
-          .concat(add.value.split('\n').map(s => s.trim()).filter(Boolean).map(name => ({name})));
+          .concat(add.value.split('\n').map(s => s.trim().replace(/^\d{1,3}\s*[.)]?\s+(?=\D)/, '')).filter(Boolean).map(name => ({name})));
         if (!list.length) { toast('Өзгеріс жоқ'); return; }
         const j = await run('Сақталуда…', () => api('stuSave', {cls: F.cls, students: list}));
         F.students = j.students.map(s => ({id: s.id, name: s.name, code: s.code})); dirty = false; savedToast(); fbRoster(box, F);
@@ -1228,7 +1228,7 @@
         h('div', {class: 'flex flex-wrap gap-2'}, h('button', {type: 'button', class: 'btn btn-l', onclick: () => window.CARD_PRINT(cardPrintData(F, K, st))}, '🖨 Карта (PDF)'))),
       nav, h('div', {class: 'space-y-4 mt-4'},
         summary,
-        F.write ? section('Менің бағам', hint('Тек өзіңіз байқаған параметрлерді бағалаңыз; білмейтін параметрді бос қалдырыңыз. Батырманы қайта бассаңыз, баға алынады.'), paramRows,
+        F.write ? section('Менің бағам', hint('Күшті және дамытуды қажет ететін жақтар осы бағалардан автоматты шығады: 4 немесе 3 (жасыл) — күшті жағы, 1 немесе 2 (сары) — дамыту керек. Әр параметрдің тұсындағы 1–4 батырмасын басыңыз; тек өзіңіз байқағанын бағалаңыз, білмейтінін бос қалдырыңыз. Қайта бассаңыз, баға алынады.'), paramRows,
           h('div', {class: 'lbl mt-3'}, 'Пәндер бойынша меңгеруі'), subjBox,
           h('div', {class: 'flex gap-2'}, newSubj, h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { addSubj(newSubj.value.trim()); newSubj.value = ''; }}, '+ Пән')),
           h('div', {class: 'lbl mt-3'}, 'Қызығушылықтары'), interBox, field('Ескерту', note),

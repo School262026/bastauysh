@@ -514,7 +514,8 @@
     if (A.focus.length) recs.push(T.focusSubj + ': ' + A.focus.join(', ') + '.');
     if (c.concl && c.concl.rec) recs.push(c.concl.rec);
     h += '<p class="text-sm text-charcoal/65 mb-4">🔒 ' + esc(T.sub) + '. ' + esc(t('fb_note')) + '</p>' +
-      '<div class="grid md:grid-cols-2 gap-5"><div class="rounded-2xl border border-emerald-900/10 p-4">' + (rows || '<p class="text-charcoal/55">' + esc(T.empty) + '</p>') +
+      (!rows && !srows ? '<p class="rounded-2xl bg-gold-50 border border-gold-100 p-4 mb-4">' + esc(T.noRatings) + '</p>' : '') +
+      '<div class="grid md:grid-cols-2 gap-5"' + (!rows && !srows ? ' hidden' : '') + '><div class="rounded-2xl border border-emerald-900/10 p-4">' + rows +
       (srows ? '<div class="mt-4 text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(T.subjects) + '</div>' + srows : '') + '</div>' +
       '<div class="space-y-4"><div class="rounded-2xl bg-emerald-50/60 p-4"><div class="font-extrabold text-emerald-950 mb-1">💪 ' + esc(T.strong) + '</div>' + list(A.strong.concat(A.good)) + '</div>' +
       '<div class="rounded-2xl bg-gold-50 border border-gold-100 p-4"><div class="font-extrabold text-emerald-950 mb-1">🌱 ' + esc(T.weak) + '</div>' + list(A.weak.concat(A.focus)) + '</div>' +

@@ -759,7 +759,7 @@
         analysis:'Жан-жақты талдау', recs:'Ата-аналарға ұсыныстар', focusSubj:'Көбірек көңіл бөлу ұсынылатын пәндер', strongSubj:'Жақсы меңгерген пәндер',
         teacher:'Сынып жетекшісінің қорытындысы', teacherRec:'Сынып жетекшісінің ұсынысы', teacherNotes:'Педагогтардың ескертпелері', psych:'Педагог-психологтың қорытындысы', methods:'Қолданылған әдістемелер',
         consent:'Ата-ананың жазбаша келісімі', sign:'Сынып жетекшісі', signPsy:'Педагог-психолог', signParent:'Ата-ана (танысты)', date:'Күні', print:'PDF / Басып шығару',
-        empty:'Бұл кезеңге әзірге баға қойылмаған', stage:'Жалпы деңгей', keep:'Жақсы жақтарын әрі қарай дамыту үшін',
+        empty:'Бұл кезеңге әзірге баға қойылмаған', noRatings:'Бұл кезеңде педагогтар баланы параметрлер бойынша әлі бағаламаған, сондықтан күшті және дамытуды қажет ететін жақтары анықталмады.', stage:'Жалпы деңгей', keep:'Жақсы жақтарын әрі қарай дамыту үшін',
         legal:'Карта мұғалімдердің педагогикалық бақылауы негізінде жасалды (ҚР Оқу-ағарту министрінің 2025 жылғы 29 сәуірдегі №92 бұйрығымен бекітілген Психологиялық-педагогикалық сүйемелдеу қызметі қағидаларының 15-тармағы). Бұл медициналық немесе клиникалық диагноз емес. Психологиялық диагностика тек ата-ананың (заңды өкілдің) жазбаша келісімімен жүргізіледі (12-тармақ). Мәліметтер құпия, тек ата-анаға және баламен жұмыс істейтін педагогтарға арналған («Дербес деректер және оларды қорғау туралы» ҚР Заңы, 7, 8, 11-баптар).',
         Q1:'1-тоқсан', Q2:'2-тоқсан', Q3:'3-тоқсан', Q4:'4-тоқсан', Y:'Оқу жылы', tab:'Даму картасы', cardEmpty:'Даму картасы әзірге толтырылмаған'},
       ru:{title:'Карта развития ученика', sub:'По результатам педагогического наблюдения', child:'Ученик', cls:'Класс', period:'Период', raters:'Число оценивших педагогов',
@@ -768,7 +768,7 @@
         analysis:'Всесторонний анализ', recs:'Рекомендации родителям', focusSubj:'Предметы, которым рекомендуется уделить больше внимания', strongSubj:'Хорошо усвоенные предметы',
         teacher:'Заключение классного руководителя', teacherRec:'Рекомендация классного руководителя', teacherNotes:'Замечания педагогов', psych:'Заключение педагога-психолога', methods:'Использованные методики',
         consent:'Письменное согласие родителя', sign:'Классный руководитель', signPsy:'Педагог-психолог', signParent:'Родитель (ознакомлен)', date:'Дата', print:'PDF / Печать',
-        empty:'За этот период оценок пока нет', stage:'Общий уровень', keep:'Чтобы развивать сильные стороны',
+        empty:'За этот период оценок пока нет', noRatings:'В этом периоде педагоги ещё не оценили ребёнка по параметрам, поэтому сильные стороны и зоны развития пока не определены.', stage:'Общий уровень', keep:'Чтобы развивать сильные стороны',
         legal:'Карта составлена на основе педагогического наблюдения учителей (п. 15 Правил деятельности службы психолого-педагогического сопровождения, утв. приказом Министра просвещения РК от 29 апреля 2025 года № 92). Это не медицинский и не клинический диагноз. Психологическая диагностика проводится только с письменного согласия родителя (законного представителя) (п. 12). Сведения конфиденциальны и предназначены только родителю и педагогам, работающим с ребёнком (Закон РК «О персональных данных и их защите», ст. 7, 8, 11).',
         Q1:'1 четверть', Q2:'2 четверть', Q3:'3 четверть', Q4:'4 четверть', Y:'Учебный год', tab:'Карта развития', cardEmpty:'Карта развития пока не заполнена'},
       en:{title:'Student development profile', sub:'Based on teachers\' observation', child:'Student', cls:'Class', period:'Period', raters:'Teachers who rated',
@@ -777,7 +777,7 @@
         analysis:'Overall analysis', recs:'Recommendations for parents', focusSubj:'Subjects needing more attention', strongSubj:'Strong subjects',
         teacher:'Class teacher\'s conclusion', teacherRec:'Class teacher\'s recommendation', teacherNotes:'Teachers\' notes', psych:'School psychologist\'s conclusion', methods:'Methods used',
         consent:'Parent\'s written consent', sign:'Class teacher', signPsy:'School psychologist', signParent:'Parent (acknowledged)', date:'Date', print:'PDF / Print',
-        empty:'No ratings for this period yet', stage:'Overall level', keep:'To keep developing strengths',
+        empty:'No ratings for this period yet', noRatings:'Teachers have not rated the child on the profile areas for this period yet, so strengths and areas to develop are not identified.', stage:'Overall level', keep:'To keep developing strengths',
         legal:'Based on teachers\' educational observation (Rules of the psychological and pedagogical support service, Order of the Minister of Enlightenment of the RK No. 92 of 29 April 2025, p. 15). Not a medical or clinical diagnosis. Psychological assessment is carried out only with the written consent of a parent (p. 12). Confidential: for the parent and the child\'s teachers only (RK Law on Personal Data and its Protection, art. 7, 8, 11).',
         Q1:'Term 1', Q2:'Term 2', Q3:'Term 3', Q4:'Term 4', Y:'School year', tab:'Development profile', cardEmpty:'The development profile has not been filled in yet'}
     }
@@ -854,8 +854,9 @@
       var body = !rows && !srows && !o.concl && !o.psych ? '<p class="muted">' + esc(T.empty) + '</p>' :
         (rows ? '<h2>' + esc(T.param) + '</h2><table><colgroup><col style="width:52%"><col style="width:26%"><col style="width:22%"></colgroup>' + rows + '</table>' : '') +
         (srows ? '<h2>' + esc(T.subjects) + '</h2><table><colgroup><col style="width:52%"><col style="width:26%"><col style="width:22%"></colgroup>' + srows + '</table>' : '') +
-        '<div class="two"><div><h2>💪 ' + esc(T.strong) + '</h2>' + ul(A.strong.concat(A.good)) + '</div><div><h2>🌱 ' + esc(T.weak) + '</h2>' + ul(A.weak.concat(A.focus)) + '</div></div>' +
-        '<div class="two"><div><h2>' + esc(T.interests) + '</h2>' + ul(A.interests) + '</div><div><h2>' + esc(T.clubs) + '</h2>' + ul(o.clubs || []) + '</div></div>' +
+        (rows || srows ? '<div class="two"><div><h2>💪 ' + esc(T.strong) + '</h2>' + ul(A.strong.concat(A.good)) + '</div><div><h2>🌱 ' + esc(T.weak) + '</h2>' + ul(A.weak.concat(A.focus)) + '</div></div>'
+          : '<p class="note">' + esc(T.noRatings) + '</p>') +
+        (A.interests.length || (o.clubs || []).length ? '<div class="two"><div><h2>' + esc(T.interests) + '</h2>' + ul(A.interests) + '</div><div><h2>' + esc(T.clubs) + '</h2>' + ul(o.clubs || []) + '</div></div>' : '') +
         (A.summary.length ? '<h2>' + esc(T.analysis) + '</h2><p>' + (A.overall ? '<b>' + esc(T.stage) + ': ' + esc(LV[A.overall]) + '.</b> ' : '') + esc(A.summary.join(' ')) + '</p>' : '') +
         ((o.agg || {}).notes && o.agg.notes.length ? '<h2>' + esc(T.teacherNotes) + '</h2>' + ul(o.agg.notes) : '') +
         (o.concl && o.concl.text ? '<h2>' + esc(T.teacher) + '</h2><p class="pre">' + esc(o.concl.text) + '</p>' : '') +
@@ -875,7 +876,7 @@
       'h2{font-size:13.5px;color:#0F382C;margin:14px 0 6px;border-left:4px solid #D4AF37;padding-left:7px}' +
       'table{width:100%;border-collapse:collapse}td,th{border:1px solid #CFE0D8;padding:4px 7px;text-align:left;vertical-align:middle}tr{page-break-inside:avoid}' +
       'tr.grp th{background:#0F382C;color:#fff;font-size:11.5px}.bar{display:inline-flex;gap:3px}.c{display:inline-block;width:26px;height:11px;border-radius:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
-      '.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}ul{margin:4px 0;padding-left:18px}li{margin:2px 0}.muted{color:#6b7a75}.pre{white-space:pre-line}' +
+      '.note{background:#FBF6E7;border:1px solid #F5E9C2;border-radius:8px;padding:8px 10px;margin:14px 0}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}ul{margin:4px 0;padding-left:18px}li{margin:2px 0}.muted{color:#6b7a75}.pre{white-space:pre-line}' +
       '.sign{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:18px;font-size:12px}.legal{margin-top:12px;font-size:9.5px;color:#6b7a75;border-top:1px solid #E5ECE8;padding-top:6px}' +
       '.tb{position:sticky;top:0;text-align:center;padding:8px;background:#FBF6E7;margin:-16px -16px 16px}.tb button{font:inherit;font-weight:700;padding:8px 18px;border-radius:999px;border:0;background:#0F382C;color:#fff;cursor:pointer}' +
       '@media (max-width:600px){.two{grid-template-columns:1fr}.c{width:16px}}@media print{.tb{display:none}body{padding:0}}</style></head><body>' +
