@@ -735,11 +735,20 @@
   const fbItemsOf = (F, sid) => F.items.filter(x => x.sid === sid && inPeriod(x)).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : (b.ts || 0) - (a.ts || 0));
   const fbSubjectList = () => h('datalist', {id: 'fbsubjects'}, [...new Set((ME.subjects || []).concat(FB_SUBJECTS))].map(s => h('option', {value: s})));
   function fbPrint(F, students){
-    window.FB_PRINT({lang: 'kz', period: periodText(), blocks: students.map(st => ({name: st.name, cls: F.cls, items: fbItemsOf(F, st.id)}))});
+    window.FB_PRINT({lang: PRINT_LANG, period: periodText(), blocks: students.map(st => ({name: st.name, cls: F.cls, items: fbItemsOf(F, st.id)}))});
   }
   function fbMerge(F, items){
     const ids = new Set(items.map(x => x.id));
     F.items = F.items.filter(x => !ids.has(x.id)).concat(items);
+  }
+  // PDF тілі: қазақ немесе орыс сыныбына қарай (құрылғыда есте сақталады)
+  let PRINT_LANG = 'kz';
+  try { PRINT_LANG = localStorage.getItem('adm_plang') === 'ru' ? 'ru' : 'kz'; } catch (e) {}
+  function printLangSel(){
+    const el = h('select', {class: 'inp', style: 'width:auto', title: 'PDF тілі'}, h('option', {value: 'kz'}, '🖨 PDF: қазақша'), h('option', {value: 'ru'}, '🖨 PDF: на русском'));
+    el.value = PRINT_LANG;
+    el.addEventListener('change', () => { PRINT_LANG = el.value; try { localStorage.setItem('adm_plang', PRINT_LANG); } catch (e) {} });
+    return el;
   }
   const fbBack = () => h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('fb')}, '← Сынып тізіміне');
 
@@ -776,7 +785,7 @@
         F.manage ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbImport(box, F)}, '📥 Excel-ден көшіру') : null,
         F.students.length ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => fbCards(box, F)}, '📊 Даму картасы') : null,
         F.students.length ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbPrint(F, F.students)}, '🖨 Бүкіл сынып (PDF)') : null,
-        h('button', {type: 'button', class: 'btn btn-l', title: 'Жаңарту', onclick: () => { delete FBC[F.cls]; go('fb', true); }}, '🔄')),
+        h('button', {type: 'button', class: 'btn btn-l', title: 'Жаңарту', onclick: () => { delete FBC[F.cls]; go('fb', true); }}, '🔄'), printLangSel()),
       h('div', {class: 'card mb-4'}, h('div', {class: 'grid sm:grid-cols-3 gap-3 items-end'},
         field('Кезең: басы', from), field('Кезең: соңы', to),
         h('button', {type: 'button', class: 'btn btn-l', onclick: () => { FBF.from = FBF.to = ''; fbClassView(box, F); }}, 'Барлық уақыт'))));
@@ -1119,7 +1128,7 @@
   function cardPrintData(F, K, st){
     const c = cardFor(K, st.id);
     const ps = c.concl && c.concl.psych && c.concl.psych.consent && (c.concl.psych.text || c.concl.psych.rec) ? c.concl.psych : null;
-    return {lang: 'kz', name: st.name, cls: F.cls, period: CARD_PERIOD, agg: CARD.agg(c.ratings), clubs: st.clubs || [],
+    return {lang: PRINT_LANG, name: st.name, cls: F.cls, period: CARD_PERIOD, agg: CARD.agg(c.ratings), clubs: st.clubs || [],
       concl: c.concl && (c.concl.text || c.concl.rec) ? c.concl : null, psych: ps};
   }
   async function fbCards(box, F){
@@ -1133,7 +1142,8 @@
     box.append(fbBack(),
       h('div', {class: 'flex flex-wrap items-end justify-between gap-3 mb-3'},
         h('div', {}, h('h2', {class: 'text-xl font-extrabold text-emerald-950'}, '📊 Даму картасы · ' + F.cls), h('div', {class: 'w-56 mt-2'}, periodSelect(() => fbCards(box, F)))),
-        K.all ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => window.CARD_PRINT(students.map(st => cardPrintData(F, K, st)))}, '🖨 Бүкіл сыныптың карталары (PDF)') : null),
+        h('div', {class: 'flex flex-wrap gap-2'}, printLangSel(),
+          K.all ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => window.CARD_PRINT(students.map(st => cardPrintData(F, K, st)))}, '🖨 Бүкіл сыныптың карталары (PDF)') : null)),
       hint('Әр педагог баланы өз бақылауы бойынша 4 деңгеймен бағалайды: 4 — жоғары, 3 — жеткілікті, 2 — дамып келеді, 1 — қолдау қажет. Карта барлық педагогтың бағасын біріктіріп, күшті және дамытуды қажет ететін жақтарын, ата-анаға ұсыныстарды өзі шығарады. ' +
         (K.all ? 'Сіз барлық педагогтың бағасын көресіз.' : 'Сіз тек өз бағаңызды көресіз; жиынтық картаны сынып жетекшісі мен ата-ана көреді.') +
         ' Педагог-психолог бөлімі тек ата-ананың жазбаша келісімі белгіленгенде толтырылады.'));
