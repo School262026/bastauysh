@@ -1494,7 +1494,7 @@
         h('div', {class: 'grid sm:grid-cols-4 gap-2 text-sm'}, [[T('Тіркелген'), info.total], ['💬 WhatsApp', info.wa], ['✈️ Telegram', info.tg], ['✉️ Email', info.email]].map(([k, v]) =>
           h('div', {class: 'rounded-xl bg-emerald-50 p-3'}, h('div', {class: 'text-xs text-charcoal/60'}, k), h('div', {class: 'text-xl font-extrabold text-emerald-950'}, v)))),
         h('div', {class: 'text-sm'}, h('b', {}, 'Telegram: '), info.tgName ? h('a', {href: 'https://t.me/' + info.tgName, target: '_blank', class: 'underline'}, '@' + info.tgName) : T('әлі қосылмаған')),
-        hint(T('Telegram бот қосу: Telegram-да @BotFather ашып, /newbot жазыңыз, ботқа ат беріңіз (мысалы: Baiterek ата-аналар). BotFather берген токенді (123456789:AA… түрінде) төмендегі өріске қойып, «Сақтау» басыңыз. Бұл бот тек ата-аналарға хабарлама жібереді; басқа боттарыңызға әсер етпейді.')),
+        info.tgName ? '' : hint(T('Telegram бот қосу: Telegram-да @BotFather ашып, /newbot жазыңыз, ботқа ат беріңіз (мысалы: Baiterek ата-аналар). BotFather берген токенді (123456789:AA… түрінде) төмендегі өріске қойып, «Сақтау» басыңыз. Бұл бот тек ата-аналарға хабарлама жібереді; басқа боттарыңызға әсер етпейді.')),
         h('div', {class: 'flex flex-wrap gap-2'}, h('div', {class: 'flex-1 min-w-[16rem]'}, tok),
           h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
             if (!tok.value.trim()) { toast(T('Токенді қойыңыз'), true); return; }
