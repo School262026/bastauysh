@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Baiterek School мұғалімдеріне арналған Telegram ботты пайдалану нұсқаулығы">
+<title>Мұғалім боты нұсқаулығы</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&family=Noto+Serif:wght@600;800&display=swap">
+<style>
+/* Layout: one reading column like a teacher's methodical handout; chat bubbles show exactly what to type */
+:root {
+  --bg: #f4f7f6;
+  --paper: #ffffff;
+  --ink: #18231f;
+  --muted: #5b6b65;
+  --line: #d7e1dd;
+  --accent: #17734f;
+  --accent-soft: #e2f1ea;
+  --bubble: #e7f6dc;
+  --bubble-ink: #1c2b14;
+  --mark: #2c5fb8;
+  --display: "Noto Serif", Georgia, serif;
+  --body: "Noto Sans", "Segoe UI", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111816; --paper: #18211e; --ink: #e6efeb; --muted: #9fb1aa; --line: #2c3a35;
+    --accent: #5cc79a; --accent-soft: #1d3a2e; --bubble: #23402a; --bubble-ink: #e3f5d6; --mark: #8fb0f0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111816; --paper: #18211e; --ink: #e6efeb; --muted: #9fb1aa; --line: #2c3a35;
+  --accent: #5cc79a; --accent-soft: #1d3a2e; --bubble: #23402a; --bubble-ink: #e3f5d6; --mark: #8fb0f0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 14px; }
+.eyebrow { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); margin: 0; max-width: 62ch; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tabs button {
+  font: 600 15px var(--body); padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink); cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.tabs button:focus-visible, .copy:focus-visible, a:focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
+.bots { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.bot { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; min-width: 0; }
+.bot b { font-size: 15px; }
+.bot a { color: var(--mark); font-weight: 600; word-break: break-all; }
+section { display: grid; gap: 12px; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 22px; margin: 0; padding-top: 18px; border-top: 1px solid var(--line); text-wrap: balance; }
+h2 .n { color: var(--accent); margin-right: 8px; }
+p { margin: 0; max-width: 65ch; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.formula {
+  background: var(--accent-soft); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  font-weight: 700; font-size: 15px;
+}
+.formula span { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.formula i { font-style: normal; color: var(--accent); }
+.examples { display: grid; gap: 10px; }
+.ex { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.ex .what { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .02em; }
+.bubble-row { display: flex; gap: 8px; align-items: flex-start; }
+.bubble {
+  background: var(--bubble); color: var(--bubble-ink); border-radius: 14px 14px 4px 14px; padding: 9px 13px;
+  flex: 1; min-width: 0; overflow-wrap: anywhere;
+}
+.copy {
+  flex: none; font: 600 13px var(--body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink); cursor: pointer;
+}
+.note { font-size: 14px; color: var(--muted); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 700; font-size: 13px; }
+tr:last-child td { border-bottom: 0; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (prefers-reduced-motion: no-preference) { .tabs button { transition: background .15s, color .15s; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="lead" id="lead"></p>
+    <div class="tabs" role="tablist" aria-label="Тіл / Язык / Language">
+      <button role="tab" id="tab-kk" data-lang="kk">Қазақша</button>
+      <button role="tab" id="tab-ru" data-lang="ru">Русский</button>
+      <button role="tab" id="tab-en" data-lang="en">English</button>
+    </div>
+    <div class="bots" id="bots"></div>
+  </header>
+  <main id="content"></main>
+  <footer id="footer"></footer>
+</div>
+
+<script>
+var BOTS = [
+  { name: 'Baiterek School', url: 'https://t.me/baiterekschoolbot' }
+];
+
+var T = {
+  kk: {
+    eyebrow: 'Telegram-бот · мұғалімдерге', title: 'Ботпен жұмыс істеу нұсқаулығы',
+    lead: 'Бот тест, ҚМЖ, КТП, БЖБ/ТЖБ, жұмыс парағы, аудио, сурет пен мультфильм сценарийін жасайды. Сұрауды қарапайым сөзбен жаза беріңіз.',
+    copy: 'Көшіру', copied: 'Көшірілді', updated: 'Нұсқаулық бот жаңарған сайын осы бетте жаңарып отырады — сілтеме өзгермейді.',
+    sections: [
+      { h: 'Бастау және жаңарту', list: [
+        'Боттың сілтемесін ашып, «Старт» (/start) басыңыз → тілді таңдаңыз: Қазақша, Русский немесе English.',
+        'Бот жаңартылғанда /start қайта басыңыз — жаңа мүмкіндіктер тізімі шығады.',
+        'Тілді ауыстыру: /til. Бот сұрақ жазылған тілде жауап береді.',
+        'Сіздің сұрауларыңызды басқа мұғалімдер көрмейді.',
+        'Толық нұсқаулықты ботта да ашуға болады: /guide.'] },
+      { h: 'Сұрауды қалай жазу керек', formula: ['СЫНЫП', 'ПӘН', 'ТАҚЫРЫП', 'НЕ КЕРЕК'],
+        p: 'Нүкте, үтір, бас әріп міндетті емес. «жаса», «жас», «керек» деп жазсаңыз да бот түсінеді.' },
+      { h: 'Мысалдар', examples: [
+        ['Тест (Телеграмда)', '7 сынып биология жасуша тест жаса'],
+        ['Тест Word + PDF (10-нан көп сұрақ, соңында жауаптары)', '6 сынып тарих Алтын Орда 20 сұрақ тест'],
+        ['ҚМЖ', '5 сынып математика жай бөлшектерді қосу ҚМЖ'],
+        ['КТП (апталық сағатты міндетті түрде жазыңыз)', '8 сынып география КТП аптасына 2 сағат'],
+        ['БЖБ', '5 сынып математика Натурал сандар бөлімі БЖБ'],
+        ['ТЖБ', '8 сынып география 1 тоқсан ТЖБ'],
+        ['Аралық бағалау (1–4 сынып)', '2 сынып қазақ тілі 1 тоқсан аралық бағалау'],
+        ['Жұмыс парағы', '3 сынып дүниетану су айналымы жұмыс парағы'],
+        ['Сұрақ', 'Оқушылардың сабаққа қызығушылығын қалай арттырамын?']] },
+      { h: 'Аудио', p: 'Мәтіннің алдына не соңына «аудиоға айналдыр» деп жазыңыз — бәрі бір хабарда. Немесе мәтінге жауап (reply) ретінде «аудиоға айналдыр» деп жазыңыз.',
+        examples: [['Мәтінді аудиоға айналдыру', 'аудиоға айналдыр Ана тілі – халықтың ғасырлар бойы жинаған асыл мұрасы']] },
+      { h: 'Сурет', p: 'Бот ашық қордан дайын сурет және сол суретті Gemini-де өзіңіз салатын ағылшынша промпт береді. Промптты басып көшіріңіз → gemini.google.com → «Сурет жасау» → қойыңыз.',
+        examples: [['Сурет', '/surat микроскоп']] },
+      { h: 'Мультфильм және видео', p: 'Бот сценарий, әр кадрдың ағылшынша промптын және дикторлық мәтінді жазады. Видеоны gemini.google.com («Видео» батырмасы) не labs.google/flow сайтында жасайсыз, дикторлық мәтінді ботта аудиоға айналдырасыз.',
+        examples: [['Мультфильм сценарийі', '3 сынып су айналымы мультфильм жаса']] },
+      { h: 'Дайын промпттар', list: [
+        '«промпт» деп жазыңыз не /promt басыңыз → жинақты таңдаңыз: 100 промпт (барлық пән мұғалімдеріне) немесе 50 промпт (бастауыш сынып).',
+        '«бастауыш промпт» деп жазсаңыз, бастауыш жинағы бірден ашылады.',
+        'Бөлімді, сосын промптты таңдаңыз. Бот [жақшадағы] орындарды бір-бірлеп сұрайды — сіз жай жауап жазасыз.'],
+        examples: [['Бастауыш промпттары', 'бастауыш промпт']] },
+      { h: 'Тегін сурет пен видео сайттары', sites: true,
+        p: 'Мұғалім өз аккаунтымен пайдаланады. Тегін лимиттер жиі өзгереді (2026 жылғы қазан айындағы дерек).' },
+      { h: 'Кеңестер', list: [
+        'Word файлын ашып, өзіңізге қарай өңдеңіз; PDF — басып шығаруға.',
+        'Фактілерді, сандарды, жауаптарды тексеріңіз — соңғы шешім мұғалімде.',
+        'Балалардың аты-жөнін, ЖСН, фотосын жазбаңыз.',
+        'Жауап келмесе, 1–2 минуттан кейін қайта жіберіңіз (кешкісін Gemini жүктелуі мүмкін).'] }
+    ],
+    siteHead: ['Сайт', 'Не жасайды', 'Тегін лимит']
+  },
+  ru: {
+    eyebrow: 'Telegram-бот · для учителей', title: 'Инструкция по работе с ботом',
+    lead: 'Бот делает тесты, КСП, КТП, СОР/СОЧ, рабочие листы, аудио, картинки и сценарии мультфильмов. Пишите запрос обычными словами.',
+    copy: 'Копировать', copied: 'Скопировано', updated: 'Инструкция обновляется на этой странице вместе с ботом — ссылка не меняется.',
+    sections: [
+      { h: 'Начало и обновление', list: [
+        'Откройте ссылку бота и нажмите «Старт» (/start) → выберите язык: Қазақша, Русский или English.',
+        'Когда бот обновится, снова нажмите /start — появится список новых возможностей.',
+        'Сменить язык: /til. Бот отвечает на языке вопроса.',
+        'Ваши запросы не видят другие учителя.',
+        'Полную инструкцию можно открыть и в боте: /guide.'] },
+      { h: 'Как писать запрос', formula: ['КЛАСС', 'ПРЕДМЕТ', 'ТЕМА', 'ЧТО НУЖНО'],
+        p: 'Точки, запятые и заглавные буквы не обязательны. Бот понимает «сделай», «составь», «нужен».' },
+      { h: 'Примеры', examples: [
+        ['Тест (в Телеграме)', '7 класс биология клетка составь тест'],
+        ['Тест Word + PDF (больше 10 вопросов, ответы в конце)', '6 класс история Золотая Орда 20 вопросов тест'],
+        ['КСП', '5 класс математика сложение дробей поурочный план'],
+        ['КТП (часы в неделю указывайте обязательно)', '8 класс география КТП 2 часа в неделю'],
+        ['СОР', '5 класс математика раздел Натуральные числа СОР'],
+        ['СОЧ', '8 класс география 1 четверть СОЧ'],
+        ['Промежуточное оценивание (1–4 кл.)', '2 класс русский язык 1 четверть промежуточное оценивание'],
+        ['Рабочий лист', '3 класс естествознание круговорот воды рабочий лист'],
+        ['Вопрос', 'Как повысить интерес учеников к уроку?']] },
+      { h: 'Аудио', p: 'Напишите «озвучь» перед текстом или после него — всё в одном сообщении. Или ответьте (reply) на сообщение с текстом словом «озвучь».',
+        examples: [['Озвучить текст', 'озвучь Родной язык — это наследие народа, его история и будущее']] },
+      { h: 'Картинки', p: 'Бот пришлёт готовое изображение из открытой базы и английский промпт, чтобы нарисовать самому в Gemini. Нажмите на промпт, чтобы скопировать → gemini.google.com → «Создать изображение» → вставьте.',
+        examples: [['Картинка', '/surat микроскоп']] },
+      { h: 'Мультфильм и видео', p: 'Бот напишет сценарий, английский промпт для каждого кадра и текст диктора. Видео создаёте на gemini.google.com (кнопка «Видео») или labs.google/flow, текст диктора озвучиваете в боте.',
+        examples: [['Сценарий мультфильма', 'сделай мультфильм о круговороте воды для 3 класса']] },
+      { h: 'Готовые промпты', list: [
+        'Напишите «промпт» или /promt → выберите сборник: 100 промптов (учителям всех предметов) или 50 промптов (начальная школа).',
+        'Напишите «промпт начальная школа» — сборник для начальной школы откроется сразу.',
+        'Выберите раздел и промпт. Бот по очереди спросит, что вставить в [скобки] — вы просто отвечаете.'],
+        examples: [['Промпты для начальной школы', 'промпт начальная школа']] },
+      { h: 'Бесплатные сайты для картинок и видео', sites: true,
+        p: 'Учитель пользуется ими со своего аккаунта. Бесплатные лимиты часто меняются (данные на октябрь 2026 года).' },
+      { h: 'Советы', list: [
+        'Откройте Word и отредактируйте под себя; PDF — для печати.',
+        'Проверяйте факты, числа и ответы — последнее слово за учителем.',
+        'Не пишите ФИО, ИИН и фото детей.',
+        'Если ответа нет, отправьте ещё раз через 1–2 минуты (вечером Gemini бывает перегружен).'] }
+    ],
+    siteHead: ['Сайт', 'Что делает', 'Бесплатный лимит']
+  },
+  en: {
+    eyebrow: 'Telegram bot · for teachers', title: 'How to use the teacher bot',
+    lead: 'The bot makes tests, lesson plans, long-term plans, summative assessments, worksheets, audio, pictures and cartoon scripts. Just write your request in plain words.',
+    copy: 'Copy', copied: 'Copied', updated: 'This guide is updated on this page whenever the bot changes. The link stays the same.',
+    sections: [
+      { h: 'Start and update', list: [
+        'Open the bot link and press "Start" (/start) → choose a language: Қазақша, Русский or English.',
+        'When the bot is updated, press /start again to see the new features.',
+        'Change the language with /til. The bot answers in the language of your request.',
+        'Other teachers cannot see your requests.',
+        'The full guide is also in the bot: /guide.'] },
+      { h: 'How to write a request', formula: ['GRADE', 'SUBJECT', 'TOPIC', 'WHAT YOU NEED'],
+        p: 'Full stops, commas and capital letters are not required.' },
+      { h: 'Examples', examples: [
+        ['Quiz (in Telegram)', 'grade 7 English Present Perfect make a test'],
+        ['Word + PDF test (more than 10 questions, answer key at the end)', 'grade 6 English Past Simple 20 questions test'],
+        ['Short-term lesson plan', 'grade 5 English My family lesson plan'],
+        ['Long-term plan (always give hours per week)', 'grade 8 English KTP 3 hours a week'],
+        ['Summative assessment for the unit', 'grade 5 English unit Food summative assessment'],
+        ['Summative assessment for the term', 'grade 8 English term 1 term summative assessment'],
+        ['Worksheet', 'grade 3 English Animals worksheet'],
+        ['Question', 'How can I make my lessons more engaging?']] },
+      { h: 'Audio', p: 'Write "convert to audio" before or after the text, all in one message. Or reply to a message with the text and write "convert to audio".',
+        examples: [['Text to speech', 'convert to audio I wake up early in the morning, usually at 7 o\'clock']] },
+      { h: 'Pictures', p: 'The bot sends a ready picture from an open library and an English prompt to draw it yourself in Gemini. Tap the prompt to copy it → gemini.google.com → "Create image" → paste.',
+        examples: [['Picture', '/surat a light microscope']] },
+      { h: 'Cartoons and video', p: 'The bot writes a script, an English prompt for each scene and the narration. You create the video at gemini.google.com ("Video" button) or labs.google/flow and turn the narration into audio in the bot.',
+        examples: [['Cartoon script', 'make a cartoon about the water cycle for grade 3']] },
+      { h: 'Ready-made prompts', list: [
+        'Write "prompt" or press /promt → choose a collection: 100 prompts (for all teachers) or 50 prompts (primary school).',
+        'Choose a section, then a prompt. The bot asks what to put into each [bracket], you just answer.'] },
+      { h: 'Free sites for pictures and video', sites: true,
+        p: 'Teachers use them with their own accounts. Free limits change often (information as of October 2026).' },
+      { h: 'Tips', list: [
+        'Open the Word file and edit it; the PDF is for printing.',
+        'Check facts, numbers and answers. The teacher has the final say.',
+        'Do not write children\'s names, ID numbers or photos.',
+        'If there is no answer, send the request again in 1–2 minutes (Gemini can be busy in the evening).'] }
+    ],
+    siteHead: ['Site', 'What it does', 'Free limit']
+  }
+};
+
+// Тегін сайттар — «Бастауыш 50 промпт» семинар материалынан
+var SITES = [
+  ['Google Gemini', 'gemini.google.com', { kk: 'Сурет, видео (Veo)', ru: 'Картинки, видео (Veo)', en: 'Images, video (Veo)' },
+    { kk: 'Google аккаунтымен күн сайын бірнеше сурет', ru: 'Несколько картинок в день с аккаунтом Google', en: 'Several images a day with a Google account' }],
+  ['Google Flow', 'labs.google/flow', { kk: 'Дыбысы бар қысқа видео, мультфильм', ru: 'Короткие видео со звуком, мультфильмы', en: 'Short videos with sound, cartoons' },
+    { kk: 'Күнделікті тегін кредит (аймаққа байланысты)', ru: 'Ежедневные бесплатные кредиты (зависит от региона)', en: 'Daily free credits (depends on region)' }],
+  ['Microsoft Copilot / Bing Image Creator', 'bing.com/images/create', { kk: 'Сурет', ru: 'Картинки', en: 'Images' },
+    { kk: 'Microsoft аккаунтымен күн сайын', ru: 'Ежедневно с аккаунтом Microsoft', en: 'Daily with a Microsoft account' }],
+  ['Canva for Education', 'canva.com/education', { kk: 'Сурет, плакат, презентация, жұмыс парағы', ru: 'Картинки, плакаты, презентации, рабочие листы', en: 'Images, posters, slides, worksheets' },
+    { kk: 'Мұғалімге тегін (растау керек)', ru: 'Бесплатно для учителей (нужна проверка)', en: 'Free for teachers (verification needed)' }],
+  ['Kling AI', 'klingai.com', { kk: 'Суреттен видео', ru: 'Видео из картинки', en: 'Video from an image' },
+    { kk: 'Күн сайын 2–3 қысқа ролик', ru: '2–3 коротких ролика в день', en: '2–3 short clips a day' }],
+  ['Dreamina (CapCut)', 'dreamina.capcut.com', { kk: 'Сурет пен видео, CapCut-та монтаж', ru: 'Картинки и видео, монтаж в CapCut', en: 'Images and video, editing in CapCut' },
+    { kk: 'Күн сайын тегін кредит', ru: 'Ежедневные бесплатные кредиты', en: 'Daily free credits' }],
+  ['Meta Animated Drawings', 'sketch.metademolab.com', { kk: 'Баланың қағаздағы суретін жандандырады', ru: 'Оживляет детский рисунок на бумаге', en: 'Animates a child\'s paper drawing' },
+    { kk: 'Тегін', ru: 'Бесплатно', en: 'Free' }],
+  ['Suno', 'suno.com', { kk: 'Ереже, көбейту кестесі туралы ән', ru: 'Песни о правилах, таблице умножения', en: 'Songs about rules, times tables' },
+    { kk: 'Күніне шамамен 10 ән', ru: 'Около 10 песен в день', en: 'About 10 songs a day' }],
+  ['Wordwall', 'wordwall.net', { kk: 'Викторинаны ойынға айналдырады', ru: 'Превращает викторину в игру', en: 'Turns a quiz into a game' },
+    { kk: '5 ойынға дейін тегін', ru: 'До 5 игр бесплатно', en: 'Up to 5 games free' }]
+];
+
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function copyButton(text, t) {
+  var b = el('button', 'copy', t.copy);
+  b.type = 'button';
+  b.addEventListener('click', function () {
+    var done = function () { b.textContent = t.copied; setTimeout(function () { b.textContent = t.copy; }, 1500); };
+    try {
+      navigator.clipboard.writeText(text).then(done, function () { selectText(b.previousSibling); });
+    } catch (e) { selectText(b.previousSibling); }
+  });
+  return b;
+}
+
+function selectText(node) {
+  try { var r = document.createRange(); r.selectNodeContents(node); var s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) {}
+}
+
+function render(lang) {
+  var t = T[lang];
+  document.documentElement.lang = lang;
+  document.getElementById('eyebrow').textContent = t.eyebrow;
+  document.getElementById('title').textContent = t.title;
+  document.getElementById('lead').textContent = t.lead;
+  document.getElementById('footer').textContent = t.updated;
+  ['kk', 'ru', 'en'].forEach(function (l) { document.getElementById('tab-' + l).setAttribute('aria-selected', String(l === lang)); });
+
+  var bots = document.getElementById('bots');
+  bots.textContent = '';
+  BOTS.forEach(function (b) {
+    var card = el('div', 'bot');
+    card.appendChild(el('b', null, b.name));
+    var a = el('a', null, b.url.replace('https://', ''));
+    a.href = b.url; a.target = '_blank'; a.rel = 'noopener';
+    card.appendChild(a);
+    bots.appendChild(card);
+  });
+
+  var main = document.getElementById('content');
+  main.textContent = '';
+  var wrap = el('div', 'wrap');
+  t.sections.forEach(function (s, i) {
+    var sec = el('section');
+    var h = el('h2');
+    h.appendChild(el('span', 'n', String(i + 1)));
+    h.appendChild(document.createTextNode(s.h));
+    sec.appendChild(h);
+    if (s.formula) {
+      var f = el('div', 'formula');
+      s.formula.forEach(function (part, j) {
+        if (j) f.appendChild(el('i', null, '+'));
+        f.appendChild(el('span', null, part));
+      });
+      sec.appendChild(f);
+    }
+    if (s.p) sec.appendChild(el('p', null, s.p));
+    if (s.list) {
+      var ul = el('ul');
+      s.list.forEach(function (item) { ul.appendChild(el('li', null, item)); });
+      sec.appendChild(ul);
+    }
+    if (s.examples) {
+      var exs = el('div', 'examples');
+      s.examples.forEach(function (x) {
+        var row = el('div', 'ex');
+        row.appendChild(el('div', 'what', x[0]));
+        var br = el('div', 'bubble-row');
+        br.appendChild(el('div', 'bubble', x[1]));
+        br.appendChild(copyButton(x[1], t));
+        row.appendChild(br);
+        exs.appendChild(row);
+      });
+      sec.appendChild(exs);
+    }
+    if (s.sites) {
+      var tw = el('div', 'table-wrap');
+      var table = el('table');
+      var thead = el('tr');
+      t.siteHead.forEach(function (c) { thead.appendChild(el('th', null, c)); });
+      table.appendChild(thead);
+      SITES.forEach(function (site) {
+        var tr = el('tr');
+        var td = el('td');
+        td.appendChild(el('b', null, site[0]));
+        td.appendChild(el('br'));
+        var a = el('a', null, site[1]);
+        a.href = 'https://' + site[1]; a.target = '_blank'; a.rel = 'noopener'; a.style.color = 'var(--mark)';
+        td.appendChild(a);
+        tr.appendChild(td);
+        tr.appendChild(el('td', null, site[2][lang]));
+        tr.appendChild(el('td', null, site[3][lang]));
+        table.appendChild(tr);
+      });
+      tw.appendChild(table);
+      sec.appendChild(tw);
+    }
+    wrap.appendChild(sec);
+  });
+  main.appendChild(wrap);
+}
+
+function langFromHash() {
+  var h = (location.hash || '').replace('#', '');
+  return T[h] ? h : 'kk';
+}
+
+document.querySelectorAll('.tabs button').forEach(function (b) {
+  b.addEventListener('click', function () { location.hash = b.dataset.lang; });
+});
+window.addEventListener('hashchange', function () { render(langFromHash()); });
+render(langFromHash());
+</script>
+
+</body>
+</html>
