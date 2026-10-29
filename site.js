@@ -457,6 +457,19 @@
 
   // ---------- «Сыныбым»: сынып кодымен ашылатын жабық бөлім ----------
   var MC = {codes: [], cur: 0, tab: 'hw', data: {}, err: '', hwDate: null, sent: false, adding: false, pending: false};
+  // Ескі мекенжайдан (github.io) көшкенде сақталған кодтар мен құрылғы белгісі #mv= арқылы келеді
+  (function(){
+    var m = location.hash.match(/[#&]mv=([^&]*)/); if (!m) return;
+    try {
+      var o = JSON.parse(decodeURIComponent(m[1])) || {}, have = JSON.parse(localStorage.getItem('bs_codes') || '[]') || [];
+      (o.codes || []).forEach(function(c){ if (c && c.code && !have.some(function(x){ return x.code === c.code; })) have.push(c); });
+      localStorage.setItem('bs_codes', JSON.stringify(have));
+      if (o.tok && !localStorage.getItem('bs_tok')) localStorage.setItem('bs_tok', o.tok);
+      if (o.parent && !localStorage.getItem('bs_parent')) localStorage.setItem('bs_parent', o.parent);
+    } catch(e) {}
+    var rest = location.hash.replace(/[#&]mv=[^&]*/, '').replace(/^&/, '#');
+    try { history.replaceState(null, '', location.pathname + location.search + (rest.length > 1 ? rest : '')); } catch(e) {}
+  })();
   try { MC.codes = JSON.parse(localStorage.getItem('bs_codes') || '[]') || []; } catch(e) { MC.codes = []; }
   function mcSave(){ try { localStorage.setItem('bs_codes', JSON.stringify(MC.codes)); } catch(e) {} }
   // Құрылғының жасырын белгісі: жеке жауаптарды тек сұрақ жіберген құрылғы көреді
