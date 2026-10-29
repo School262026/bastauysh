@@ -1508,7 +1508,7 @@
           T('әлі рұқсат берілмеген — Apps Script редакторында setupNotify функциясын бір рет іске қосыңыз')),
         info.total ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => {
           const j = await run(T('Жүктелуде…'), () => api('parents', {})); parentsExcel(j.parents, T('Барлық ата-аналар'));
-        }}, T('📥 Барлық тіркелген ата-аналар (Excel)')) : null);
+        }}, T('📥 Барлық тіркелген ата-аналар (Excel)')) : '');
     };
     api('notifyInfo').then(render).catch(e => { box.innerHTML = ''; box.append(h('p', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
     return section(T('🔔 Ата-аналарға хабарламалар'), box);
