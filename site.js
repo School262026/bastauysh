@@ -655,12 +655,12 @@
         (MC.regMsg ? '<p class="text-sm font-bold text-emerald-800">' + esc(MC.regMsg) + '</p>' : '') + '</div>';
       return h;
     }
-    var v = r || {ch: {wa: true}}, ch = v.ch || {};
+    var v = r || {ch: {wa: true, email: true}}, ch = v.ch || {};
     var box = function(name, on, label, dis){ return '<label class="flex items-center gap-2 text-sm' + (dis ? ' opacity-40' : '') + '"><input type="checkbox" name="' + name + '"' + (on && !dis ? ' checked' : '') + (dis ? ' disabled' : '') + '> ' + esc(label) + '</label>'; };
     h += '<form onsubmit="return uiRegSave(this)" class="mt-4 rounded-2xl border border-emerald-900/10 p-4 sm:p-5 space-y-3">' +
       '<div class="grid sm:grid-cols-2 gap-3"><input name="name" required maxlength="100" placeholder="' + esc(t('reg_name')) + '" value="' + esc(v.name || '') + '" class="' + inp + '">' +
       '<input name="phone" required type="tel" maxlength="20" placeholder="' + esc(t('reg_phone')) + ': +7 7__ ___ __ __" value="' + esc(v.phone ? '+' + v.phone : '') + '" class="' + inp + '"></div>' +
-      '<input name="email" type="email" maxlength="120" placeholder="' + esc(t('reg_email')) + '" value="' + esc(v.email || '') + '" class="' + inp + '">' +
+      '<input name="email" type="email" required maxlength="120" placeholder="' + esc(t('reg_email')) + '" value="' + esc(v.email || '') + '" class="' + inp + '">' +
       '<div class="text-sm font-extrabold text-emerald-950">' + esc(t('reg_ch')) + '</div><div class="flex flex-wrap gap-x-5 gap-y-2">' +
       box('wa', ch.wa, '💬 ' + t('reg_wa')) + box('tg', ch.tg, '✈️ ' + t('reg_tg'), !d.tgName) + box('em', ch.email, '✉️ ' + t('reg_mail')) + '</div>' +
       '<label class="flex items-start gap-2 text-xs text-charcoal/75"><input type="checkbox" name="consent" required class="mt-0.5"' + (r ? ' checked' : '') + '> <span>' + esc(t('reg_consent')) + '</span></label>' +
@@ -679,7 +679,8 @@
       if (!j.ok) { MC.regErr = String(j.err).indexOf('CODE') >= 0 ? t('mc_bad') : j.err; renderMyClass(); return; }
       MC.data[code].reg = j.reg; MC.regEdit = false; MC.regErr = ''; MC.regMsg = t('reg_saved');
       try { localStorage.setItem('bs_cls_' + code, JSON.stringify(MC.data[code])); } catch(e) {}
-      renderMyClass();
+      if (MC.data[code].child) MC.tab = 'fb';
+      renderMyClass(); mcLoad(code);
       if (j.reg.ch.tg && !j.reg.tg && j.reg.tgLink) { MC_TG_OPENED(); window.open(j.reg.tgLink, '_blank'); }
     }).catch(function(){ MC.regErr = t('loading'); renderMyClass(); });
     return false;
@@ -696,7 +697,7 @@
   document.addEventListener('visibilitychange', function(){ if (!document.hidden && tgWaiting) { tgWaiting = false; setTimeout(window.uiRegTg, 800); } });
   window.uiRegOff = function(){
     var code = regCode(); if (!code || !confirm(t('reg_off_q'))) return;
-    post({a: 'unreg', code: code, token: mcToken()}).then(function(j){ if (j.ok) { MC.data[code].reg = null; MC.regMsg = ''; renderMyClass(); } });
+    post({a: 'unreg', code: code, token: mcToken()}).then(function(j){ if (j.ok) { MC.data[code].reg = null; MC.regMsg = ''; renderMyClass(); mcLoad(code); } });
   };
   function renderMyClass(){
     var box = byId('mcBody'); if (!box) return;
@@ -721,19 +722,27 @@
       (d && d.teachers && d.teachers.length ? '<div class="text-sm text-charcoal/70">' + esc(t('mc_teacher')) + ': <b>' + esc(d.teachers.join(', ')) + '</b></div>' : '') + '</div>' +
       '<button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiMcRemove()">' + esc(t('mc_remove')) + '</button></div>' +
       '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']] : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
-        return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + x[1] + esc(t(x[2])) + '</button>';
+        var lk = (x[0] === 'fb' || x[0] === 'card') && mcLocked(d) ? '🔒 ' : '';
+        return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + lk + x[1] + esc(t(x[2])) + '</button>';
       }).join('') + '</div>';
     var pop = regPopNeeded(cur, d);
-    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : (MC.tab === 'fb' || MC.tab === 'card') && mcLocked(d) ? mcLockedView(d, pop) : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
     box.innerHTML = h + '</div>';
     regPop(pop ? d : null);
   }
-  // Баланың жеке сілтемесін алғаш ашқанда тіркелу терезесі шығады («Кейін» басса, 3 күннен кейін қайта сұрайды)
-  var REG_LATER_MS = 3 * 864e5;
+  // Ата-ана тіркелмейінше баланың кері байланысы мен даму картасы ашылмайды (сервер де бермейді)
+  function mcLocked(d){ return !!(d && d.child && (d.locked || !d.reg)); }
+  function mcLockedView(d, pop){
+    return '<div class="rounded-2xl bg-gold-50 border border-gold-100 p-4 sm:p-5"><div class="font-extrabold text-emerald-950">🔒 ' + esc(t('reg_lock_title')) + '</div>' +
+      '<p class="text-sm text-charcoal/75 mt-1">' + esc(t('reg_lock_desc')) + '</p>' +
+      (d.fbCount ? '<p class="text-sm font-bold text-emerald-900 mt-2">📝 ' + esc(t('reg_lock_count').replace('{n}', d.fbCount)) + '</p>' : '') + '</div>' +
+      (pop ? '' : mcReg(d, true));
+  }
+  // Баланың жеке сілтемесін ашқанда тіркелу терезесі шығады («Кейін» басса, осы сапарда қайта шықпайды)
   function regPopNeeded(cur, d){
     if (!cur || !d || !d.child || d.reg || !MC.fresh || !MC.fresh[cur.code]) return false;
-    var later = 0; try { later = +localStorage.getItem('bs_reg_later_' + cur.code) || 0; } catch(e) {}
-    return Date.now() - later > REG_LATER_MS;
+    try { if (sessionStorage.getItem('bs_reg_later_' + cur.code)) return false; } catch(e) {}
+    return true;
   }
   function regPop(d){
     var ov = byId('regPop');
@@ -747,8 +756,9 @@
   }
   window.uiRegLater = function(){
     var cur = MC.codes[MC.cur]; if (!cur) return;
-    try { localStorage.setItem('bs_reg_later_' + cur.code, String(Date.now())); } catch(e) {}
+    try { sessionStorage.setItem('bs_reg_later_' + cur.code, '1'); } catch(e) {}
     if (MC.fresh) MC.fresh[cur.code] = false;
+    if (MC.tab === 'fb' || MC.tab === 'card') MC.tab = 'hw';
     renderMyClass();
   };
   window.uiMcEnter = function(f){
