@@ -28,8 +28,13 @@
     kids.flat(9).forEach(c => { if (c == null || c === false) return; el.append(c.nodeType ? c : document.createTextNode(String(c))); });
     return el;
   }
+  // box.append(шарт ? элемент : null) экранға «null» деп жазбасын: бос мәндерді өткізіп жібереміз
+  ['append', 'prepend', 'before', 'after'].forEach(m => [Element.prototype, DocumentFragment.prototype].forEach(P => {
+    const orig = P[m]; if (!orig) return;
+    P[m] = function(...a){ return orig.apply(this, a.filter(x => x != null && x !== false)); };
+  }));
   const $ = id => document.getElementById(id);
-  const clone = x => JSON.parse(JSON.stringify(x == null ? null : x));
+  const clone =x => JSON.parse(JSON.stringify(x == null ? null : x));
   const strip = s => String(s || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
   const L = o => o == null ? '' : typeof o === 'string' ? o : (o.kz || o.ru || o.en || '');
   const isDrive = ref => ref && !/[\/.]/.test(ref);
