@@ -624,6 +624,66 @@
     if (!d || !d.child) return;
     window.FB_PRINT({lang: lang, blocks: [{name: d.child.name, cls: d.cls, items: d.feedback || []}]});
   };
+  // Ата-ананың хабарламаға тіркелуі (осы құрылғыдан)
+  function mcReg(d){
+    var r = d.reg, inp = 'w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold';
+    var h = '<div class="rounded-2xl bg-gold-50 border border-gold-100 p-4 sm:p-5"><div class="font-extrabold text-emerald-950">🔔 ' + esc(t('reg_title')) + '</div><p class="text-sm text-charcoal/70 mt-1">' + esc(t('reg_desc')) + '</p></div>';
+    if (r && !MC.regEdit) {
+      var chs = [r.ch.wa ? '💬 WhatsApp' : '', r.ch.tg ? '✈️ Telegram' : '', r.ch.email ? '✉️ Email' : ''].filter(Boolean).join(' · ');
+      h += '<div class="mt-4 rounded-2xl border border-emerald-900/10 p-4 sm:p-5 space-y-2"><div class="font-extrabold text-emerald-900">✓ ' + esc(t('reg_done')) + '</div>' +
+        '<div class="text-sm">' + esc(r.name) + ' · +' + esc(r.phone) + (r.email ? ' · ' + esc(r.email) : '') + '</div>' +
+        '<div class="text-sm text-charcoal/70">' + esc(t('reg_channels')) + ': ' + esc(chs || '—') + '</div>';
+      if (r.ch.tg && r.tgLink) h += r.tg ? '<div class="text-sm font-bold text-emerald-800">✈️ ' + esc(t('reg_tg_ok')) + ' ✓</div>' :
+        '<div class="rounded-xl bg-emerald-50 p-3 text-sm space-y-2"><div class="font-bold">✈️ ' + esc(t('reg_tg_wait')) + '</div><div>' + esc(t('reg_tg_hint')) + '</div>' +
+        '<div class="flex flex-wrap gap-2"><a href="' + esc(r.tgLink) + '" target="_blank" rel="noopener" onclick="MC_TG_OPENED()" class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-5 py-2 rounded-full">' + esc(t('reg_tg_go')) + '</a>' +
+        '<button type="button" onclick="uiRegTg()" class="chip">' + esc(t('reg_tg_check')) + '</button></div></div>';
+      h += '<div class="flex flex-wrap gap-2 pt-1"><button type="button" class="chip" onclick="uiRegEdit(1)">' + esc(t('reg_edit')) + '</button><button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiRegOff()">' + esc(t('reg_off')) + '</button></div>' +
+        (MC.regMsg ? '<p class="text-sm font-bold text-emerald-800">' + esc(MC.regMsg) + '</p>' : '') + '</div>';
+      return h;
+    }
+    var v = r || {ch: {wa: true}}, ch = v.ch || {};
+    var box = function(name, on, label, dis){ return '<label class="flex items-center gap-2 text-sm' + (dis ? ' opacity-40' : '') + '"><input type="checkbox" name="' + name + '"' + (on && !dis ? ' checked' : '') + (dis ? ' disabled' : '') + '> ' + esc(label) + '</label>'; };
+    h += '<form onsubmit="return uiRegSave(this)" class="mt-4 rounded-2xl border border-emerald-900/10 p-4 sm:p-5 space-y-3">' +
+      '<div class="grid sm:grid-cols-2 gap-3"><input name="name" required maxlength="100" placeholder="' + esc(t('reg_name')) + '" value="' + esc(v.name || '') + '" class="' + inp + '">' +
+      '<input name="phone" required type="tel" maxlength="20" placeholder="' + esc(t('reg_phone')) + ': +7 7__ ___ __ __" value="' + esc(v.phone ? '+' + v.phone : '') + '" class="' + inp + '"></div>' +
+      '<input name="email" type="email" maxlength="120" placeholder="' + esc(t('reg_email')) + '" value="' + esc(v.email || '') + '" class="' + inp + '">' +
+      '<div class="text-sm font-extrabold text-emerald-950">' + esc(t('reg_ch')) + '</div><div class="flex flex-wrap gap-x-5 gap-y-2">' +
+      box('wa', ch.wa, '💬 ' + t('reg_wa')) + box('tg', ch.tg, '✈️ ' + t('reg_tg'), !d.tgName) + box('em', ch.email, '✉️ ' + t('reg_mail')) + '</div>' +
+      '<label class="flex items-start gap-2 text-xs text-charcoal/75"><input type="checkbox" name="consent" required class="mt-0.5"' + (r ? ' checked' : '') + '> <span>' + esc(t('reg_consent')) + '</span></label>' +
+      '<div class="flex flex-wrap items-center gap-2"><button class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-full">' + esc(r ? t('reg_update') : t('reg_save')) + '</button>' +
+      (r ? '<button type="button" class="chip" onclick="uiRegEdit(0)">✕</button>' : '') + '</div>' +
+      (MC.regErr ? '<p class="text-sm font-semibold text-rose-700">' + esc(MC.regErr) + '</p>' : '') + '</form>';
+    return h;
+  }
+  function regCode(){ var cur = MC.codes[MC.cur]; return cur ? cur.code : null; }
+  window.uiRegEdit = function(on){ MC.regEdit = !!on; MC.regErr = ''; MC.regMsg = ''; renderMyClass(); };
+  window.uiRegSave = function(f){
+    var code = regCode(); if (!code) return false;
+    var btn = f.querySelector('button'); btn.disabled = true; btn.textContent = t('loading');
+    post({a: 'reg', code: code, token: mcToken(), name: f.name.value.trim(), phone: f.phone.value.trim(), email: f.email.value.trim(),
+      ch: {wa: f.wa.checked, tg: f.tg.checked, email: f.em.checked}, consent: f.consent.checked}).then(function(j){
+      if (!j.ok) { MC.regErr = String(j.err).indexOf('CODE') >= 0 ? t('mc_bad') : j.err; renderMyClass(); return; }
+      MC.data[code].reg = j.reg; MC.regEdit = false; MC.regErr = ''; MC.regMsg = t('reg_saved');
+      try { localStorage.setItem('bs_cls_' + code, JSON.stringify(MC.data[code])); } catch(e) {}
+      renderMyClass();
+      if (j.reg.ch.tg && !j.reg.tg && j.reg.tgLink) { MC_TG_OPENED(); window.open(j.reg.tgLink, '_blank'); }
+    }).catch(function(){ MC.regErr = t('loading'); renderMyClass(); });
+    return false;
+  };
+  window.uiRegTg = function(){
+    var code = regCode(); if (!code) return;
+    post({a: 'tgCheck', code: code, token: mcToken()}).then(function(j){
+      if (j.ok && j.reg) { MC.data[code].reg = j.reg; MC.regMsg = j.reg.tg ? t('reg_tg_ok') + ' ✓' : t('reg_tg_wait'); renderMyClass(); }
+    });
+  };
+  // Telegram-нан бетке оралғанда өзі тексереді
+  var tgWaiting = false;
+  window.MC_TG_OPENED = function(){ tgWaiting = true; };
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && tgWaiting) { tgWaiting = false; setTimeout(window.uiRegTg, 800); } });
+  window.uiRegOff = function(){
+    var code = regCode(); if (!code || !confirm(t('reg_off_q'))) return;
+    post({a: 'unreg', code: code, token: mcToken()}).then(function(j){ if (j.ok) { MC.data[code].reg = null; MC.regMsg = ''; renderMyClass(); } });
+  };
   function renderMyClass(){
     var box = byId('mcBody'); if (!box) return;
     var form = '<form onsubmit="return uiMcEnter(this)" class="flex flex-wrap gap-2 justify-center">' +
@@ -646,10 +706,10 @@
       '<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><div class="text-2xl font-extrabold text-emerald-950">' + esc(cur.cls) + (cur.child ? ' · ' + esc(cur.child) : '') + '</div>' +
       (d && d.teachers && d.teachers.length ? '<div class="text-sm text-charcoal/70">' + esc(t('mc_teacher')) + ': <b>' + esc(d.teachers.join(', ')) + '</b></div>' : '') + '</div>' +
       '<button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiMcRemove()">' + esc(t('mc_remove')) + '</button></div>' +
-      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']] : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa']]).map(function(x){
+      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']] : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
         return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + x[1] + esc(t(x[2])) + '</button>';
       }).join('') + '</div>';
-    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'reg' ? mcReg(d) : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
     box.innerHTML = h + '</div>';
   }
   window.uiMcEnter = function(f){

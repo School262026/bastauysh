@@ -638,7 +638,7 @@
           const item = Object.assign(p, {date: date.value || today(), title: ttl.get(), body: body.get(), media: media.get()});
           const j = await run(T('Жариялануда…'), () => api('cupsert', {col: 'cposts', item, trash: media.removed()}));
           CLS.cposts = (CLS.cposts || []).filter(x => x.id !== j.item.id).concat([j.item]);
-          savedToast(); go('cposts', true);
+          savedToast(); go('cposts', true); showNotify(j.notify);
         })));
     view.oninput = () => { dirty = true; };
   }
@@ -694,7 +694,7 @@
             const item = Object.assign(x, {date: date.value || today(), cls: c, subject: subject.get(), text: text.get(), media: media.get()});
             const j = await run(T('Сақталуда…'), () => api('cupsert', {col: 'homework', item, trash: media.removed()}));
             CLS.homework = (CLS.homework || []).filter(y => y.id !== j.item.id).concat([j.item]);
-            savedToast(); go('hw', true);
+            savedToast(); go('hw', true); showNotify(j.notify);
           }}, T('💾 Сақтау')))));
   }
 
@@ -727,7 +727,7 @@
           h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
             if (!ta.value.trim()) { toast(T('Жауапты жазыңыз'), true); return; }
             const j = await run(T('Жіберілуде…'), () => api('answer', {id: q.id, text: ta.value.trim(), vis: vis.value}));
-            Object.assign(q, j.item); dirty = false; toast(T('Жауап жіберілді ✓')); go('qa', true);
+            Object.assign(q, j.item); dirty = false; toast(T('Жауап жіберілді ✓')); go('qa', true); showNotify(j.notify);
           }}, q.answer ? T('Жауапты жаңарту') : T('Жауап беру'))))
           : (q.answer ? h('div', {class: 'rounded-xl bg-emerald-50 p-3 whitespace-pre-line'}, q.answer) : null));
     })));
@@ -796,6 +796,7 @@
       h('div', {class: 'flex flex-wrap gap-2 my-4'},
         F.write && F.students.length ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => fbClassForm(box, F)}, T('✍️ Бүкіл сыныпқа жазу')) : null,
         F.manage ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbRoster(box, F)}, T('👧 Оқушылар тізімі')) : null,
+        F.manage ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbParents(box, F)}, T('👨‍👩‍👧 Тіркелген ата-аналар')) : null,
         F.manage && F.students.length ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbCodes(box, F)}, T('🔑 Балалардың кодтары')) : null,
         F.manage ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => fbImport(box, F)}, T('📥 Excel-ден көшіру')) : null,
         F.students.length ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => fbCards(box, F)}, T('📊 Даму картасы')) : null,
@@ -865,7 +866,7 @@
           if (!text.value.trim() && !rec.value.trim()) { toast(T('Кері байланысты жазыңыз'), true); return; }
           const item = {id: x.id, sid: st.id, date: date.value || today(), kind: kind.value, subj: subj.value.trim(), text: text.value.trim(), rec: rec.value.trim()};
           const j = await run(T('Сақталуда…'), () => api('fbSave', {cls: F.cls, items: [item]}));
-          fbMerge(F, j.items); dirty = false; toast(T('Сақталды ✓ Ата-ана өз бетінде көреді.')); fbStudent(box, F, st);
+          fbMerge(F, j.items); dirty = false; toast(T('Сақталды ✓ Ата-ана өз бетінде көреді.')); fbStudent(box, F, st); showNotify(j.notify);
         }}, T('💾 Сақтау'))))));
     text.focus();
   }
@@ -890,7 +891,7 @@
         const items = rows.filter(r => r.text.value.trim() || r.rec.value.trim()).map(r => ({sid: r.st.id, date: date.value || today(), kind: kind.value, subj: subj.value.trim(), text: r.text.value.trim(), rec: r.rec.value.trim()}));
         if (!items.length) { toast(T('Ешбір оқушыға жазылмаған'), true); return; }
         const j = await run(T('Сақталуда…'), () => api('fbSave', {cls: F.cls, items}));
-        fbMerge(F, j.items); dirty = false; toast(T('Сақталды ✓ ') + j.items.length + T(' оқушы')); go('fb', true);
+        fbMerge(F, j.items); dirty = false; toast(T('Сақталды ✓ ') + j.items.length + T(' оқушы')); go('fb', true); showNotify(j.notify);
       })));
   }
   // Оқушылар тізімі (бас әкімші және сынып жетекшісі)
@@ -1121,7 +1122,7 @@
         const items = rows.filter(r => r.text.value.trim() || r.rec.value.trim()).map(r => ({sid: r.st.id, date: date.value || today(), subj: club, text: r.text.value.trim(), rec: r.rec.value.trim()}));
         if (!items.length) { toast(T('Ешбір балаға жазылмаған'), true); return; }
         const j = await run(T('Сақталуда…'), () => api('fbSaveClub', {club, items}));
-        C.items = C.items.concat(j.items); dirty = false; toast(T('Сақталды ✓ ') + j.items.length + T(' бала')); go('fb', true);
+        C.items = C.items.concat(j.items); dirty = false; toast(T('Сақталды ✓ ') + j.items.length + T(' бала')); go('fb', true); showNotify(j.notify);
       })));
   }
 
@@ -1244,7 +1245,7 @@
             data.psych = {consent: consent.checked, consentDate: cdate.value, methods: methods.value.trim(), text: ptext.value.trim(), rec: prec.value.trim()};
           }
           const j = await run(T('Сақталуда…'), () => api('cardConcl', {cls: F.cls, period: CARD_PERIOD, sid: st.id, data}));
-          K.concl = K.concl.filter(x => x.sid !== st.id).concat([j.item]); dirty = false; toast(T('Қорытынды сақталды ✓'));
+          K.concl = K.concl.filter(x => x.sid !== st.id).concat([j.item]); dirty = false; toast(T('Қорытынды сақталды ✓')); showNotify(j.notify);
         }}, T('💾 Қорытындыны сақтау'))));
       syncConsent();
     }
@@ -1430,6 +1431,87 @@
     done();
     if (!groups.length) { toast(T('Оқушылар тізімі әлі жүктелмеген'), true); return; }
     kind === 'pdf' ? codesPdf(groups) : codesExcel(groups);
+  }
+
+  // ---------- 🔔 Ата-аналарға хабарлама ----------
+  // Сақтағаннан кейін: Telegram мен email автоматты кетті, WhatsApp — мұғалім батырмамен жібереді
+  function showNotify(n){
+    if (!n) return;
+    const auto = (n.tg ? '✈️ Telegram: ' + n.tg : '') + (n.tg && n.email ? ' · ' : '') + (n.email ? '✉️ Email: ' + n.email : '');
+    if (!(n.wa || []).length) { if (auto) toast(T('🔔 Хабарлама жіберілді — ') + auto); return; }
+    const sent = new Set();
+    const rows = n.wa.map((x, i) => {
+      const b = h('a', {class: 'btn btn-p btn-s', target: '_blank', href: 'https://wa.me/' + x.phone + '?text=' + encodeURIComponent(x.text),
+        onclick: () => { sent.add(i); b.textContent = '✓ ' + T('Жіберілді'); b.className = 'btn btn-l btn-s'; count.textContent = sent.size + ' / ' + n.wa.length; }}, '💬 WhatsApp');
+      return h('div', {class: 'flex flex-wrap items-center gap-2 border-b border-emerald-900/5 py-1.5 text-sm'},
+        h('span', {class: 'flex-1 min-w-[12rem]'}, h('b', {}, x.name), x.child ? ' · ' + x.child : '', h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), b);
+    });
+    const count = h('span', {class: 'font-bold text-emerald-900'}, '0 / ' + n.wa.length);
+    const close = modal(
+      h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, T('🔔 Ата-аналарға хабарлау')),
+      auto ? h('p', {class: 'text-sm text-emerald-800 font-semibold mt-1'}, T('Автоматты жіберілді: ') + auto) : null,
+      h('p', {class: 'text-sm text-charcoal/70 mt-1'}, T('Бұл ата-аналар хабарламаны WhatsApp арқылы алуды таңдаған. Әр батырманы басыңыз — WhatsApp дайын мәтінмен ашылады, «Жіберу» басасыз.')),
+      h('div', {class: 'mt-2 text-sm'}, T('Жіберілді: '), count),
+      h('div', {class: 'mt-2 max-h-[55vh] overflow-y-auto'}, rows),
+      h('div', {class: 'flex justify-end mt-4'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => close()}, T('Дайын'))));
+  }
+  const CH_ICONS = p => [(p.ch || {}).wa ? '💬' : '', p.tg ? '✈️' : ((p.ch || {}).tg ? '✈️?' : ''), (p.ch || {}).email && p.email ? '✉️' : ''].filter(Boolean).join(' ');
+  function parentsExcel(list, name){
+    saveXlsx(name + ' ' + fileDate() + '.xlsx', [{name: T('Ата-аналар'), rows: [[T('Сынып'), T('Бала'), T('Ата-ана'), T('Телефон'), 'Email', 'WhatsApp', 'Telegram', T('Тіркелген күні')]].concat(
+      list.map(p => [p.cls, p.child || '—', p.name, '+' + p.phone, p.email, (p.ch || {}).wa ? '✓' : '', p.tg ? '✓' : ((p.ch || {}).tg ? T('қосылмаған') : ''), p.ts ? fmtTs(p.ts) : '']))}]);
+  }
+  // Сынып жетекшісі: тіркелген ата-аналар
+  async function fbParents(box, F){
+    box.innerHTML = '';
+    box.append(fbBack(), h('p', {class: 'text-charcoal/60'}, T('Жүктелуде…')));
+    let j;
+    try { j = await api('parents', {cls: F.cls}); } catch (e) { box.lastChild.textContent = T(e.message); return; }
+    if (!box.isConnected) return;
+    box.innerHTML = '';
+    const list = j.parents.sort((a, b) => (a.child || '').localeCompare(b.child || '', 'kk'));
+    const without = F.students.filter(st => !list.some(p => p.child === st.name));
+    box.append(fbBack(), h('div', {class: 'flex flex-wrap items-center justify-between gap-3 mb-3'},
+        h('h2', {class: 'text-xl font-extrabold text-emerald-950'}, T('👨‍👩‍👧 Тіркелген ата-аналар · ') + F.cls + ' (' + list.length + ')'),
+        list.length ? h('button', {type: 'button', class: 'btn btn-l', onclick: () => parentsExcel(list, F.cls + T(' ата-аналары'))}, '📥 Excel') : null),
+      hint(T('Ата-ана сайттағы «Сыныбым → 🔔 Хабарлама» бөлімінде баланың жеке кодымен тіркеледі. Белгілер: 💬 WhatsApp, ✈️ Telegram (✈️? — таңдаған, бірақ әлі қосылмаған), ✉️ Email.')),
+      list.length ? h('div', {class: 'space-y-2 mt-4'}, list.map(p => h('div', {class: 'card flex flex-wrap items-center gap-3', style: 'padding:.75rem 1rem'},
+        h('div', {class: 'flex-1 min-w-[14rem]'}, h('div', {class: 'font-bold text-emerald-950'}, (p.child || T('(сынып коды)')) + ' — ' + p.name),
+          h('div', {class: 'text-xs text-charcoal/65'}, '+' + p.phone + (p.email ? ' · ' + p.email : '') + ' · ' + CH_ICONS(p))),
+        h('a', {class: 'btn btn-l btn-s', target: '_blank', href: 'https://wa.me/' + p.phone}, '💬'),
+        h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => {
+          if (!confirm(p.name + T(': тіркелуі өшірілсін бе? Ол бұдан былай хабарлама алмайды.'))) return;
+          await run(T('Өшірілуде…'), () => api('parentDel', {id: p.id})); fbParents(box, F);
+        }}, '✕')))) : h('p', {class: 'card text-charcoal/60 mt-4'}, T('Әзірге ешкім тіркелмеген.')),
+      without.length && list.length ? section(T('Әлі тіркелмеген балалардың ата-аналары (') + without.length + ')', h('p', {class: 'text-sm text-charcoal/70'}, without.map(s => s.name).join(', '))) : null);
+  }
+  // Бас әкімші: хабарлама баптаулары (⚙ Баптаулар ішінде)
+  function notifySection(){
+    const box = h('div', {class: 'space-y-3'}, h('p', {class: 'text-sm text-charcoal/60'}, T('Жүктелуде…')));
+    const render = info => {
+      box.innerHTML = '';
+      const tok = h('input', {class: 'inp font-mono', type: 'text', placeholder: '123456789:AAH…'});
+      box.append(
+        h('div', {class: 'grid sm:grid-cols-4 gap-2 text-sm'}, [[T('Тіркелген'), info.total], ['💬 WhatsApp', info.wa], ['✈️ Telegram', info.tg], ['✉️ Email', info.email]].map(([k, v]) =>
+          h('div', {class: 'rounded-xl bg-emerald-50 p-3'}, h('div', {class: 'text-xs text-charcoal/60'}, k), h('div', {class: 'text-xl font-extrabold text-emerald-950'}, v)))),
+        h('div', {class: 'text-sm'}, h('b', {}, 'Telegram: '), info.tgName ? h('a', {href: 'https://t.me/' + info.tgName, target: '_blank', class: 'underline'}, '@' + info.tgName) : T('әлі қосылмаған')),
+        hint(T('Telegram бот қосу: Telegram-да @BotFather ашып, /newbot жазыңыз, ботқа ат беріңіз (мысалы: Baiterek ата-аналар). BotFather берген токенді (123456789:AA… түрінде) төмендегі өріске қойып, «Сақтау» басыңыз. Бұл бот тек ата-аналарға хабарлама жібереді; басқа боттарыңызға әсер етпейді.')),
+        h('div', {class: 'flex flex-wrap gap-2'}, h('div', {class: 'flex-1 min-w-[16rem]'}, tok),
+          h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+            if (!tok.value.trim()) { toast(T('Токенді қойыңыз'), true); return; }
+            render(await run(T('Тексерілуде…'), () => api('notifySet', {tgToken: tok.value.trim()}))); toast(T('Telegram бот қосылды ✓'));
+          }}, T('💾 Сақтау')),
+          info.tgName ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => {
+            if (!confirm(T('Telegram хабарламалары тоқтатылсын ба?'))) return;
+            render(await run(T('Сақталуда…'), () => api('notifySet', {tgToken: ''})));
+          }}, T('Өшіру')) : null),
+        h('div', {class: 'text-sm'}, h('b', {}, 'Email: '), info.mailQuota >= 0 ? T('бүгін тағы ') + info.mailQuota + T(' хат жіберуге болады (Gmail шегі)') :
+          T('әлі рұқсат берілмеген — Apps Script редакторында setupNotify функциясын бір рет іске қосыңыз')),
+        info.total ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => {
+          const j = await run(T('Жүктелуде…'), () => api('parents', {})); parentsExcel(j.parents, T('Барлық ата-аналар'));
+        }}, T('📥 Барлық тіркелген ата-аналар (Excel)')) : null);
+    };
+    api('notifyInfo').then(render).catch(e => { box.innerHTML = ''; box.append(h('p', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
+    return section(T('🔔 Ата-аналарға хабарламалар'), box);
   }
 
   // ---------- 🔑 Ата-ана кодтары ----------
@@ -1770,6 +1852,7 @@
         const j = await run(T('Сақталуда…'), () => api('set', {values: {settings}}));
         DATA.settings = j.values.settings; savedToast(); go('settings', true);
       }),
+      notifySection(),
       section('Google Drive',
         st.limit ? h('div', {}, h('div', {class: 'text-sm font-semibold'}, T('Қолданылғаны: ') + gb(st.used) + ' / ' + gb(st.limit) + ' (' + pct + '%)'), h('div', {class: 'bar mt-2'}, h('div', {style: 'width:' + pct + '%'}))) : null,
         h('div', {class: 'flex flex-wrap gap-2'},
