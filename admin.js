@@ -10,7 +10,7 @@
   try { UI = localStorage.getItem('adm_lang') === 'ru' ? 'ru' : 'kz'; } catch (e) {}
   const RU = window.ADMIN_RU || {};
   const T = s => UI === 'ru' && Object.prototype.hasOwnProperty.call(RU, s) ? RU[s] : s;
-  const SITE_URL = location.href.replace(/admin\.html.*$/, '').replace(/#.*$/, '');
+  const SITE_URL = location.href.replace(/[#?].*$/, '').replace(/admin(\.html)?$/, '');
   let LOGIN = '', PW = null, ME = null, DATA = null, CLS = null, USERS = [], TEACHERS = {}, INFO = {}, TAB = null, dirty = false, curCls = null;
 
   // ---------- көмекші функциялар ----------
@@ -1581,7 +1581,8 @@
       view.append(section(name + ' (' + list.length + ')', list.length ? h('div', {class: 'space-y-2'}, list.map(u => h('div', {class: 'flex gap-3 items-center rounded-2xl border border-emerald-900/10 p-3' + (u.active ? '' : ' opacity-50')},
         h('div', {class: 'flex-1 min-w-0'},
           h('div', {class: 'font-bold text-emerald-950'}, u.name + (u.active ? '' : T(' (өшірулі)'))),
-          h('div', {class: 'text-xs text-charcoal/65'}, T('Логин: ') + u.login + (u.classes.length ? T(' · Сынып: ') + u.classes.join(', ') : '') + ((u.subjects || []).length ? T(' · Пәні: ') + u.subjects.join(', ') : '') + ((u.clubs || []).length ? ' · 🎯 ' + u.clubs.join(', ') : '') + (u.perms.length ? ' · ' + u.perms.map(p => PERM_NAMES[p]).join(', ') : '') + (u.email ? ' · ' + u.email : ''))),
+          h('div', {class: 'text-xs text-charcoal/65'}, T('Логин: ') + u.login + (u.classes.length ? T(' · Сынып: ') + u.classes.join(', ') : '') + ((u.subjects || []).length ? T(' · Пәні: ') + u.subjects.join(', ') : '') + ((u.clubs || []).length ? ' · 🎯 ' + u.clubs.join(', ') : '') + (u.perms.length ? ' · ' + u.perms.map(p => PERM_NAMES[p]).join(', ') : '') + (u.email ? ' · ' + u.email : '') + (u.phone ? ' · 📞 +' + u.phone : '')),
+          u.mustPw && u.active ? h('div', {class: 'text-xs font-bold text-amber-700 mt-0.5'}, T('⏳ Әлі кірмеген (уақытша пароль)')) : null),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => userEditor(view, u)}, T('Өзгерту'))))) : h('p', {class: 'text-charcoal/60 text-sm'}, T('Әзірге жоқ.'))));
     });
   };
@@ -1593,6 +1594,7 @@
     const name = h('input', {class: 'inp', type: 'text'}); name.value = u.name || '';
     const login = h('input', {class: 'inp', type: 'text', autocapitalize: 'none', spellcheck: 'false'}); login.value = u.login || '';
     const email = h('input', {class: 'inp', type: 'email', placeholder: 'mysaly@gmail.com'}); email.value = u.email || '';
+    const phone = h('input', {class: 'inp', type: 'tel', placeholder: '+7 701 123 45 67'}); phone.value = u.phone ? '+' + u.phone : '';
     const role = h('select', {class: 'inp'}, ['teacher', 'subject', 'psych', 'admin', 'viewer'].map(r => h('option', {value: r}, ROLE_NAMES[r])));
     role.value = u.role;
     const active = h('input', {type: 'checkbox', checked: u.active !== false});
@@ -1627,12 +1629,12 @@
         section(isNew ? T('Жаңа қызметкер') : u.name,
           h('div', {class: 'grid sm:grid-cols-2 gap-3'},
             field(T('Аты-жөні *'), name), field(T('Рөлі'), role),
-            field(T('Логин * (латынша, мысалы: 1a немесе aigul)'), login), field(T('Gmail (Drive қалтасына қолжетімділік үшін)'), email),
+            field(T('Логин * (латынша, мысалы: 1a немесе aigul)'), login), field(T('Gmail (Drive қалтасына қолжетімділік үшін)'), email), field(T('Телефон (қызметкер бірінші кіргенде өзі жазады)'), phone),
             field(isNew ? T('Пароль *') : T('Жаңа пароль'), h('div', {class: 'flex gap-2'}, pw, h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { pw.value = genPw(); dirty = true; }}, '🎲')))),
           h('label', {class: 'flex items-center gap-2 font-semibold text-sm'}, active, T('Белсенді (өшірсеңіз, сайтқа кіре алмайды және Drive қолжетімділігі алынады)'))),
         clsSec, permSec, viewSec,
         saveBar(T('Сақтау'), async () => {
-          const rec = {id: u.id, name: name.value.trim(), login: login.value.trim().toLowerCase(), email: email.value.trim(), role: role.value, active: active.checked,
+          const rec = {id: u.id, name: name.value.trim(), login: login.value.trim().toLowerCase(), email: email.value.trim(), phone: phone.value.trim(), role: role.value, active: active.checked,
             classes: (role.value === 'teacher' || role.value === 'subject') ? cls.get() : [],
             subjects: (role.value === 'teacher' || role.value === 'subject') ? subjects.value.split(',').map(x => x.trim()).filter(Boolean) : [],
             clubs: (role.value === 'teacher' || role.value === 'subject') ? clubsInp.value.split(',').map(x => x.trim()).filter(Boolean) : [],
@@ -1655,7 +1657,8 @@
     view.oninput = () => { dirty = true; };
   }
   // Логинмен бірге жіберілетін қысқа нұсқаулық (рөліне қарай)
-  function howTo(u){
+  function howTo(u){ return T('\n\n🔐 Бұл пароль уақытша: бірінші кіргенде өзіңіз жаңа пароль ойлап тауып, телефон нөміріңізді жазасыз.') + howToRole(u); }
+  function howToRole(u){
     const fb = T('\n\n📝 Кері байланыс: «📝 Кері байланыс» бөлімінде сыныпты таңдап, оқушыны басып «+ Жаңа жазба» немесе «✍️ Бүкіл сыныпқа жазу» арқылы пәніңіз бойынша жазасыз (сабақ оқуы, тәртібі, ынтасы + ата-анаға ұсыныс). Жазбаңызды тек сіз, сол баланың ата-анасы және мектеп әкімшілігі көреді.') +
       T('\n📊 Даму картасы: сол бөлімде «📊 Даму картасы» → оқушыны таңдап, өзіңіз байқаған параметрлерді 1–4 деңгеймен бағалайсыз (4 — жоғары, 1 — қолдау қажет).');
     if (u.role === 'subject' && (u.clubs || []).length && !(u.classes || []).length) return T('\n\n🎯 Кері байланыс: «📝 Кері байланыс» бөлімінде «🎯 ') + u.clubs[0] + T('» батырмасын басып, «✍️ Үйірме балаларына жазу» арқылы әр балаға жазасыз. Жазбаңызды тек сіз, баланың ата-анасы және мектеп әкімшілігі көреді.');
@@ -1939,8 +1942,37 @@
       localStorage.setItem('adm_login', LOGIN);
     } catch (e) {}
   }
+  // Бірінші кіру: әкімші берген уақытша парольдің орнына қызметкер өз паролін жасайды және телефонын жазады
+  function firstSetup(me){
+    $('loginForm').hidden = true;
+    const pw1 = h('input', {class: 'inp', type: 'password', autocomplete: 'new-password', required: true, minlength: 6});
+    const pw2 = h('input', {class: 'inp', type: 'password', autocomplete: 'new-password', required: true, minlength: 6});
+    const phone = h('input', {class: 'inp', type: 'tel', autocomplete: 'tel', required: true, placeholder: '+7 701 123 45 67'}); phone.value = me.phone ? '+' + me.phone : '';
+    const msg = h('p', {class: 'mt-3 text-sm text-red-700'});
+    const form = h('form', {class: 'card w-full max-w-sm shadow-card space-y-3', onsubmit: async e => {
+      e.preventDefault(); msg.textContent = '';
+      if (pw1.value.length < 6) { msg.textContent = T('Пароль кемінде 6 таңба болуы керек'); return; }
+      if (pw1.value !== pw2.value) { msg.textContent = T('Парольдер сәйкес емес'); return; }
+      try {
+        await run(T('Сақталуда…'), () => api('setpw', {newpw: pw1.value, phone: phone.value}));
+        PW = pw1.value; remember(); form.remove(); $('loginForm').hidden = false;
+        toast(T('Пароль сақталды ✓ Енді осы парольмен кіресіз.'));
+        await start();
+      } catch (err) { msg.textContent = T(err.message); }
+    }},
+      h('div', {class: 'font-extrabold text-emerald-900 text-lg leading-tight'}, T('Қош келдіңіз, ') + me.name + '!'),
+      h('p', {class: 'text-sm text-charcoal/70'}, T('Бұл — сайтқа бірінші кіруіңіз. Әкімші берген пароль уақытша. Өзіңіз есте сақтайтын жаңа пароль ойлап табыңыз және телефон нөміріңізді жазыңыз.')),
+      h('div', {class: 'text-sm'}, T('Логин: '), h('b', {}, me.login)),
+      field(T('Жаңа пароль (кемінде 6 таңба)'), pwEye(pw1)), field(T('Жаңа парольді қайталаңыз'), pwEye(pw2)),
+      field(T('Телефон нөміріңіз (WhatsApp)'), phone),
+      h('button', {type: 'submit', class: 'btn btn-p w-full'}, T('Сақтау және кіру')), msg,
+      h('button', {type: 'button', class: 'btn btn-l w-full', onclick: () => { try { localStorage.removeItem('adm_auth'); sessionStorage.removeItem('adm_auth'); } catch (e) {} location.reload(); }}, T('Шығу')));
+    $('login').append(form); $('login').hidden = false; $('app').hidden = true;
+    pw1.focus();
+  }
   async function start(){
     const j = await api('full');
+    if (j.me && j.me.mustPw) { firstSetup(j.me); return; }
     ME = j.me; DATA = j.data || {}; CLS = j.cls || {cposts: [], homework: [], qa: [], codes: {}};
     USERS = j.users || []; TEACHERS = j.teachers || {};
     INFO = {storage: j.storage, folder: j.folder, classFolder: j.classFolder, classFolders: j.classFolders || {}};

@@ -492,6 +492,7 @@
         renderMyClass(); return;
       }
       MC.data[code] = j;
+      MC.fresh = MC.fresh || {}; MC.fresh[code] = true;   // серверден жаңа ғана келді — тіркелу терезесін көрсетуге болады
       try { localStorage.setItem('bs_cls_' + code, JSON.stringify(j)); } catch(e) {}
       if (isNew) {
         if (mcIndex(code) < 0) MC.codes.push({code: code, cls: j.cls});
@@ -625,9 +626,9 @@
     window.FB_PRINT({lang: lang, blocks: [{name: d.child.name, cls: d.cls, items: d.feedback || []}]});
   };
   // Ата-ананың хабарламаға тіркелуі (осы құрылғыдан)
-  function mcReg(d){
+  function mcReg(d, inPop){
     var r = d.reg, inp = 'w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold';
-    var h = '<div class="rounded-2xl bg-gold-50 border border-gold-100 p-4 sm:p-5"><div class="font-extrabold text-emerald-950">🔔 ' + esc(t('reg_title')) + '</div><p class="text-sm text-charcoal/70 mt-1">' + esc(t('reg_desc')) + '</p></div>';
+    var h = inPop ? '' : '<div class="rounded-2xl bg-gold-50 border border-gold-100 p-4 sm:p-5"><div class="font-extrabold text-emerald-950">🔔 ' + esc(t('reg_title')) + '</div><p class="text-sm text-charcoal/70 mt-1">' + esc(t('reg_desc')) + '</p></div>';
     if (r && !MC.regEdit) {
       var chs = [r.ch.wa ? '💬 WhatsApp' : '', r.ch.tg ? '✈️ Telegram' : '', r.ch.email ? '✉️ Email' : ''].filter(Boolean).join(' · ');
       h += '<div class="mt-4 rounded-2xl border border-emerald-900/10 p-4 sm:p-5 space-y-2"><div class="font-extrabold text-emerald-900">✓ ' + esc(t('reg_done')) + '</div>' +
@@ -709,9 +710,34 @@
       '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']] : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
         return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + x[1] + esc(t(x[2])) + '</button>';
       }).join('') + '</div>';
-    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'reg' ? mcReg(d) : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    var pop = regPopNeeded(cur, d);
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
     box.innerHTML = h + '</div>';
+    regPop(pop ? d : null);
   }
+  // Баланың жеке сілтемесін алғаш ашқанда тіркелу терезесі шығады («Кейін» басса, 3 күннен кейін қайта сұрайды)
+  var REG_LATER_MS = 3 * 864e5;
+  function regPopNeeded(cur, d){
+    if (!cur || !d || !d.child || d.reg || !MC.fresh || !MC.fresh[cur.code]) return false;
+    var later = 0; try { later = +localStorage.getItem('bs_reg_later_' + cur.code) || 0; } catch(e) {}
+    return Date.now() - later > REG_LATER_MS;
+  }
+  function regPop(d){
+    var ov = byId('regPop');
+    if (!d) { if (ov) { ov.remove(); document.body.style.overflow = ''; } return; }
+    if (!ov) { ov = document.createElement('div'); ov.id = 'regPop'; ov.className = 'fixed inset-0 z-[70] bg-black/50 flex items-start sm:items-center justify-center p-3 overflow-y-auto'; document.body.appendChild(ov); document.body.style.overflow = 'hidden'; }
+    ov.innerHTML = '<div class="bg-white rounded-3xl shadow-card w-full max-w-lg p-4 sm:p-6 my-4" role="dialog" aria-modal="true">' +
+      '<div class="text-xl font-extrabold text-emerald-950">👋 ' + esc(t('reg_pop_title')) + '</div>' +
+      '<p class="mt-2 text-sm text-charcoal/75">' + esc(t('reg_pop_desc').replace('{child}', d.child.name).replace('{cls}', d.cls)) + '</p>' +
+      mcReg(d, true) +
+      '<div class="mt-3 text-center"><button type="button" onclick="uiRegLater()" class="text-sm font-bold text-charcoal/55 underline">' + esc(t('reg_later')) + '</button></div></div>';
+  }
+  window.uiRegLater = function(){
+    var cur = MC.codes[MC.cur]; if (!cur) return;
+    try { localStorage.setItem('bs_reg_later_' + cur.code, String(Date.now())); } catch(e) {}
+    if (MC.fresh) MC.fresh[cur.code] = false;
+    renderMyClass();
+  };
   window.uiMcEnter = function(f){
     var code = String(f.code.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (code) { MC.err = ''; mcLoad(code, true); }
