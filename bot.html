@@ -2,7 +2,6 @@
 <html lang="kk">
 <head>
 <meta charset="utf-8">
-<script>/* Ескі мекенжай (github.io) → bastauysh.pages.dev; сақталған кодтар да бірге көшеді */(function(){if(!/github\.io$/.test(location.hostname))return;var p=location.pathname.replace(/^\/bastauysh/,'')||'/',x=location.hash;try{if(p==='/'||p==='/index.html'){var o={codes:JSON.parse(localStorage.getItem('bs_codes')||'[]'),tok:localStorage.getItem('bs_tok'),parent:localStorage.getItem('bs_parent')};if(o.codes.length||o.tok)x=(x?x+'&':'#')+'mv='+encodeURIComponent(JSON.stringify(o));}}catch(e){}location.replace('https://bastauysh.pages.dev'+p+location.search+x);})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Baiterek School мұғалімдеріне арналған Telegram ботты пайдалану нұсқаулығы">
 <title>Мұғалім боты нұсқаулығы</title>
@@ -137,6 +136,9 @@ var T = {
         ['ТЖБ', '8 сынып география 1 тоқсан ТЖБ'],
         ['Аралық бағалау (1–4 сынып)', '2 сынып қазақ тілі 1 тоқсан аралық бағалау'],
         ['Жұмыс парағы', '3 сынып дүниетану су айналымы жұмыс парағы'],
+        ['Тоқсанды қайталау', '7 сынып 1 тоқсанды қайталауға жұмыс парағы'],
+        ['ҰБТ / МОДО / олимпиада (Word + PDF, 20 сұрақ)', '9 сынып МОДО дайындық тест'],
+        ['Презентация (PowerPoint + PDF)', '7 сынып география атмосфера презентация жаса'],
         ['Сұрақ', 'Оқушылардың сабаққа қызығушылығын қалай арттырамын?']] },
       { h: 'Аудио', p: 'Мәтіннің алдына не соңына «аудиоға айналдыр» деп жазыңыз — бәрі бір хабарда. Немесе мәтінге жауап (reply) ретінде «аудиоға айналдыр» деп жазыңыз.',
         examples: [['Мәтінді аудиоға айналдыру', 'аудиоға айналдыр Ана тілі – халықтың ғасырлар бойы жинаған асыл мұрасы']] },
@@ -144,6 +146,11 @@ var T = {
         examples: [['Сурет', '/surat микроскоп']] },
       { h: 'Мультфильм және видео', p: 'Бот сценарий, әр кадрдың ағылшынша промптын және дикторлық мәтінді жазады. Видеоны gemini.google.com («Видео» батырмасы) не labs.google/flow сайтында жасайсыз, дикторлық мәтінді ботта аудиоға айналдырасыз.',
         examples: [['Мультфильм сценарийі', '3 сынып су айналымы мультфильм жаса']] },
+      { h: 'Тәрбие жұмысы және құжаттар', p: 'Тәрбие сағатының тақырыбы мен эпиграфы Алматы қаласының 2026–2027 оқу жылына арналған сынып сағаттарының циклограммасынан және апта дәйексөзінен алынады. Хаттама, анықтама, есеп мектептің үлгісімен жасалады.',
+        examples: [['Тәрбие сағатының ҚМЖ-сы', '6 сыныпқа осы аптаның тәрбие сағатының ҚМЖ-сы'],
+          ['Хаттама', '5 сынып ата-аналар жиналысының хаттамасы'], ['Есеп', 'тәрбие жұмысы туралы есеп'], ['Өзара сабаққа қатысу', 'өзара сабаққа қатысу парағы']] },
+      { h: 'Жалғастыра жазу', p: 'Бот соңғы сұрауыңызды 30 минут есте сақтайды. Бір тапсырманы қайта жазудың қажеті жоқ — жалғастыра беріңіз. /qmzh, /ktp, /test деп жалғыз жазсаңыз, бот тақырыпты сұрайды.',
+        examples: [['Тест жауаптары', 'Жауаптарын бер'], ['ҚМЖ-ны толықтыру', 'Құндылыққа баулу бөлімін қос'], ['Жауапты Word етіп алу', 'Ворд формат'], ['Басқа тілде', 'Орысша жаз']] },
       { h: 'Дайын промпттар', list: [
         '«промпт» деп жазыңыз не /promt басыңыз → жинақты таңдаңыз: 100 промпт (барлық пән мұғалімдеріне) немесе 50 промпт (бастауыш сынып).',
         '«бастауыш промпт» деп жазсаңыз, бастауыш жинағы бірден ашылады.',
@@ -181,6 +188,9 @@ var T = {
         ['СОЧ', '8 класс география 1 четверть СОЧ'],
         ['Промежуточное оценивание (1–4 кл.)', '2 класс русский язык 1 четверть промежуточное оценивание'],
         ['Рабочий лист', '3 класс естествознание круговорот воды рабочий лист'],
+        ['Повторение четверти', 'рабочий лист для повторения 1 четверти, 7 класс'],
+        ['ЕНТ / МОДО / олимпиада (Word + PDF, 20 вопросов)', 'тест для подготовки к МОДО, 9 класс'],
+        ['Презентация (PowerPoint + PDF)', 'презентация, 7 класс география, атмосфера'],
         ['Вопрос', 'Как повысить интерес учеников к уроку?']] },
       { h: 'Аудио', p: 'Напишите «озвучь» перед текстом или после него — всё в одном сообщении. Или ответьте (reply) на сообщение с текстом словом «озвучь».',
         examples: [['Озвучить текст', 'озвучь Родной язык — это наследие народа, его история и будущее']] },
@@ -188,6 +198,11 @@ var T = {
         examples: [['Картинка', '/surat микроскоп']] },
       { h: 'Мультфильм и видео', p: 'Бот напишет сценарий, английский промпт для каждого кадра и текст диктора. Видео создаёте на gemini.google.com (кнопка «Видео») или labs.google/flow, текст диктора озвучиваете в боте.',
         examples: [['Сценарий мультфильма', 'сделай мультфильм о круговороте воды для 3 класса']] },
+      { h: 'Воспитательная работа и документы', p: 'Тема и эпиграф классного часа берутся из циклограммы классных часов Алматы на 2026–2027 учебный год и цитаты недели. Протокол, справка и отчёт делаются по шаблону школы.',
+        examples: [['КСП классного часа', 'КСП классного часа этой недели для 6 класса'],
+          ['Протокол', 'протокол родительского собрания, 5 класс'], ['Отчёт', 'отчёт о воспитательной работе'], ['Взаимопосещение', 'лист взаимопосещения уроков']] },
+      { h: 'Продолжение разговора', p: 'Бот помнит ваш последний запрос 30 минут — не нужно писать всё заново, просто продолжайте. Если написать только /qmzh, /ktp или /test, бот спросит тему.',
+        examples: [['Ответы к тесту', 'Дай ответы'], ['Дополнить КСП', 'Добавь воспитание ценностей'], ['Ответ в Word', 'В ворд'], ['Другой язык', 'На казахском']] },
       { h: 'Готовые промпты', list: [
         'Напишите «промпт» или /promt → выберите сборник: 100 промптов (учителям всех предметов) или 50 промптов (начальная школа).',
         'Напишите «промпт начальная школа» — сборник для начальной школы откроется сразу.',
@@ -224,6 +239,9 @@ var T = {
         ['Summative assessment for the unit', 'grade 5 English unit Food summative assessment'],
         ['Summative assessment for the term', 'grade 8 English term 1 term summative assessment'],
         ['Worksheet', 'grade 3 English Animals worksheet'],
+        ['Term revision', 'grade 7 English, worksheet to revise term 1'],
+        ['UNT / PISA / olympiad (Word + PDF, 20 questions)', 'grade 11 English UNT preparation test'],
+        ['Presentation (PowerPoint + PDF)', 'grade 7 English My family presentation'],
         ['Question', 'How can I make my lessons more engaging?']] },
       { h: 'Audio', p: 'Write "convert to audio" before or after the text, all in one message. Or reply to a message with the text and write "convert to audio".',
         examples: [['Text to speech', 'convert to audio I wake up early in the morning, usually at 7 o\'clock']] },
@@ -231,6 +249,8 @@ var T = {
         examples: [['Picture', '/surat a light microscope']] },
       { h: 'Cartoons and video', p: 'The bot writes a script, an English prompt for each scene and the narration. You create the video at gemini.google.com ("Video" button) or labs.google/flow and turn the narration into audio in the bot.',
         examples: [['Cartoon script', 'make a cartoon about the water cycle for grade 3']] },
+      { h: 'Continuing the conversation', p: 'The bot remembers your last request for 30 minutes, so you can just continue. If you write only /qmzh, /ktp or /test, the bot asks for the topic.',
+        examples: [['Answers to the test', 'give the answers'], ['Add to the lesson plan', 'add values education'], ['Answer as a Word file', 'in Word']] },
       { h: 'Ready-made prompts', list: [
         'Write "prompt" or press /promt → choose a collection: 100 prompts (for all teachers) or 50 prompts (primary school).',
         'Choose a section, then a prompt. The bot asks what to put into each [bracket], you just answer.'] },
