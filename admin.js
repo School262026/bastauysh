@@ -1176,12 +1176,12 @@
         h('div', {class: 'text-xs text-charcoal/60 mt-0.5'}, (mine ? T('✅ Бағаладыңыз') : T('⏳ Бағаланбаған')) + (K.all ? T(' · педагогтар: ') + c.ratings.length + (c.concl && c.concl.text ? T(' · қорытынды ✓') : '') : '')));
     })));
   }
-  function levelPicker(val){
+  function levelPicker(val, onChange){
     let cur = val || 0;
     const wrap = h('div', {class: 'flex gap-1'});
     const render = () => { wrap.innerHTML = ''; [1, 2, 3, 4].forEach(n => wrap.append(h('button', {type: 'button', title: LV[n],
       class: 'w-9 h-8 rounded-lg text-sm font-extrabold border', style: n === cur ? 'background:' + LV_COL[n] + ';border-color:' + LV_COL[n] + ';color:' + (n >= 3 ? '#fff' : '#3b2a00') : 'background:#fff;border-color:rgba(15,56,44,.2);color:#0F382C',
-      onclick: () => { cur = cur === n ? 0 : n; dirty = true; render(); }}, n))); };
+      onclick: () => { cur = cur === n ? 0 : n; dirty = true; render(); if (onChange) onChange(); }}, n))); };
     render();
     return {el: wrap, get: () => cur};
   }
@@ -1190,24 +1190,46 @@
     const c = cardFor(K, st.id), my = c.ratings.find(r => r.uid === ME.id) || {vals: {}, subj: {}, interests: [], note: ''};
     box.innerHTML = '';
     const pickers = {};
+    const redo = () => autoDesc();
     const paramRows = CARD.groups.map(g => h('div', {class: 'space-y-1.5'}, h('div', {class: 'lbl mt-2'}, g[UI]),
-      CARD.params.filter(p => p.g === g.k).map(p => { pickers[p.k] = levelPicker(my.vals[p.k]); return h('div', {class: 'flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/5 pb-1.5'}, h('span', {class: 'text-sm font-semibold'}, p[UI]), pickers[p.k].el); })));
+      CARD.params.filter(p => p.g === g.k).map(p => { pickers[p.k] = levelPicker(my.vals[p.k], redo); return h('div', {class: 'flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/5 pb-1.5'}, h('span', {class: 'text-sm font-semibold'}, p[UI]), pickers[p.k].el); })));
     const subjNames = [...new Set((ME.subjects || []).concat(Object.keys(my.subj || {})))];
     const subjPick = {};
     const subjBox = h('div', {class: 'space-y-1.5'});
-    const addSubj = name => { if (!name || subjPick[name]) return; subjPick[name] = levelPicker((my.subj || {})[name]); subjBox.append(h('div', {class: 'flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/5 pb-1.5'}, h('span', {class: 'text-sm font-semibold'}, name), subjPick[name].el)); };
+    const addSubj = name => { if (!name || subjPick[name]) return; subjPick[name] = levelPicker((my.subj || {})[name], redo); subjBox.append(h('div', {class: 'flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/5 pb-1.5'}, h('span', {class: 'text-sm font-semibold'}, name), subjPick[name].el)); };
     subjNames.forEach(addSubj);
     const newSubj = fbSubjInput('');
     const interests = {};
-    const interBox = h('div', {class: 'flex flex-wrap gap-1.5'}, CARD.interests.map(x => { interests[x.k] = h('input', {type: 'checkbox', checked: (my.interests || []).includes(x.k)}); return h('label', {class: 'chip', style: 'padding:.3rem .7rem'}, interests[x.k], x[UI]); }));
-    const note = h('textarea', {class: 'inp', rows: 3, placeholder: T('Қысқаша ескерту (ата-ана жиынтық картада атыңызсыз көреді)')}); note.value = my.note || '';
+    const interBox = h('div', {class: 'flex flex-wrap gap-1.5'}, CARD.interests.map(x => { interests[x.k] = h('input', {type: 'checkbox', checked: (my.interests || []).includes(x.k), onchange: () => { dirty = true; redo(); }}); return h('label', {class: 'chip', style: 'padding:.3rem .7rem'}, interests[x.k], x[UI]); }));
+    // Сипаттама: бағалар мен қызығушылықтардан өзі жазылады; мұғалім қолмен өзгертсе, енді өзі ауыстырмайды
+    const note = h('textarea', {class: 'inp', rows: 8, maxlength: 1500, placeholder: T('1–4 бағаларын және қызығушылықтарын белгілегенде сипаттама осында өзі жазылады. Қалауыңызша толықтырып, түзете аласыз.')}); note.value = my.note || '';
+    const current = () => {
+      const vals = {}; Object.keys(pickers).forEach(k => { if (pickers[k].get()) vals[k] = pickers[k].get(); });
+      const subj = {}; Object.keys(subjPick).forEach(k => { if (subjPick[k].get()) subj[k] = subjPick[k].get(); });
+      return {vals, subj, interests: Object.keys(interests).filter(k => interests[k].checked)};
+    };
+    let descLang = PRINT_LANG, lastAuto = null;
+    const genDesc = () => CARD.describe(current(), descLang);
+    // бұрын сақталған мәтін бағалардан жасалған мәтінмен бірдей болса — әлі өзі жаңарады
+    let manual = !!note.value.trim() && ['kz', 'ru'].every(l => CARD.describe(my, l) !== note.value.trim());
+    function autoDesc(){ if (manual) return; lastAuto = genDesc(); note.value = lastAuto; }
+    note.addEventListener('input', () => { dirty = true; manual = note.value.trim() !== '' && note.value !== lastAuto; });
+    const langSel = h('select', {class: 'inp', style: 'width:auto;padding:.35rem .6rem', title: T('Сипаттама тілі')}, h('option', {value: 'kz'}, 'Қазақша'), h('option', {value: 'ru'}, 'Русский'));
+    langSel.value = descLang;
+    langSel.addEventListener('change', () => { descLang = langSel.value; if (!manual || confirm(T('Сипаттама таңдалған тілде қайта жазылады, сіздің түзетулеріңіз жоғалады. Жалғастырайын ба?'))) { manual = false; dirty = true; autoDesc(); } });
+    const regen = h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => {
+      if (manual && !confirm(T('Сипаттама бағалар бойынша қайта жазылады, сіздің түзетулеріңіз жоғалады. Жалғастырайын ба?'))) return;
+      manual = false; dirty = true; autoDesc(); if (!note.value) toast(T('Алдымен 1–4 бағаларын немесе қызығушылықтарын белгілеңіз'), true);
+    }}, T('🔄 Қайта жазу'));
+    const descField = h('div', {},
+      h('div', {class: 'flex flex-wrap items-center justify-between gap-2 mb-1.5'}, h('span', {class: 'lbl'}, T('Оқушының сипаттамасы')), h('div', {class: 'flex gap-2'}, langSel, regen)),
+      note, h('p', {class: 'mt-1 text-xs text-charcoal/60'}, T('Ата-ана жиынтық картада сіздің атыңызсыз көреді.')));
+    if (!note.value.trim()) autoDesc();
     const nav = h('div', {class: 'flex flex-wrap gap-2'},
       i > 0 ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { if (!dirty || confirm(T('Сақталмаған өзгерістер жоғалады. Жалғастырайын ба?'))) { dirty = false; fbCardStudent(box, F, students, i - 1); } }}, '← ' + students[i - 1].name) : null,
       i < students.length - 1 ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { if (!dirty || confirm(T('Сақталмаған өзгерістер жоғалады. Жалғастырайын ба?'))) { dirty = false; fbCardStudent(box, F, students, i + 1); } }}, students[i + 1].name + ' →') : null);
     const saveRating = async goNext => {
-      const vals = {}; Object.keys(pickers).forEach(k => { if (pickers[k].get()) vals[k] = pickers[k].get(); });
-      const subj = {}; Object.keys(subjPick).forEach(k => { if (subjPick[k].get()) subj[k] = subjPick[k].get(); });
-      const item = {sid: st.id, vals, subj, interests: Object.keys(interests).filter(k => interests[k].checked), note: note.value.trim()};
+      const item = Object.assign({sid: st.id}, current(), {note: note.value.trim()});
       const j = await run(T('Сақталуда…'), () => api('cardRate', {cls: F.cls, period: CARD_PERIOD, items: [item]}));
       K.ratings = K.ratings.filter(r => !(r.sid === st.id && r.uid === ME.id)).concat(j.items);
       dirty = false; toast(T('Сақталды ✓'));
@@ -1263,7 +1285,7 @@
         F.write ? section(T('Менің бағам'), hint(T('Күшті және дамытуды қажет ететін жақтар осы бағалардан автоматты шығады: 4 немесе 3 (жасыл) — күшті жағы, 1 немесе 2 (сары) — дамыту керек. Әр параметрдің тұсындағы 1–4 батырмасын басыңыз; тек өзіңіз байқағанын бағалаңыз, білмейтінін бос қалдырыңыз. Қайта бассаңыз, баға алынады.')), paramRows,
           h('div', {class: 'lbl mt-3'}, T('Пәндер бойынша меңгеруі')), subjBox,
           h('div', {class: 'flex gap-2'}, newSubj, h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { addSubj(newSubj.value.trim()); newSubj.value = ''; }}, T('+ Пән'))),
-          h('div', {class: 'lbl mt-3'}, T('Қызығушылықтары')), interBox, field(T('Ескерту'), note),
+          h('div', {class: 'lbl mt-3'}, T('Қызығушылықтары')), interBox, descField,
           h('div', {class: 'flex flex-wrap justify-end gap-2'},
             h('button', {type: 'button', class: 'btn btn-l', onclick: () => saveRating(false)}, T('💾 Сақтау')),
             i < students.length - 1 ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => saveRating(true)}, T('💾 Сақтау және келесі →')) : null)) : null,
