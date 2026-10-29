@@ -1824,11 +1824,27 @@
       })));
   };
 
+  // Пароль өрісіне 👁 батырмасы (жазылғанды көрсету/жасыру) және Caps Lock ескертуі
+  function pwEye(inp){
+    const wrap = h('div', {class: 'relative'}), caps = h('p', {class: 'mt-1 text-xs font-bold text-red-700'}, T('⚠ Caps Lock қосулы — бас әріптер жазылып жатыр'));
+    caps.hidden = true;
+    const btn = h('button', {type: 'button', class: 'pw-btn absolute inset-y-0 right-0 px-3 text-lg leading-none', title: T('Парольді көрсету'), 'aria-label': T('Парольді көрсету'), onclick: () => {
+      const show = inp.type === 'password'; inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁'; btn.title = T(show ? 'Парольді жасыру' : 'Парольді көрсету'); btn.setAttribute('aria-label', btn.title); inp.focus();
+    }}, '👁');
+    const capsCheck = e => { if (e.getModifierState) caps.hidden = !e.getModifierState('CapsLock'); };
+    inp.addEventListener('keyup', capsCheck); inp.addEventListener('keydown', capsCheck); inp.addEventListener('blur', () => { caps.hidden = true; });
+    const box = h('div', {});
+    inp.classList.add('pr-12'); if (inp.parentNode) inp.replaceWith(box);
+    wrap.append(inp, btn); box.append(wrap, caps);
+    return box;
+  }
+
   // ---------- ⚙ Баптаулар (бас әкімші) ----------
   function pwSection(){
     const pw1 = h('input', {class: 'inp', type: 'password', autocomplete: 'new-password'}), pw2 = h('input', {class: 'inp', type: 'password', autocomplete: 'new-password'});
     return section(T('Парольді ауыстыру'),
-      h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Жаңа пароль'), pw1), field(T('Жаңа парольді қайталаңыз'), pw2)),
+      h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Жаңа пароль'), pwEye(pw1)), field(T('Жаңа парольді қайталаңыз'), pwEye(pw2))),
       h('div', {class: 'flex justify-end'}, h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
         if (pw1.value.length < 6) { toast(T('Пароль кемінде 6 таңба болуы керек'), true); return; }
         if (pw1.value !== pw2.value) { toast(T('Парольдер сәйкес емес'), true); return; }
@@ -1948,6 +1964,7 @@
   }
   $('logout').before(langSwitch());
   $('loginForm').prepend(h('div', {class: 'flex justify-end -mb-6'}, langSwitch()));
+  pwEye($('pw'));
   if (!API) $('loginMsg').textContent = T('Сервер мекенжайы әлі орнатылмаған (config.js).');
   let saved = null;
   try {
@@ -1961,7 +1978,7 @@
   if (saved && saved.pw && API) {
     // Сақталған кіру: форманы жасырып, кімнің атынан кіріп жатқанын көрсетеміз, басқа логинге ауысуға болады
     LOGIN = saved.login || 'admin'; PW = saved.pw;
-    const formEls = [...$('loginForm').querySelectorAll('label, input, button[type=submit], p.mt-1')];
+    const formEls = [...$('loginForm').querySelectorAll('label, input, button[type=submit], button.pw-btn, p.mt-1:not(.text-red-700)')];
     formEls.forEach(e => { e.hidden = true; });
     let cancelled = false;
     const other = h('button', {type: 'button', class: 'btn btn-l w-full mt-3', onclick: () => {
