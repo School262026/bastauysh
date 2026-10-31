@@ -1541,6 +1541,66 @@
     return section(T('🔔 Ата-аналарға хабарламалар'), box);
   }
 
+  // ---------- 🤖 Қызметкерлер боты (Telegram) ----------
+  // Жоғарғы жақтағы «📲 Бот» батырмасы: қызметкер өз Telegram-ын ботқа бір реттік сілтемемен қосады
+  function botBtn(){
+    const old = $('botBtn'); if (old) old.remove();
+    if (!INFO.sbName) return;
+    $('logout').before(h('button', {type: 'button', id: 'botBtn', class: 'btn btn-l btn-s', title: T('Telegram арқылы сайтқа жазу'), onclick: botModal}, ME.tg ? '📲 ✓' : T('📲 Бот')));
+  }
+  async function botModal(){
+    const j = await run(T('Жүктелуде…'), () => api('sbLink'));
+    const close = modal(
+      h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, T('📲 Сайтқа Telegram арқылы жазу')),
+      h('p', {class: 'text-sm text-charcoal/75 mt-2'}, j.linked ? T('Сіздің Telegram-ыңыз ботқа қосылған ✓. Басқа телефоннан қосу үшін төмендегі батырманы сол телефонда басыңыз.') :
+        T('Төмендегі батырманы телефоныңызда басыңыз → Telegram ашылады → «Start» (Бастау) басыңыз. Бот «✅ Қосылдыңыз» деп жазады. Сілтеме 15 минут жарамды.')),
+      h('div', {class: 'mt-3 rounded-xl bg-emerald-50 p-3 text-sm space-y-1'},
+        h('div', {class: 'font-bold'}, T('Қалай жазады:')),
+        h('div', {}, T('• Ботқа кәдімгі чатқа жазғандай жазасыз немесе дауыспен айтасыз, фото/видео саласыз.')),
+        h('div', {}, T('• Бот бөлімін өзі анықтап (кері байланыс, үй тапсырмасы, жаңалық, мәзір…), дайын мәтінді көрсетеді.')),
+        h('div', {}, T('• «✅ Жариялау» басқанда ғана сайтқа шығады, ата-аналарға хабарлама өзі кетеді.')),
+        h('div', {}, T('• Ескі жазбаларды басқа чаттан қайта жіберсеңіз (forward), алғашқы күні сақталады.'))),
+      h('div', {class: 'flex flex-wrap gap-2 justify-end mt-4'},
+        j.linked ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => {
+          if (!confirm(T('Telegram-ды боттан ажырату керек пе?'))) return;
+          await run(T('Сақталуда…'), () => api('sbUnlink')); ME.tg = false; botBtn(); close(); toast(T('Ажыратылды'));
+        }}, T('Ажырату')) : null,
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => navigator.clipboard.writeText(j.link).then(() => toast(T('Көшірілді')))}, T('Сілтемені көшіру')),
+        h('a', {class: 'btn btn-p', href: j.link, target: '_blank', rel: 'noopener'}, T('📲 Telegram-да ашу')),
+        h('button', {type: 'button', class: 'btn btn-g', onclick: () => close()}, T('Дайын'))));
+  }
+  // Бас әкімшінің баптаулары: бот токені және Gemini кілті
+  function staffBotSection(){
+    const box = h('div', {class: 'space-y-3'}, h('p', {class: 'text-sm text-charcoal/60'}, T('Жүктелуде…')));
+    const render = info => {
+      box.innerHTML = '';
+      const tok = h('input', {class: 'inp font-mono', type: 'text', placeholder: '123456789:AAH…'});
+      const gem = h('input', {class: 'inp font-mono', type: 'password', placeholder: info.ai ? T('Кілт сақталған (ауыстыру үшін жаңасын қойыңыз)') : 'AIza… / AQ.…', autocomplete: 'off'});
+      box.append(
+        h('div', {class: 'text-sm'}, h('b', {}, T('Бот: ')), info.name ? h('a', {href: 'https://t.me/' + info.name, target: '_blank', class: 'underline'}, '@' + info.name) : T('әлі қосылмаған'),
+          info.name ? T(' · қосылған қызметкерлер: ') + (info.count || 0) : ''),
+        h('div', {class: 'text-sm'}, h('b', {}, 'Gemini: '), info.ai ? T('қосулы ✓ (дауысты тану, бөлімді анықтау, мәтінді түзету)') : T('қосылмаған — бот мәтінді өзгеріссіз жариялайды, бөлімді қызметкер батырмамен таңдайды')),
+        info.name ? null : hint(T('Қызметкерлер боты: Telegram-да @BotFather → /newbot → атын жазыңыз (мысалы: Baiterek ST мұғалім). Бұл ата-аналар ботынан БӨЛЕК бот болуы керек. BotFather берген токенді төмендегі өріске қойыңыз.')),
+        info.ai ? null : hint(T('Gemini кілті (тегін): aistudio.google.com/apikey сайтына bayterek20050 аккаунтымен кіріп, «Create API key» басыңыз. Балалардың аты Gemini-ге жіберілмейді — белгімен ауыстырылады.')),
+        h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Бот токені (BotFather)'), tok), field(T('Gemini API кілті'), gem)),
+        h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+          info.name ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => {
+            if (!confirm(T('Қызметкерлер боты өшірілсін бе?'))) return;
+            const r = await run(T('Сақталуда…'), () => api('sbSet', {token: ''})); INFO.sbName = ''; botBtn(); render(r);
+          }}, T('Ботты өшіру')) : null,
+          h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+            const body = {};
+            if (tok.value.trim()) { body.token = tok.value.trim(); body.api = API; }
+            if (gem.value.trim()) body.gemini = gem.value.trim();
+            if (!Object.keys(body).length) { toast(T('Токенді немесе кілтті қойыңыз'), true); return; }
+            const r = await run(T('Тексерілуде…'), () => api('sbSet', body));
+            INFO.sbName = r.name || ''; botBtn(); render(r); toast(T('Сақталды ✓'));
+          }}, T('💾 Сақтау'))));
+    };
+    api('sbInfo').then(render).catch(e => { box.innerHTML = ''; box.append(h('p', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
+    return section(T('🤖 Қызметкерлер боты (Telegram арқылы сайтқа жазу)'), box);
+  }
+
   // ---------- 🔑 Ата-ана кодтары ----------
   VIEWS.codes = function(view){
     const list = isOwner() ? allClasses() : (ME.classes || []);
@@ -1581,7 +1641,7 @@
       view.append(section(name + ' (' + list.length + ')', list.length ? h('div', {class: 'space-y-2'}, list.map(u => h('div', {class: 'flex gap-3 items-center rounded-2xl border border-emerald-900/10 p-3' + (u.active ? '' : ' opacity-50')},
         h('div', {class: 'flex-1 min-w-0'},
           h('div', {class: 'font-bold text-emerald-950'}, u.name + (u.active ? '' : T(' (өшірулі)'))),
-          h('div', {class: 'text-xs text-charcoal/65'}, T('Логин: ') + u.login + (u.classes.length ? T(' · Сынып: ') + u.classes.join(', ') : '') + ((u.subjects || []).length ? T(' · Пәні: ') + u.subjects.join(', ') : '') + ((u.clubs || []).length ? ' · 🎯 ' + u.clubs.join(', ') : '') + (u.perms.length ? ' · ' + u.perms.map(p => PERM_NAMES[p]).join(', ') : '') + (u.email ? ' · ' + u.email : '') + (u.phone ? ' · 📞 +' + u.phone : '')),
+          h('div', {class: 'text-xs text-charcoal/65'}, T('Логин: ') + u.login + (u.classes.length ? T(' · Сынып: ') + u.classes.join(', ') : '') + ((u.subjects || []).length ? T(' · Пәні: ') + u.subjects.join(', ') : '') + ((u.clubs || []).length ? ' · 🎯 ' + u.clubs.join(', ') : '') + (u.perms.length ? ' · ' + u.perms.map(p => PERM_NAMES[p]).join(', ') : '') + (u.email ? ' · ' + u.email : '') + (u.phone ? ' · 📞 +' + u.phone : '') + (u.tg ? T(' · 📲 бот қосулы') : '')),
           u.mustPw && u.active ? h('div', {class: 'text-xs font-bold text-amber-700 mt-0.5'}, T('⏳ Әлі кірмеген (уақытша пароль)')) : null),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => userEditor(view, u)}, T('Өзгерту'))))) : h('p', {class: 'text-charcoal/60 text-sm'}, T('Әзірге жоқ.'))));
     });
@@ -1899,6 +1959,7 @@
         DATA.settings = j.values.settings; savedToast(); go('settings', true);
       }),
       notifySection(),
+      staffBotSection(),
       section('Google Drive',
         st.limit ? h('div', {}, h('div', {class: 'text-sm font-semibold'}, T('Қолданылғаны: ') + gb(st.used) + ' / ' + gb(st.limit) + ' (' + pct + '%)'), h('div', {class: 'bar mt-2'}, h('div', {style: 'width:' + pct + '%'}))) : null,
         h('div', {class: 'flex flex-wrap gap-2'},
@@ -1975,7 +2036,8 @@
     if (j.me && j.me.mustPw) { firstSetup(j.me); return; }
     ME = j.me; DATA = j.data || {}; CLS = j.cls || {cposts: [], homework: [], qa: [], codes: {}};
     USERS = j.users || []; TEACHERS = j.teachers || {};
-    INFO = {storage: j.storage, folder: j.folder, classFolder: j.classFolder, classFolders: j.classFolders || {}};
+    INFO = {storage: j.storage, folder: j.folder, classFolder: j.classFolder, classFolders: j.classFolders || {}, sbName: j.sbName || ''};
+    botBtn();
     if (DATA.posts === undefined && can('posts')) {
       const r = await api('set', {values: {posts: D.posts()}});
       DATA.posts = r.values.posts;
