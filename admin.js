@@ -1548,6 +1548,7 @@
     if (!INFO.sbName) return;
     $('logout').before(h('button', {type: 'button', id: 'botBtn', class: 'btn btn-l btn-s', title: T('Telegram арқылы сайтқа жазу'), onclick: botModal}, ME.tg ? '📲 ✓' : T('📲 Бот')));
   }
+  const guideUrl = page => SITE_URL + page + (UI === 'ru' ? '?lang=ru' : '');
   async function botModal(){
     const j = await run(T('Жүктелуде…'), () => api('sbLink'));
     const close = modal(
@@ -1559,7 +1560,8 @@
         h('div', {}, T('• Ботқа кәдімгі чатқа жазғандай жазасыз немесе дауыспен айтасыз, фото/видео саласыз.')),
         h('div', {}, T('• Бот бөлімін өзі анықтап (кері байланыс, үй тапсырмасы, жаңалық, мәзір…), дайын мәтінді көрсетеді.')),
         h('div', {}, T('• «✅ Жариялау» басқанда ғана сайтқа шығады, ата-аналарға хабарлама өзі кетеді.')),
-        h('div', {}, T('• Ескі жазбаларды басқа чаттан қайта жіберсеңіз (forward), алғашқы күні сақталады.'))),
+        h('div', {}, T('• Ескі жазбаларды басқа чаттан қайта жіберсеңіз (forward), алғашқы күні сақталады.')),
+        h('a', {href: guideUrl('nusqaulyq'), target: '_blank', class: 'inline-block font-bold underline mt-1'}, T('📖 Толық нұсқаулық'))),
       h('div', {class: 'flex flex-wrap gap-2 justify-end mt-4'},
         j.linked ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => {
           if (!confirm(T('Telegram-ды боттан ажырату керек пе?'))) return;
@@ -1598,7 +1600,11 @@
           }}, T('💾 Сақтау'))));
     };
     api('sbInfo').then(render).catch(e => { box.innerHTML = ''; box.append(h('p', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
-    return section(T('🤖 Қызметкерлер боты (Telegram арқылы сайтқа жазу)'), box);
+    return section(T('🤖 Қызметкерлер боты (Telegram арқылы сайтқа жазу)'), box,
+      h('div', {class: 'flex flex-wrap gap-2'},
+        h('a', {href: guideUrl('bas-akimshi'), target: '_blank', class: 'btn btn-l btn-s'}, T('📖 Бас әкімші нұсқаулығы')),
+        h('a', {href: guideUrl('nusqaulyq'), target: '_blank', class: 'btn btn-l btn-s'}, T('📖 Қызметкерлер нұсқаулығы')),
+        h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(T('Қызметкерлер ботының нұсқаулығы: ') + guideUrl('nusqaulyq')).then(() => toast(T('Көшірілді')))}, T('Сілтемені көшіру'))));
   }
 
   // ---------- 🔑 Ата-ана кодтары ----------
@@ -1728,7 +1734,7 @@
     return '';
   }
   function showCreds(u, pw){
-    const msg = T('Baiterek ST бастауыш мектебі сайтының әкімші беті:\n') + SITE_URL + T('admin.html\nЛогин: ') + u.login + T('\nПароль: ') + pw + howTo(u) +
+    const msg = T('Baiterek ST бастауыш мектебі сайтының әкімші беті:\n') + SITE_URL + T('admin.html\nЛогин: ') + u.login + T('\nПароль: ') + pw + howTo(u) + (u.role !== 'viewer' ? T('\n\n📖 Telegram ботын пайдалану нұсқаулығы: ') + guideUrl('nusqaulyq') : '') +
       (u.email && u.role !== 'viewer' ? T('\n\nGoogle Drive-та сізге фото/видео жүктеуге арналған қалта ашылды (') + u.email + T(' поштасына хабарлама келеді).') : '');
     const close = modal(
       h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, T('✅ Сақталды: ') + u.name),
