@@ -1578,6 +1578,7 @@
       box.innerHTML = '';
       const tok = h('input', {class: 'inp font-mono', type: 'text', placeholder: '123456789:AAH…'});
       const gem = h('input', {class: 'inp font-mono', type: 'password', placeholder: info.ai ? T('Кілт сақталған (ауыстыру үшін жаңасын қойыңыз)') : 'AIza… / AQ.…', autocomplete: 'off'});
+      const testOut = h('div', {class: 'text-sm'});
       box.append(
         h('div', {class: 'text-sm'}, h('b', {}, T('Бот: ')), info.name ? h('a', {href: 'https://t.me/' + info.name, target: '_blank', class: 'underline'}, '@' + info.name) : T('әлі қосылмаған'),
           info.name ? T(' · қосылған қызметкерлер: ') + (info.count || 0) : ''),
@@ -1585,7 +1586,14 @@
         info.name ? null : hint(T('Қызметкерлер боты: Telegram-да @BotFather → /newbot → атын жазыңыз (мысалы: Baiterek ST мұғалім). Бұл ата-аналар ботынан БӨЛЕК бот болуы керек. BotFather берген токенді төмендегі өріске қойыңыз.')),
         info.ai ? null : hint(T('Gemini кілті (тегін): aistudio.google.com/apikey сайтына bayterek20050 аккаунтымен кіріп, «Create API key» басыңыз. Балалардың аты Gemini-ге жіберілмейді — белгімен ауыстырылады.')),
         h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Бот токені (BotFather)'), tok), field(T('Gemini API кілті'), gem)),
+        testOut,
         h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+          h('button', {type: 'button', class: 'btn btn-l', onclick: async () => {
+            const r = await run(T('Тексерілуде…'), () => api('sbTest'));
+            const why = {key: T('кілт жарамсыз. aistudio.google.com/apikey сайтынан жаңа кілт жасап, жоғарыдағы өріске қойыңыз.'), quota: T('тегін шек таусылды. Бірнеше минуттан кейін қайта тексеріңіз.'), busy: T('Gemini уақытша бос емес. Бір-екі минуттан кейін қайта тексеріңіз.')}[r.kind];
+            testOut.className = 'text-sm font-semibold ' + (r.works ? 'text-emerald-800' : 'text-red-700');
+            testOut.textContent = !r.ai ? T('Кілт сақталмаған. Жоғарыдағы нұсқау бойынша кілт жасап, өріске қойыңыз.') : r.works ? T('✅ Gemini жұмыс істеп тұр. Дауыс танылады.') : T('⚠️ Gemini жұмыс істемеді: ') + (why || r.err || '');
+          }}, T('🧪 Gemini-ді тексеру')),
           info.name ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => {
             if (!confirm(T('Қызметкерлер боты өшірілсін бе?'))) return;
             const r = await run(T('Сақталуда…'), () => api('sbSet', {token: ''})); INFO.sbName = ''; botBtn(); render(r);
