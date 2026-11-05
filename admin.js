@@ -1593,6 +1593,7 @@
             const why = {key: T('кілт жарамсыз. aistudio.google.com/apikey сайтынан жаңа кілт жасап, жоғарыдағы өріске қойыңыз.'), quota: T('тегін шек таусылды. Бірнеше минуттан кейін қайта тексеріңіз.'), busy: T('Gemini уақытша бос емес. Бір-екі минуттан кейін қайта тексеріңіз.')}[r.kind];
             testOut.className = 'text-sm font-semibold ' + (r.works ? 'text-emerald-800' : 'text-red-700');
             testOut.textContent = !r.ai ? T('Кілт сақталмаған. Жоғарыдағы нұсқау бойынша кілт жасап, өріске қойыңыз.') : r.works ? T('✅ Gemini жұмыс істеп тұр. Дауыс танылады.') + (r.geminiMs ? ' (' + r.model + ' · Gemini ' + (r.geminiMs / 1000).toFixed(1) + T(' с') + ' · Drive ' + (r.driveMs / 1000).toFixed(1) + T(' с') + ')' + (r.last ? T(' · Соңғы қате: ') + r.last : '') : '') : T('⚠️ Gemini жұмыс істемеді: ') + (why || r.err || '') + (r.last ? T(' · Соңғы қате: ') + r.last : '');
+            if (r.ai && !r.v) testOut.append(h('div', {class: 'text-red-700 mt-1'}, T('⚠️ Сервердегі код ескі. Код.gs файлын ауыстырып, «Новая версия» арқылы қайта жариялаңыз.')));
             if (r.trace) testOut.append(h('div', {class: 'text-xs font-normal text-charcoal/70 mt-1'}, T('Соңғы хабарлама: ') + r.trace));
           }}, T('🧪 Gemini-ді тексеру')),
           info.name ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => {
