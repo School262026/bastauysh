@@ -1584,7 +1584,7 @@
           info.name ? T(' · қосылған қызметкерлер: ') + (info.count || 0) : ''),
         h('div', {class: 'text-sm'}, h('b', {}, 'Gemini: '), info.ai ? T('қосулы ✓ (дауысты тану, бөлімді анықтау, мәтінді түзету)') : T('қосылмаған — бот мәтінді өзгеріссіз жариялайды, бөлімді қызметкер батырмамен таңдайды')),
         info.name ? null : hint(T('Қызметкерлер боты: Telegram-да @BotFather → /newbot → атын жазыңыз (мысалы: Baiterek ST мұғалім). Бұл ата-аналар ботынан БӨЛЕК бот болуы керек. BotFather берген токенді төмендегі өріске қойыңыз.')),
-        info.ai ? null : hint(T('Gemini кілті (тегін): aistudio.google.com/apikey сайтына bayterek20050 аккаунтымен кіріп, «Create API key» басыңыз. Балалардың аты Gemini-ге жіберілмейді — белгімен ауыстырылады.')),
+        info.ai ? null : hint(T('Gemini кілті (тегін): aistudio.google.com/apikey сайтына bayterek20050 аккаунтымен кіріп, «Create API key» басыңыз. Мәтіндегі балалардың аты Gemini-ге жіберілмейді (белгімен ауыстырылады), ал дауыс жазбасы Gemini-ге толық жіберіледі.')),
         h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Бот токені (BotFather)'), tok), field(T('Gemini API кілті'), gem)),
         testOut,
         h('div', {class: 'flex flex-wrap gap-2 justify-end'},
@@ -1592,7 +1592,7 @@
             const r = await run(T('Тексерілуде…'), () => api('sbTest'));
             const why = {key: T('кілт жарамсыз. aistudio.google.com/apikey сайтынан жаңа кілт жасап, жоғарыдағы өріске қойыңыз.'), quota: T('тегін шек таусылды. Бірнеше минуттан кейін қайта тексеріңіз.'), busy: T('Gemini уақытша бос емес. Бір-екі минуттан кейін қайта тексеріңіз.')}[r.kind];
             testOut.className = 'text-sm font-semibold ' + (r.works ? 'text-emerald-800' : 'text-red-700');
-            testOut.textContent = !r.ai ? T('Кілт сақталмаған. Жоғарыдағы нұсқау бойынша кілт жасап, өріске қойыңыз.') : r.works ? T('✅ Gemini жұмыс істеп тұр. Дауыс танылады.') : T('⚠️ Gemini жұмыс істемеді: ') + (why || r.err || '');
+            testOut.textContent = !r.ai ? T('Кілт сақталмаған. Жоғарыдағы нұсқау бойынша кілт жасап, өріске қойыңыз.') : r.works ? T('✅ Gemini жұмыс істеп тұр. Дауыс танылады.') + (r.geminiMs ? ' (' + r.model + ' · Gemini ' + (r.geminiMs / 1000).toFixed(1) + T(' с') + ' · Drive ' + (r.driveMs / 1000).toFixed(1) + T(' с') + ')' : '') : T('⚠️ Gemini жұмыс істемеді: ') + (why || r.err || '');
           }}, T('🧪 Gemini-ді тексеру')),
           info.name ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => {
             if (!confirm(T('Қызметкерлер боты өшірілсін бе?'))) return;
