@@ -612,7 +612,15 @@
     var recs = A.recs.slice();
     if (A.focus.length) recs.push(T.focusSubj + ': ' + A.focus.join(', ') + '.');
     if (c.concl && c.concl.rec) recs.push(c.concl.rec);
-    h += '<p class="text-sm text-charcoal/65 mb-4">🔒 ' + esc(T.sub) + '. ' + esc(t('fb_note')) + '</p>' +
+    // 🕸 радар + тоқсан бойынша өзгеріс (тек осы кезеңге дейінгі тоқсандар)
+    var R = C.RT[lang] || C.RT.kz, dom = C.domains(c.agg), ser = C.series(cards).filter(function(x){ return C.order(x.period) <= C.order(c.period); }), prev = C.prevOf(ser, c.period);
+    if (!ser.some(function(x){ return x.period === c.period; }) && Object.keys(dom).length) ser = ser.concat([{period: c.period, agg: c.agg, dom: dom}]);
+    var vis = !Object.keys(dom).length ? '' : '<div class="rounded-2xl border border-emerald-900/10 p-4 mb-5">' +
+      '<div class="font-extrabold text-emerald-950 mb-2">🕸 ' + esc(R.radar) + '</div>' +
+      '<div class="grid md:grid-cols-2 gap-4 items-center"><div>' + C.radarSVG(dom, prev, lang) + '</div>' +
+      '<div><p class="text-xs text-charcoal/60 mb-1">' + esc(R.tap) + '</p>' + C.domainListHTML(c.agg, prev, lang, false) + '<p class="text-xs text-charcoal/55 mt-2">' + esc(R.scale) + '</p></div></div>' +
+      '<div class="mt-4"><div class="font-extrabold text-emerald-950 mb-1">📈 ' + esc(R.dyn) + '</div><p class="text-sm leading-relaxed">' + esc(C.dynText(dom, prev, lang)) + '</p>' + (prev ? '<div class="mt-2">' + C.trendHTML(ser, lang) + '</div>' : '') + '</div></div>';
+    h += '<p class="text-sm text-charcoal/65 mb-4">🔒 ' + esc(T.sub) + '. ' + esc(t('fb_note')) + '</p>' + vis +
       (!rows && !srows ? '<p class="rounded-2xl bg-gold-50 border border-gold-100 p-4 mb-4">' + esc(T.noRatings) + '</p>' : '') +
       '<div class="grid md:grid-cols-2 gap-5"' + (!rows && !srows ? ' hidden' : '') + '><div class="rounded-2xl border border-emerald-900/10 p-4">' + rows +
       (srows ? '<div class="mt-4 text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(T.subjects) + '</div>' + srows : '') + '</div>' +
@@ -631,7 +639,7 @@
     var cur = MC.codes[MC.cur], d = cur && MC.data[cur.code];
     if (!d || !d.child || !(d.cards || []).length) return;
     var c = d.cards[MC.cardIdx || 0];
-    window.CARD_PRINT({lang: lang, name: d.child.name, cls: d.cls, period: c.period, agg: c.agg, concl: c.concl, psych: c.psych, clubs: d.child.clubs || []});
+    window.CARD_PRINT({lang: lang, name: d.child.name, cls: d.cls, period: c.period, agg: c.agg, concl: c.concl, psych: c.psych, clubs: d.child.clubs || [], series: window.CARD.series(d.cards)});
   };
   window.uiMcFbPrint = function(){
     var cur = MC.codes[MC.cur], d = cur && MC.data[cur.code];

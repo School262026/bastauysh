@@ -873,7 +873,140 @@
     if (out.length) out.push(A.weak.length || A.focus.length ? W.endWeak : W.endGood);
     return out.join(' ');
   };
-  // Даму картасын басып шығару / PDF. o = {lang, name, cls, period, agg, concl, psych, clubs}
+  // ---------- 🕸 Радар және тоқсан бойынша динамика (жаңа дерек жинамайды, бар бағаларды көрсетеді) ----------
+  var RT = {
+    kz: {radar:'Даму бейнесі', dyn:'Тоқсан бойынша өзгеріс', cur:'Осы кезең', prev:'Алдыңғы кезең', tap:'Топты басыңыз — ішіндегі параметрлер ашылады',
+         up:'Өсу байқалды', down:'Көбірек көңіл бөлу керек (төмендеді)', same:'Қалғандары тұрақты.', allSame:'Көрсеткіштер алдыңғы кезеңмен бірдей деңгейде, тұрақты.',
+         first:'Динамика келесі тоқсан бағаланғаннан кейін көрінеді.', vsPrev:'Алдыңғы кезеңмен салыстырғанда', scale:'1 — қолдау қажет · 4 — жоғары'},
+    ru: {radar:'Профиль развития', dyn:'Изменения по четвертям', cur:'Этот период', prev:'Предыдущий период', tap:'Нажмите на группу — откроются её параметры',
+         up:'Есть рост', down:'Нужно больше внимания (снижение)', same:'Остальное стабильно.', allSame:'Показатели на том же уровне, что и в прошлом периоде, — стабильно.',
+         first:'Динамика появится после оценки следующей четверти.', vsPrev:'По сравнению с предыдущим периодом', scale:'1 — нужна поддержка · 4 — высокий'},
+    en: {radar:'Development profile', dyn:'Change by term', cur:'This period', prev:'Previous period', tap:'Tap a group to see its areas',
+         up:'Growth in', down:'Needs more attention (went down)', same:'Everything else is steady.', allSame:'Results are at the same level as last period — steady.',
+         first:'Change over time appears after the next term is rated.', vsPrev:'Compared with the previous period', scale:'1 — needs support · 4 — strong'}
+  };
+  CARD.RT = RT;
+  var escH = function(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  var Q_ORD = {Q1:1, Q2:2, Q3:3, Q4:4, Y:5};
+  CARD.order = function(p){ var m = String(p || '').split('/'); return m[0] + '/' + (Q_ORD[m[1]] || 0); };
+  // Топ бойынша орташа балл: {learn: 3.2, ...}
+  CARD.domains = function(agg){
+    var P = (agg || {}).params || {}, out = {};
+    CARD.groups.forEach(function(g){
+      var v = CARD.params.filter(function(x){ return x.g === g.k && P[x.k]; }).map(function(x){ return P[x.k].avg; });
+      if (v.length) out[g.k] = Math.round(v.reduce(function(s, a){ return s + a; }, 0) / v.length * 100) / 100;
+    });
+    return out;
+  };
+  // Бағасы бар тоқсандар уақыт ретімен (жылдық «Y» кезеңі динамикаға кірмейді)
+  CARD.series = function(cards){
+    return (cards || []).filter(function(c){ return c.agg && Object.keys(c.agg.params || {}).length && !/\/Y$/.test(c.period); })
+      .sort(function(a, b){ return CARD.order(a.period) < CARD.order(b.period) ? -1 : 1; })
+      .map(function(c){ return {period: c.period, agg: c.agg, dom: CARD.domains(c.agg)}; });
+  };
+  CARD.prevOf = function(series, period){
+    var o = CARD.order(period), prev = null;
+    (series || []).forEach(function(s){ if (CARD.order(s.period) < o) prev = s; });
+    return prev;
+  };
+  var DELTA = 0.25;
+  CARD.dynText = function(cur, prev, lang){
+    var R = RT[lang] || RT.kz, up = [], down = [];
+    if (!prev) return R.first;
+    CARD.groups.forEach(function(g){
+      var a = cur[g.k], b = prev.dom[g.k];
+      if (a == null || b == null) return;
+      if (a - b >= DELTA) up.push(g[lang] || g.kz); else if (b - a >= DELTA) down.push(g[lang] || g.kz);
+    });
+    if (!up.length && !down.length) return R.allSame;
+    return (up.length ? R.up + ': ' + up.join(', ') + '. ' : '') + (down.length ? R.down + ': ' + down.join(', ') + '. ' : '') + R.same;
+  };
+  var wrapLbl = function(s, n){
+    var words = String(s).split(' '), lines = [], cur = '';
+    words.forEach(function(w){ if (cur && (cur + ' ' + w).length > n) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; });
+    if (cur) lines.push(cur);
+    return lines.slice(0, 3);
+  };
+  var RC = {cur:'#2E7D5B', prev:'#B8952A', grid:'#CFDDD6', text:'#1A202C', muted:'#5b6b66'};
+  // «Өрмекші» диаграмма: 5 топ, деңгей 1–4; алдыңғы кезең пунктирмен
+  CARD.radarSVG = function(cur, prev, lang){
+    var R = RT[lang] || RT.kz, LV = CARD.levels[lang] || CARD.levels.kz, gs = CARD.groups, n = gs.length, rad = 88;
+    var pt = function(i, v){ var a = -Math.PI / 2 + i * 2 * Math.PI / n, r = rad * v / 4; return [Math.round(Math.cos(a) * r * 10) / 10, Math.round(Math.sin(a) * r * 10) / 10]; };
+    var poly = function(dom){ return gs.map(function(g, i){ return pt(i, dom[g.k] || 0).join(','); }).join(' '); };
+    var s = '';
+    for (var l = 1; l <= 4; l++) s += '<polygon points="' + gs.map(function(g, i){ return pt(i, l).join(','); }).join(' ') + '" fill="none" stroke="' + RC.grid + '" stroke-width="' + (l === 4 ? 1.4 : 0.8) + '"/>';
+    gs.forEach(function(g, i){ var e = pt(i, 4); s += '<line x1="0" y1="0" x2="' + e[0] + '" y2="' + e[1] + '" stroke="' + RC.grid + '" stroke-width="0.8"/>'; });
+    [1, 2, 3, 4].forEach(function(l){ var p = pt(0, l); s += '<text x="' + (p[0] + 4) + '" y="' + (p[1] + 4) + '" font-size="10" fill="' + RC.muted + '">' + l + '</text>'; });
+    if (prev) s += '<polygon points="' + poly(prev.dom) + '" fill="none" stroke="' + RC.prev + '" stroke-width="2" stroke-dasharray="5 4"/>';
+    s += '<polygon points="' + poly(cur) + '" fill="' + RC.cur + '" fill-opacity="0.22" stroke="' + RC.cur + '" stroke-width="2.4" stroke-linejoin="round"/>';
+    gs.forEach(function(g, i){
+      var v = cur[g.k]; if (v == null) return;
+      var p = pt(i, v), lv = v >= 3.5 ? 4 : v >= 2.75 ? 3 : v >= 2 ? 2 : 1;
+      s += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="4.5" fill="' + RC.cur + '" stroke="#fff" stroke-width="1.5"><title>' + escH((g[lang] || g.kz) + ': ' + v.toFixed(1) + ' — ' + LV[lv]) + '</title></circle>';
+    });
+    gs.forEach(function(g, i){
+      var a = -Math.PI / 2 + i * 2 * Math.PI / n, x = Math.cos(a) * (rad + 12), y = Math.sin(a) * (rad + 12);
+      var anchor = Math.abs(x) < 8 ? 'middle' : x > 0 ? 'start' : 'end', lines = wrapLbl(g[lang] || g.kz, 13), v = cur[g.k], lh = 14;
+      var tot = lines.length + (v != null ? 1 : 0);
+      var y0 = y < -8 ? y - (tot - 1) * lh - 4 : y > 8 ? y + 12 : y - (tot - 1) * lh / 2 + 4;
+      s += '<text x="' + Math.round(x) + '" y="' + Math.round(y0) + '" text-anchor="' + anchor + '" font-size="13" fill="' + RC.text + '">' +
+        lines.map(function(t, k){ return '<tspan x="' + Math.round(x) + '" dy="' + (k ? lh : 0) + '">' + escH(t) + '</tspan>'; }).join('') +
+        (v != null ? '<tspan x="' + Math.round(x) + '" dy="' + lh + '" font-weight="700" fill="' + RC.cur + '">' + v.toFixed(1) + '</tspan>' : '') + '</text>';
+    });
+    var label = R.radar + ': ' + gs.filter(function(g){ return cur[g.k] != null; }).map(function(g){ return (g[lang] || g.kz) + ' ' + cur[g.k].toFixed(1); }).join(', ');
+    var leg = '<g font-size="12" fill="' + RC.text + '"><rect x="-160" y="180" width="16" height="10" fill="' + RC.cur + '" fill-opacity="0.35" stroke="' + RC.cur + '"/><text x="-139" y="189">' + escH(R.cur) + '</text>' +
+      (prev ? '<line x1="8" y1="185" x2="28" y2="185" stroke="' + RC.prev + '" stroke-width="2" stroke-dasharray="5 4"/><text x="33" y="189">' + escH(R.prev) + '</text>' : '') + '</g>';
+    return '<svg viewBox="-195 -178 390 376" width="100%" style="max-width:440px;display:block;margin:0 auto" role="img" aria-label="' + escH(label) + '" font-family="Arial, \'Segoe UI\', sans-serif">' + s + leg + '</svg>';
+  };
+  // Топтар тізімі: басқанда ішкі параметрлер ашылады; өзгеріс ▲▼ көрсеткішімен
+  CARD.domainListHTML = function(agg, prev, lang, open){
+    var LV = CARD.levels[lang] || CARD.levels.kz, P = (agg || {}).params || {}, PP = prev ? (prev.agg.params || {}) : {}, dom = CARD.domains(agg);
+    var COLS = ['', '#E9A23B', '#F2D06B', '#8CC5A8', '#2E7D5B'];
+    var lv = function(a){ return a >= 3.5 ? 4 : a >= 2.75 ? 3 : a >= 2 ? 2 : 1; };
+    var arrow = function(a, b){
+      if (b == null) return '';
+      var d = Math.round((a - b) * 10) / 10;
+      if (Math.abs(a - b) < DELTA) return '<span style="color:#5b6b66;font-weight:700" title="0">＝</span>';
+      return d > 0 ? '<span style="color:#2E7D5B;font-weight:800">▲ +' + d.toFixed(1) + '</span>' : '<span style="color:#B45309;font-weight:800">▼ ' + d.toFixed(1) + '</span>';
+    };
+    var chip = function(a){ var l = lv(a); return '<span style="display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;font-weight:700;background:' + COLS[l] + ';color:' + (l >= 3 ? '#fff' : '#3b2a00') + '">' + a.toFixed(1) + ' · ' + escH(LV[l]) + '</span>'; };
+    return CARD.groups.filter(function(g){ return dom[g.k] != null; }).map(function(g){
+      var ps = CARD.params.filter(function(x){ return x.g === g.k && P[x.k]; });
+      return '<details' + (open ? ' open' : '') + ' style="border-bottom:1px solid #E5ECE8;padding:6px 0">' +
+        '<summary style="cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;list-style:none"><span style="font-weight:700">' + escH(g[lang] || g.kz) + '</span>' +
+        '<span style="display:inline-flex;gap:8px;align-items:center">' + arrow(dom[g.k], prev ? prev.dom[g.k] : null) + chip(dom[g.k]) + '</span></summary>' +
+        '<div style="padding:4px 0 2px 12px">' + ps.map(function(x){
+          var b = PP[x.k] ? PP[x.k].avg : null;
+          return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:2px 0"><span>' + escH(x[lang] || x.kz) + '</span><span style="white-space:nowrap">' + arrow(P[x.k].avg, b) + ' ' + P[x.k].avg.toFixed(1) + '</span></div>';
+        }).join('') + '</div></details>';
+    }).join('');
+  };
+  // Әр топтың тоқсан бойынша өзгерісі: шағын сызықтық графиктер
+  CARD.trendHTML = function(series, lang){
+    var T = CARD.T[lang] || CARD.T.kz;
+    if (!series || series.length < 2) return '';
+    var years = {}; series.forEach(function(s){ years[s.period.split('/')[0]] = 1; });
+    var many = Object.keys(years).length > 1;
+    var name = function(p){ var m = p.split('/'); return (T[m[1]] || m[1]) + (many ? ' ' + m[0].slice(2, 4) + '/' + m[0].slice(7, 9) : ''); };
+    var W = 120, H = 40, n = series.length, xs = function(i){ return 8 + i * (W - 16) / (n - 1); }, ys = function(v){ return H - 6 - (v - 1) / 3 * (H - 12); };
+    var head = '<div style="font-size:11.5px;color:#5b6b66;font-weight:700;margin:2px 0 4px">' + series.map(function(s){ return escH(name(s.period)); }).join(' → ') + '</div>';
+    var rows = CARD.groups.map(function(g){
+      var pts = series.map(function(s, i){ return s.dom[g.k] != null ? {i: i, v: s.dom[g.k]} : null; }).filter(Boolean);
+      if (pts.length < 2) return '';
+      var a = pts[0].v, b = pts[pts.length - 1].v, d = Math.round((b - a) * 10) / 10;
+      var col = b - a >= DELTA ? '#2E7D5B' : a - b >= DELTA ? '#B45309' : '#5b6b66';
+      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" style="flex:none" role="img" aria-label="' + escH((g[lang] || g.kz) + ': ' + pts.map(function(p){ return name(series[p.i].period) + ' ' + p.v.toFixed(1); }).join(', ')) + '">' +
+        '<line x1="4" x2="' + (W - 4) + '" y1="' + ys(2.5) + '" y2="' + ys(2.5) + '" stroke="#E5ECE8" stroke-dasharray="3 3"/>' +
+        '<polyline points="' + pts.map(function(p){ return xs(p.i) + ',' + ys(p.v); }).join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.2" stroke-linejoin="round"/>' +
+        pts.map(function(p){ return '<circle cx="' + xs(p.i) + '" cy="' + ys(p.v) + '" r="3.2" fill="' + col + '"><title>' + escH(name(series[p.i].period) + ': ' + p.v.toFixed(1)) + '</title></circle>'; }).join('') + '</svg>';
+      return '<div style="border-bottom:1px solid #EEF2F0;padding:4px 0"><div style="font-size:13px;font-weight:600">' + escH(g[lang] || g.kz) + '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + svg + '<span style="font-size:13px;font-weight:800;color:' + col + '">' + a.toFixed(1) + ' → ' + b.toFixed(1) +
+        (Math.abs(d) >= 0.1 ? ' (' + (d > 0 ? '+' : '') + d.toFixed(1) + ')' : '') + '</span></div></div>';
+    }).join('');
+    return rows ? '<div>' + head + rows + '</div>' : '';
+  };
+
+  // Даму картасын басып шығару / PDF. o = {lang, name, cls, period, agg, concl, psych, clubs, series}
   window.CARD_PRINT = function(list){
     list = list instanceof Array ? list : [list];
     var lang = (list[0] && list[0].lang) || 'kz', T = CARD.T[lang] || CARD.T.kz, LV = CARD.levels[lang] || CARD.levels.kz;
@@ -884,6 +1017,13 @@
     var now = new Date(), today = ('0' + now.getDate()).slice(-2) + '.' + ('0' + (now.getMonth() + 1)).slice(-2) + '.' + now.getFullYear();
     var pages = list.map(function(o){
       var A = CARD.analyse(o.agg || {}, lang), P = (o.agg || {}).params || {};
+      var R = RT[lang] || RT.kz, ser = (o.series || []).filter(function(x){ return CARD.order(x.period) <= CARD.order(o.period); });
+      var prev = CARD.prevOf(ser, o.period), dom = CARD.domains(o.agg), vis = '';
+      if (Object.keys(dom).length) {
+        vis = '<h2>🕸 ' + esc(R.radar) + '</h2><div class="two rad"><div>' + CARD.radarSVG(dom, prev, lang) + '</div><div>' + CARD.domainListHTML(o.agg, prev, lang, true) +
+          '<p class="muted" style="font-size:10.5px">' + esc(R.scale) + '</p></div></div>';
+        if (prev) vis += '<h2>📈 ' + esc(R.dyn) + '</h2><p>' + esc(CARD.dynText(dom, prev, lang)) + '</p>' + CARD.trendHTML(ser.some(function(x){ return x.period === o.period; }) ? ser : ser.concat([{period: o.period, agg: o.agg, dom: dom}]), lang);
+      }
       var rows = '';
       CARD.groups.forEach(function(g){
         var ps = CARD.params.filter(function(x){ return x.g === g.k && P[x.k]; });
@@ -895,7 +1035,7 @@
       var recs = A.recs.slice();
       if (A.focus.length) recs.push(T.focusSubj + ': ' + A.focus.join(', ') + '.');
       if (A.good.length || A.interests.length) recs.push(T.keep + ': ' + A.good.concat(A.interests).slice(0, 6).join(', ') + '.');
-      var body = !rows && !srows && !o.concl && !o.psych ? '<p class="muted">' + esc(T.empty) + '</p>' :
+      var body = !rows && !srows && !o.concl && !o.psych ? '<p class="muted">' + esc(T.empty) + '</p>' : vis +
         (rows ? '<h2>' + esc(T.param) + '</h2><table><colgroup><col style="width:52%"><col style="width:26%"><col style="width:22%"></colgroup>' + rows + '</table>' : '') +
         (srows ? '<h2>' + esc(T.subjects) + '</h2><table><colgroup><col style="width:52%"><col style="width:26%"><col style="width:22%"></colgroup>' + srows + '</table>' : '') +
         (rows || srows ? '<div class="two"><div><h2>💪 ' + esc(T.strong) + '</h2>' + ul(A.strong.concat(A.good)) + '</div><div><h2>🌱 ' + esc(T.weak) + '</h2>' + ul(A.weak.concat(A.focus)) + '</div></div>'
@@ -923,6 +1063,7 @@
       '.note{background:#FBF6E7;border:1px solid #F5E9C2;border-radius:8px;padding:8px 10px;margin:14px 0}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}ul{margin:4px 0;padding-left:18px}li{margin:2px 0}.muted{color:#6b7a75}.pre{white-space:pre-line}' +
       '.sign{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:18px;font-size:12px}.legal{margin-top:12px;font-size:9.5px;color:#6b7a75;border-top:1px solid #E5ECE8;padding-top:6px}' +
       '.tb{position:sticky;top:0;text-align:center;padding:8px;background:#FBF6E7;margin:-16px -16px 16px}.tb button{font:inherit;font-weight:700;padding:8px 18px;border-radius:999px;border:0;background:#0F382C;color:#fff;cursor:pointer}' +
+      '.rad{align-items:center}summary::-webkit-details-marker{display:none}' +
       '@media (max-width:600px){.two{grid-template-columns:1fr}.c{width:16px}}@media print{.tb{display:none}body{padding:0}}</style></head><body>' +
       '<div class="tb"><button onclick="window.print()">🖨 ' + esc(T.print) + '</button></div>' + pages +
       '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>';
