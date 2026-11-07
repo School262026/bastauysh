@@ -1744,7 +1744,7 @@
     return '';
   }
   function showCreds(u, pw){
-    const msg = T('Baiterek ST бастауыш мектебі сайтының әкімші беті:\n') + SITE_URL + T('admin.html\nЛогин: ') + u.login + T('\nПароль: ') + pw + howTo(u) + (u.role !== 'viewer' ? '\n\n📖 Сайтты пайдалану / Работа с сайтом: ' + SITE_URL + 'sayt-nusqaulyq\n📲 Telegram бот / Telegram-бот: ' + SITE_URL + 'nusqaulyq\n(Русский — кнопка «Русский» вверху страницы)' : '') +
+    const msg = T('Baiterek ST бастауыш мектебі сайтының әкімші беті:\n') + SITE_URL + T('admin.html\nЛогин: ') + u.login + T('\nПароль: ') + pw + howTo(u) + (u.role !== 'viewer' ? '\n\n📖 Нұсқаулық / Инструкция: ' + SITE_URL + 'mugalim' : '') +
       (u.email && u.role !== 'viewer' ? T('\n\nGoogle Drive-та сізге фото/видео жүктеуге арналған қалта ашылды (') + u.email + T(' поштасына хабарлама келеді).') : '');
     const close = modal(
       h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, T('✅ Сақталды: ') + u.name),
