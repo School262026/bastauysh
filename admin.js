@@ -1653,6 +1653,7 @@
       h('p', {class: 'text-sm text-charcoal/65 mb-3'}, KW.at ? T('Соңғы жаңарту: ') + fmtTs(KW.at) + ' · ' + KW.by : T('Бұл тоқсан әлі жаңартылмаған. «Күнделіктен жаңарту» батырмасын басыңыз.')));
     if (!KW.ready) box.append(hint(T('Күнделік байланысы қосылмаған. Бас әкімші ⚙ Баптаулар бөлімінде логин мен парольді енгізуі керек.')));
     if (KW.unknown) box.append(hint(T('Пәні анықталмаған баға: ') + KW.unknown + T('. Олар «?» деген бағанда тұр.')));
+    if (KW.unkind) box.append(hint(T('Түрі анықталмаған баға: ') + KW.unkind + T('. «🔄 Күнделіктен жаңарту» батырмасын бір минуттан кейін қайта басыңыз.')));
     if (KW.manage) kwMatchPanel(box);
     if (!KW.at) return;
     if (!KW.subjects.includes(KW_SUB)) KW_SUB = '';
