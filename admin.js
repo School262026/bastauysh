@@ -1659,6 +1659,13 @@
       h('summary', {class: 'font-bold text-emerald-950 cursor-pointer text-sm'}, T('🔎 Күнделіктегі баға түрлері (тексеру үшін)')),
       h('div', {class: 'text-sm mt-2 space-y-0.5'}, KW.types.map(t => h('div', {}, (t[0] || T('(атауы жоқ)')) + ' → ', h('b', {}, KW_KINDS[t[1]] || t[1]), ' · ' + t[2]))),
       (KW.titles || []).length ? h('div', {class: 'text-xs text-charcoal/65 mt-2'}, KW.titles.map(t => t[0] + ' (' + t[1] + ')').join(' · ')) : null));
+    if (isOwner() && KW.ready) {
+      const out = h('pre', {class: 'text-xs whitespace-pre-wrap mt-2', style: 'overflow-wrap:anywhere'});
+      box.append(h('details', {class: 'card mb-3'}, h('summary', {class: 'font-bold text-emerald-950 cursor-pointer text-sm'}, T('🧪 Күнделік сұраныстарын тексеру')),
+        h('div', {class: 'flex flex-wrap gap-2 mt-2'},
+          h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => { const j = await run(T('Тексерілуде…'), () => api('kwProbe', {cls: KW_CLS, period: KW_PER})); out.textContent = j.lines.join('\n'); }}, T('▶ Тексеруді бастау')),
+          h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(out.textContent).then(() => toast(T('Көшірілді')))}, T('Көшіру'))), out));
+    }
     if (!KW.at) return;
     if (!KW.subjects.includes(KW_SUB)) KW_SUB = '';
     const pick = () => kwRender(box);
