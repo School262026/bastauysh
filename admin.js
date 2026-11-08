@@ -63,7 +63,7 @@
   // ---------- рөлдер мен рұқсаттар ----------
   const ROLE_NAMES = {owner: T('Бас әкімші'), admin: T('Әкімші'), teacher: T('Сынып жетекшісі'), subject: T('Пән мұғалімі / үйірме жетекшісі'), psych: T('Педагог-психолог'), viewer: T('Әкімшілік мүшесі (тек қарау)')};
   const PERM_NAMES = {posts: T('📰 Жаңалықтар'), menu: T('🍽 Ас мәзірі'), week: T('🗓 Апта жоспары'), photos: T('🖼 Суреттер'), team: T('👥 Ұжым'),
-    faq: T('❓ Ата-анаға ақпарат'), texts: T('✏️ Мәтіндер'), contacts: T('☎ Байланыс'), classes: T('🏫 Сыныптарды қарау'), log: T('📜 Журнал'), feedback: T('📝 Кері байланысты көру'), olymp: T('🏆 Олимпиада')};
+    faq: T('❓ Ата-анаға ақпарат'), texts: T('✏️ Мәтіндер'), contacts: T('☎ Байланыс'), classes: T('🏫 Сыныптарды қарау'), log: T('📜 Журнал'), feedback: T('📝 Кері байланысты көру'), olymp: T('🏆 Олимпиада'), kun: T('📘 Күнделіктен бағалар')};
   const isOwner = () => ME.role === 'owner';
   const can = p => isOwner() || (ME.role === 'admin' && (ME.perms || []).includes(p));
   const seesClasses = () => isOwner() || ME.role === 'viewer' || ME.role === 'teacher' || can('classes');
@@ -379,6 +379,7 @@
     ['hw', T('📚 Үй тапсырмасы'), seesClasses],
     ['qa', T('💬 Ата-ана сұрақтары'), seesClasses],
     ['fb', T('📝 Кері байланыс'), () => isOwner() || ['teacher', 'subject', 'psych'].includes(ME.role) || (ME.perms || []).includes('feedback')],
+    ['kun', T('📘 Күнделіктен бағалар'), () => can('kun') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['olymp', T('🏆 Олимпиада'), () => can('olymp') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['codes', T('🔑 Ата-ана кодтары'), () => isOwner() || ME.role === 'teacher'],
     ['users', T('👤 Қызметкерлер'), isOwner],
@@ -1618,6 +1619,110 @@
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(T('Қызметкерлер ботының нұсқаулығы: ') + guideUrl('nusqaulyq')).then(() => toast(T('Көшірілді')))}, T('Сілтемені көшіру'))));
   }
 
+  // ---------- 📘 Күнделіктен бағалар ----------
+  const KW_KINDS = {FO: T('ФО'), BJB: T('БЖБ'), TJB: T('ТЖБ'), AB: T('Аралық бағалау')};
+  const KW_COL = {FO: '#EEF2F0', BJB: '#CFE6F5', TJB: '#D9D2F2', AB: '#F7E3B5'};
+  let KW = null, KW_CLS = '', KW_PER = '', KW_SUB = '', KW_KIND = '';
+  const kwClasses = () => (can('kun') || ME.role === 'viewer') ? allClasses() : (ME.classes || []);
+  const kwPeriods = () => CARD.periods().filter(p => !/\/Y$/.test(p));
+  const kwNum = v => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+  const kwAvg = l => { const a = l.map(m => kwNum(m[2])).filter(n => n != null); return a.length ? Math.round(a.reduce((s, n) => s + n, 0) / a.length * 10) / 10 : ''; };
+  VIEWS.kun = async function(view){
+    const list = kwClasses();
+    view.append(title(T('📘 Күнделіктен бағалар')));
+    if (!list.length) { view.append(h('p', {class: 'card text-charcoal/70'}, T('Сізге әлі сынып бекітілмеген. Бас әкімшіге хабарласыңыз.'))); return; }
+    if (!KW_CLS || !list.includes(KW_CLS)) KW_CLS = list[0];
+    if (!KW_PER || !kwPeriods().includes(KW_PER)) { const c = CARD.currentPeriod(); KW_PER = /\/Y$/.test(c) ? c.replace('/Y', '/Q4') : c; }
+    const box = h('div', {}, h('p', {class: 'text-charcoal/60'}, T('Жүктелуде…')));
+    view.append(h('div', {class: 'flex flex-wrap gap-1.5 mb-4'}, list.map(c => h('button', {type: 'button', class: 'chip' + (c === KW_CLS ? ' active' : ''), style: 'padding:.35rem .75rem', onclick: () => { KW_CLS = c; KW_SUB = ''; go('kun', true); }}, c))), box);
+    try { KW = await api('kwGet', {cls: KW_CLS, period: KW_PER}); } catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); return; }
+    if (!box.isConnected) return;
+    kwRender(box);
+  };
+  function kwRender(box){
+    box.innerHTML = '';
+    const per = h('select', {class: 'inp', style: 'width:auto'}, kwPeriods().map(p => h('option', {value: p}, CARD.periodName(p, UI))));
+    per.value = KW_PER;
+    per.addEventListener('change', () => { KW_PER = per.value; KW_SUB = ''; go('kun', true); });
+    box.append(h('div', {class: 'flex flex-wrap items-center gap-2 mb-2'}, per,
+      h('button', {type: 'button', class: 'btn btn-g', disabled: !KW.ready, onclick: async () => {
+        const j = await run(T('Күнделіктен алынуда… Бір минутқа дейін созылуы мүмкін'), () => api('kwPull', {cls: KW_CLS, period: KW_PER}));
+        KW = j; toast(T('Жаңартылды ✓ Баға: ') + j.fresh.marks + (j.fresh.matched ? T(' · байланыстырылған оқушы: ') + j.fresh.matched : ''));
+        kwRender(box);
+      }}, T('🔄 Күнделіктен жаңарту'))),
+      h('p', {class: 'text-sm text-charcoal/65 mb-3'}, KW.at ? T('Соңғы жаңарту: ') + fmtTs(KW.at) + ' · ' + KW.by : T('Бұл тоқсан әлі жаңартылмаған. «Күнделіктен жаңарту» батырмасын басыңыз.')));
+    if (!KW.ready) box.append(hint(T('Күнделік байланысы қосылмаған. Бас әкімші ⚙ Баптаулар бөлімінде логин мен парольді енгізуі керек.')));
+    if (KW.unknown) box.append(hint(T('Пәні анықталмаған баға: ') + KW.unknown + T('. Олар «?» деген бағанда тұр.')));
+    if (KW.manage) kwMatchPanel(box);
+    if (!KW.at) return;
+    if (!KW.subjects.includes(KW_SUB)) KW_SUB = '';
+    const pick = () => kwRender(box);
+    box.append(h('div', {class: 'flex flex-wrap gap-2 items-center my-3'},
+      (() => { const s = h('select', {class: 'inp', style: 'width:auto'}, h('option', {value: ''}, T('Барлық пән')), KW.subjects.map(x => h('option', {value: x}, x))); s.value = KW_SUB; s.addEventListener('change', () => { KW_SUB = s.value; pick(); }); return s; })(),
+      [['', T('Барлығы')]].concat(Object.keys(KW_KINDS).map(k => [k, KW_KINDS[k]])).map(([k, l]) => h('button', {type: 'button', class: 'chip' + (k === KW_KIND ? ' active' : ''), style: 'padding:.3rem .7rem', onclick: () => { KW_KIND = k; pick(); }}, l))));
+    const flt = m => (!KW_KIND || m[3] === KW_KIND);
+    if (!KW.subjects.length) { box.append(h('p', {class: 'card text-charcoal/60'}, T('Бұл кезеңде баға табылмады.'))); return; }
+    if (!KW_SUB) {
+      // Оқушы × пән: орташа балл
+      box.append(h('div', {class: 'card', style: 'overflow-x:auto;padding:.5rem'}, h('table', {class: 'w-full text-sm', style: 'border-collapse:collapse'},
+        h('tr', {}, h('th', {class: 'text-left p-1.5'}, T('Оқушы')), KW.subjects.map(s => h('th', {class: 'p-1.5 text-xs', style: 'min-width:4.5rem'}, s))),
+        KW.rows.map(r => h('tr', {class: 'border-t border-emerald-900/5'},
+          h('td', {class: 'p-1.5 font-semibold', style: 'white-space:nowrap'}, r.name, r.linked ? null : ' ⚠'),
+          KW.subjects.map(s => { const l = r.marks.filter(m => m[0] === s && flt(m)); return h('td', {class: 'p-1.5 text-center', title: l.map(m => m[1] + ': ' + m[2]).join(', ')}, kwAvg(l) || (l.length ? l.length : '')); }))))),
+        h('p', {class: 'text-xs text-charcoal/55 mt-1'}, T('Кестеде таңдалған түрдегі бағалардың орташа мәні. Толық тізім үшін пәнді таңдаңыз.')));
+      return;
+    }
+    box.append(h('div', {class: 'space-y-1'}, KW.rows.map(r => {
+      const l = r.marks.filter(m => m[0] === KW_SUB && flt(m));
+      return h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'},
+        h('div', {class: 'font-semibold text-sm', style: 'min-width:11rem;flex:1'}, r.name, r.linked ? null : ' ⚠'),
+        h('div', {class: 'flex flex-wrap gap-1'}, l.length ? l.map(m => h('span', {title: m[1] + ' · ' + (KW_KINDS[m[3]] || m[3]), style: 'background:' + (KW_COL[m[3]] || '#EEF2F0') + ';border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, m[2])) : h('span', {class: 'text-xs text-charcoal/50'}, '—')),
+        h('div', {class: 'text-sm font-extrabold text-emerald-900', style: 'min-width:2.5rem;text-align:right'}, kwAvg(l)));
+    })), h('div', {class: 'flex flex-wrap gap-2 mt-2 text-xs'}, Object.keys(KW_KINDS).map(k => h('span', {style: 'background:' + KW_COL[k] + ';border-radius:6px;padding:0 6px'}, KW_KINDS[k]))));
+  }
+  // Күнделіктегі оқушы мен сайттағы оқушыны байланыстыру; аттарды Күнделік бойынша түзету
+  function kwMatchPanel(box){
+    const un = KW.unmatched || [], diffs = KW.diffs || [];
+    if (!un.length && !diffs.length) return;
+    const reload = async () => { KW = await api('kwGet', {cls: KW_CLS, period: KW_PER}); kwRender(box); };
+    box.append(h('details', {class: 'card mb-3', open: true},
+      h('summary', {class: 'font-extrabold text-emerald-950 cursor-pointer'}, T('🔗 Оқушыларды тексеру') + ' (' + (un.length + diffs.length) + ')'),
+      un.length ? h('div', {class: 'mt-2'},
+        h('p', {class: 'text-sm text-charcoal/70 mb-1'}, T('Бұл оқушылар сайттағы тізіммен автоматты сәйкестенбеді. Бағасы қате балаға түспеуі үшін қолмен таңдаңыз:')),
+        un.map(p => { const sel = h('select', {class: 'inp', style: 'width:auto;max-width:100%'}, h('option', {value: ''}, T('Таңдаңыз…')), (KW.siteFree || []).map(s => h('option', {value: s.id}, s.name)));
+          sel.addEventListener('change', async () => { if (!sel.value) return; await run(T('Сақталуда…'), () => api('kwMatch', {cls: KW_CLS, pid: p.id, sid: sel.value})); reload(); });
+          return h('div', {class: 'flex flex-wrap items-center gap-2 py-1 text-sm'}, h('b', {style: 'min-width:12rem'}, p.name), '→', sel); })) : null,
+      diffs.length ? h('div', {class: 'mt-3'},
+        h('p', {class: 'text-sm text-charcoal/70 mb-1'}, T('Аты-жөні Күнделіктегіден өзгеше жазылған оқушылар. Түзеткенде ата-ана сілтемесі мен бағалар өзгермейді:')),
+        diffs.map(d => h('div', {class: 'text-sm py-0.5'}, d.from, ' → ', h('b', {}, d.to))),
+        h('button', {type: 'button', class: 'btn btn-p btn-s mt-2', onclick: async () => {
+          if (!confirm(T('Аты-жөндерді Күнделік бойынша түзету керек пе?'))) return;
+          const j = await run(T('Сақталуда…'), () => api('kwFixNames', {cls: KW_CLS, sids: diffs.map(d => d.sid)}));
+          toast(T('Түзетілді: ') + j.changed); reload();
+        }}, T('✏️ Барлығын Күнделік бойынша түзету'))) : null));
+  }
+  // Бас әкімшінің баптауы: Күнделік логині мен паролі тек серверде сақталады
+  function kunSection(){
+    const box = h('div', {class: 'space-y-3'}, h('p', {class: 'text-sm text-charcoal/60'}, T('Жүктелуде…')));
+    const render = info => {
+      box.innerHTML = '';
+      const login = h('input', {class: 'inp', type: 'text', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false'});
+      const pass = h('input', {class: 'inp', type: 'password', autocomplete: 'new-password'});
+      box.append(
+        h('div', {class: 'text-sm'}, h('b', {}, T('Күнделік: ')), info.ready ? T('қосулы ✓ (логин: ') + info.login + ')' : T('қосылмаған')),
+        hint(T('Күнделікке завуч (мектеп әкімшілігі) аккаунтының логині мен паролін енгізіңіз. Олар тек серверде сақталады, сайтта көрінбейді. Бағаларды тек қызметкерлер көреді.')),
+        h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Күнделік логині'), login), field(T('Күнделік паролі'), pass)),
+        h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+          info.ready ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => { if (!confirm(T('Күнделік байланысы өшірілсін бе?'))) return; render(await run(T('Сақталуда…'), () => api('kwSet', {clear: true}))); }}, T('Өшіру')) : null,
+          h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+            if (!login.value.trim() || !pass.value) { toast(T('Логин мен парольді жазыңыз'), true); return; }
+            render(await run(T('Тексерілуде…'), () => api('kwSet', {login: login.value.trim(), password: pass.value}))); toast(T('Сақталды ✓'));
+          }}, T('💾 Сақтау'))));
+    };
+    api('kwInfo').then(render).catch(e => { box.innerHTML = ''; box.append(h('p', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
+    return section(T('📘 Күнделік байланысы'), box);
+  }
+
   // ---------- 🏆 ШОР / Олимпиада ----------
   const OL_LV = {school: T('Мектеп'), city: T('Қала'), region: T('Облыс'), republic: T('Республика'), intl: T('Халықаралық')};
   const OL_ORDER = ['school', 'city', 'region', 'republic', 'intl'];
@@ -2185,6 +2290,7 @@
       }),
       notifySection(),
       staffBotSection(),
+      kunSection(),
       section('Google Drive',
         st.limit ? h('div', {}, h('div', {class: 'text-sm font-semibold'}, T('Қолданылғаны: ') + gb(st.used) + ' / ' + gb(st.limit) + ' (' + pct + '%)'), h('div', {class: 'bar mt-2'}, h('div', {style: 'width:' + pct + '%'}))) : null,
         h('div', {class: 'flex flex-wrap gap-2'},
