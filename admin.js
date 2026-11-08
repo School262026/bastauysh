@@ -1620,7 +1620,8 @@
   }
 
   // ---------- 📘 Күнделіктен бағалар ----------
-  const KW_KINDS = {FO: T('ФО'), BJB: T('БЖБ'), TJB: T('ТЖБ'), AB: T('Аралық бағалау')};
+  const KW_KINDS = {FO: T('ФО'), AB: T('Аралық бағалау')};
+  const kwK = k => k === 'BJB' || k === 'TJB' ? 'AB' : k;   // бастауышта БЖБ/ТЖБ жоқ: журналда тек «АБ: Б/Ж»
   const KW_COL = {FO: '#EEF2F0', BJB: '#CFE6F5', TJB: '#D9D2F2', AB: '#F7E3B5'};
   let KW = null, KW_CLS = '', KW_PER = '', KW_SUB = '', KW_KIND = '';
   const kwClasses = () => (can('kun') || ME.role === 'viewer') ? allClasses() : (ME.classes || []);
@@ -1657,7 +1658,7 @@
     if (KW.manage) kwMatchPanel(box);
     if (KW.manage && (KW.types || []).length) box.append(h('details', {class: 'card mb-3'},
       h('summary', {class: 'font-bold text-emerald-950 cursor-pointer text-sm'}, T('🔎 Күнделіктегі баға түрлері (тексеру үшін)')),
-      h('div', {class: 'text-sm mt-2 space-y-0.5'}, KW.types.map(t => h('div', {}, (t[0] || T('(атауы жоқ)')) + ' → ', h('b', {}, KW_KINDS[t[1]] || t[1]), ' · ' + t[2]))),
+      h('div', {class: 'text-sm mt-2 space-y-0.5'}, KW.types.map(t => h('div', {}, (t[0] || T('(атауы жоқ)')) + ' → ', h('b', {}, KW_KINDS[kwK(t[1])] || t[1]), ' · ' + t[2]))),
       (KW.titles || []).length ? h('div', {class: 'text-xs text-charcoal/65 mt-2'}, KW.titles.map(t => t[0] + ' (' + t[1] + ')').join(' · ')) : null));
     if (isOwner() && KW.ready) {
       const out = h('pre', {class: 'text-xs whitespace-pre-wrap mt-2', style: 'overflow-wrap:anywhere'});
@@ -1672,7 +1673,7 @@
     box.append(h('div', {class: 'flex flex-wrap gap-2 items-center my-3'},
       (() => { const s = h('select', {class: 'inp', style: 'width:auto'}, h('option', {value: ''}, T('Барлық пән')), KW.subjects.map(x => h('option', {value: x}, x))); s.value = KW_SUB; s.addEventListener('change', () => { KW_SUB = s.value; pick(); }); return s; })(),
       [['', T('Барлығы')]].concat(Object.keys(KW_KINDS).map(k => [k, KW_KINDS[k]])).map(([k, l]) => h('button', {type: 'button', class: 'chip' + (k === KW_KIND ? ' active' : ''), style: 'padding:.3rem .7rem', onclick: () => { KW_KIND = k; pick(); }}, l))));
-    const flt = m => (!KW_KIND || m[3] === KW_KIND);
+    const flt = m => (!KW_KIND || kwK(m[3]) === KW_KIND);
     if (!KW.subjects.length) { box.append(h('p', {class: 'card text-charcoal/60'}, T('Бұл кезеңде баға табылмады.'))); return; }
     if (!KW_SUB) {
       // Оқушы × пән: орташа балл
@@ -1688,7 +1689,7 @@
       const l = r.marks.filter(m => m[0] === KW_SUB && flt(m));
       return h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'},
         h('div', {class: 'font-semibold text-sm', style: 'min-width:11rem;flex:1'}, r.name, r.linked ? null : ' ⚠'),
-        h('div', {class: 'flex flex-wrap gap-1'}, l.length ? l.map(m => h('span', {title: m[1] + ' · ' + (KW_KINDS[m[3]] || m[3]), style: 'background:' + (KW_COL[m[3]] || '#EEF2F0') + ';border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, m[2])) : h('span', {class: 'text-xs text-charcoal/50'}, '—')),
+        h('div', {class: 'flex flex-wrap gap-1'}, l.length ? l.map(m => h('span', {title: m[1] + ' · ' + (KW_KINDS[kwK(m[3])] || m[3]), style: 'background:' + (KW_COL[kwK(m[3])] || '#EEF2F0') + ';border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, m[2])) : h('span', {class: 'text-xs text-charcoal/50'}, '—')),
         h('div', {class: 'text-sm font-extrabold text-emerald-900', style: 'min-width:2.5rem;text-align:right'}, kwAvg(l)));
     })), h('div', {class: 'flex flex-wrap gap-2 mt-2 text-xs'}, Object.keys(KW_KINDS).map(k => h('span', {style: 'background:' + KW_COL[k] + ';border-radius:6px;padding:0 6px'}, KW_KINDS[k]))));
   }
