@@ -291,6 +291,13 @@
       }}, T('📁 Drive қалтамнан')) : null,
       opt.video ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: addLink}, T('🔗 YouTube сілтеме')) : null,
       photoIn, videoIn);
+    const onPaste = e => {
+      if (!grid.isConnected) { document.removeEventListener('paste', onPaste); return; }
+      const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => /^image\//.test(f.type));
+      if (!files.length || (e.target.closest && e.target.closest('[contenteditable]'))) return;
+      e.preventDefault(); addPhotos(files);
+    };
+    document.addEventListener('paste', onPaste);
     function render(){
       grid.innerHTML = '';
       list.forEach((m, i) => {
@@ -377,7 +384,7 @@
     ['week', T('🗓 Апта жоспары'), () => can('week')],
     ['cposts', T('🏫 Сынып жаңалықтары'), () => seesClasses() || ME.role === 'psych'],
     ['hw', T('📚 Үй тапсырмасы'), seesClasses],
-    ['qa', T('💬 Ата-ана сұрақтары'), seesClasses],
+    ['qa', T('💬 Ата-ана сұрақтары'), () => seesClasses() || ME.role === 'subject'],
     ['fb', T('📝 Кері байланыс'), () => isOwner() || ['teacher', 'subject', 'psych'].includes(ME.role) || (ME.perms || []).includes('feedback')],
     ['kun', T('📘 Күнделіктен бағалар'), () => can('kun') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['olymp', T('🏆 Олимпиада'), () => can('olymp') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
@@ -712,7 +719,7 @@
   VIEWS.qa = function(view){
     view.append(title(T('Ата-ана сұрақтары')), classBar(() => go('qa', true), c => unanswered().filter(q => q.cls === c).length));
     if (!curCls) return;
-    const edit = canEditClass(curCls);
+    const edit = canEditClass(curCls), canQ = q => q.to ? (q.to === ME.id || isOwner()) : edit;
     const items = (CLS.qa || []).filter(q => q.cls === curCls).sort((a, b) => (!!a.answer - !!b.answer) || b.ts - a.ts);
     view.append(hint(T('«Тек осы ата-анаға» деп жауап берсеңіз, жауапты тек сұрақ қойған ата-ана көреді (сұрақ жіберген құрылғысынан). «Бүкіл сыныпқа» деп берсеңіз, сұрақ пен жауапты сыныптың барлық ата-анасы көреді.')));
     if (!items.length) { view.append(h('p', {class: 'text-charcoal/60 mt-4'}, T('Әзірге сұрақ жоқ.'))); return; }
@@ -723,11 +730,11 @@
       return h('div', {class: 'card space-y-3' + (q.answer ? '' : ' border-gold')},
         h('div', {class: 'flex items-start gap-3'},
           h('div', {class: 'flex-1 min-w-0'},
-            h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmtTs(q.ts) + ' · ' + q.name + (q.child ? T(' (баласы: ') + q.child + ')' : '')),
+            h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmtTs(q.ts) + ' · ' + q.name + (q.child ? T(' (баласы: ') + q.child + ')' : '') + (q.toName ? ' → ' + q.toName : '')),
             h('div', {class: 'font-semibold text-emerald-950 whitespace-pre-line mt-1'}, q.q)),
           q.answer ? h('span', {class: 'chip', style: 'padding:.2rem .6rem;font-size:.75rem'}, q.vis === 'class' ? T('👥 Сыныпқа') : T('🔒 Жеке')) : h('span', {class: 'chip active', style: 'padding:.2rem .6rem;font-size:.75rem'}, T('Жауап күтуде'))),
         q.answer ? h('div', {class: 'text-sm text-charcoal/60'}, T('Жауап берген: ') + (q.ansBy || '') + (q.ansTs ? ' · ' + fmtTs(q.ansTs) : '')) : null,
-        edit ? h('div', {class: 'space-y-2'}, ta, h('div', {class: 'flex flex-wrap gap-2 items-center justify-end'}, h('div', {class: 'w-56'}, vis),
+        canQ(q) ? h('div', {class: 'space-y-2'}, ta, h('div', {class: 'flex flex-wrap gap-2 items-center justify-end'}, h('div', {class: 'w-56'}, vis),
           h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => {
             if (!confirm(T('Сұрақ өшірілсін бе?'))) return;
             await run(T('Өшірілуде…'), () => api('qremove', {id: q.id}));
@@ -2128,7 +2135,7 @@
     return '';
   }
   function showCreds(u, pw){
-    const msg = T('Baiterek ST бастауыш мектебі сайтының әкімші беті:\n') + SITE_URL + T('admin.html\nЛогин: ') + u.login + T('\nПароль: ') + pw + howTo(u) + (u.role !== 'viewer' ? '\n\n📖 Нұсқаулық / Инструкция: ' + SITE_URL + 'mugalim' : '') +
+    const msg = T('Baiterek ST бастауыш мектебі сайтының әкімші беті:\n') + SITE_URL + T('admin.html\nЛогин: ') + u.login + T('\nПароль: ') + pw + howTo(u) + (u.role !== 'viewer' ? '\n\n📖 Нұсқаулық / Инструкция: ' + SITE_URL + (u.curator ? 'kurator' : 'mugalim') : '') +
       (u.email && u.role !== 'viewer' ? T('\n\nGoogle Drive-та сізге фото/видео жүктеуге арналған қалта ашылды (') + u.email + T(' поштасына хабарлама келеді).') : '');
     const close = modal(
       h('h3', {class: 'text-lg font-extrabold text-emerald-950'}, T('✅ Сақталды: ') + u.name),

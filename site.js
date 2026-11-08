@@ -552,20 +552,26 @@
         (L(p.body) ? '<div class="rich mt-2 text-base text-charcoal/85 leading-relaxed">' + clean(L(p.body)) + '</div>' : '') + mediaRow(p.media, 'cp_' + p.id) + '</article>';
     }).join('') + '</div>';
   }
+  var QAT = {kz: {to: 'Кімге сұрақ қоясыз?', ct: 'Сынып жетекшісіне / кураторға', arrow: 'Кімге'}, ru: {to: 'Кому задать вопрос?', ct: 'Классному руководителю / куратору', arrow: 'Кому'}, en: {to: 'Who is your question for?', ct: 'Class teacher / curator', arrow: 'To'}};
+  function mcQaTo(d, inp){
+    var T = QAT[lang] || QAT.kz, l = d.askTo || [];
+    if (!l.length) return '';
+    return '<select name="to" aria-label="' + esc(T.to) + '" class="' + inp + '"><option value="">' + esc(T.ct) + '</option>' + l.map(function(x){ return '<option value="' + esc(x.id) + '">' + esc(x.name + (x.subj ? ' — ' + x.subj : '')) + '</option>'; }).join('') + '</select>';
+  }
   function mcQa(d){
     var me = {};
     try { me = JSON.parse(localStorage.getItem('bs_parent') || '{}') || {}; } catch(e) {}
     var inp = 'w-full rounded-xl border border-emerald-900/15 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gold';
     var h = '<form onsubmit="return uiMcAsk(this)" class="rounded-2xl bg-gold-50 border border-gold-100 p-4 sm:p-5 space-y-3"><div class="font-extrabold text-emerald-950">✍️ ' + esc(t('qa_ask_title')) + '</div>' +
       '<div class="grid sm:grid-cols-2 gap-3"><input name="name" required maxlength="80" placeholder="' + esc(t('qa_name')) + '" value="' + esc(me.name || '') + '" class="' + inp + '"><input name="child" maxlength="80" placeholder="' + esc(t('qa_child')) + '" value="' + esc((d.child && d.child.name) || me.child || '') + '" class="' + inp + '"></div>' +
-      '<textarea name="q" required maxlength="2000" rows="3" placeholder="' + esc(t('qa_text')) + '" class="' + inp + '"></textarea>' +
+      '' + mcQaTo(d, inp) + '<textarea name="q" required maxlength="2000" rows="3" placeholder="' + esc(t('qa_text')) + '" class="' + inp + '"></textarea>' +
       '<div class="flex flex-wrap items-center justify-between gap-2"><span class="text-xs text-charcoal/60">' + esc(t('qa_note')) + '</span><button class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-full">' + esc(t('qa_send')) + '</button></div>' +
       (MC.sent ? '<p class="text-sm font-bold text-emerald-800">✓ ' + esc(t('qa_sent')) + '</p>' : '') + '</form>';
     var list = (d.qa || []).slice().sort(function(a, b){ return b.ts - a.ts; });
     if (!list.length) return h + '<p class="text-center text-charcoal/60 py-6">💬 ' + esc(t('qa_empty')) + '</p>';
     return h + '<div class="space-y-3 mt-5">' + list.map(function(q){
       var badge = q.answer ? (q.vis === 'class' ? '👥 ' + t('qa_public') : '🔒 ' + t('qa_private')) : '⏳ ' + t('qa_wait');
-      return '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-charcoal/55"><span>' + esc(q.name) + (q.child ? ' · ' + esc(q.child) : '') + ' · ' + esc(fmtDate(ymd(new Date(q.ts)))) + '</span><span class="rounded-full bg-emerald-50 text-emerald-900 px-2 py-0.5">' + esc(badge) + '</span></div>' +
+      return '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-charcoal/55"><span>' + esc(q.name) + (q.child ? ' · ' + esc(q.child) : '') + (q.toName ? ' → ' + esc(q.toName) : '') + ' · ' + esc(fmtDate(ymd(new Date(q.ts)))) + '</span><span class="rounded-full bg-emerald-50 text-emerald-900 px-2 py-0.5">' + esc(badge) + '</span></div>' +
         '<div class="mt-2 font-semibold text-emerald-950 whitespace-pre-line">' + esc(q.q) + '</div>' +
         (q.answer ? '<div class="mt-3 rounded-xl bg-emerald-50 p-3"><div class="text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(t('qa_answer')) + (q.ansBy ? ' · ' + esc(q.ansBy) : '') + '</div><div class="mt-1 text-base text-charcoal whitespace-pre-line">' + esc(q.answer) + '</div></div>' : '') + '</div>';
     }).join('') + '</div>';
@@ -885,7 +891,7 @@
     if (!name || !text) return false;
     try { localStorage.setItem('bs_parent', JSON.stringify({name: name, child: child})); } catch(e) {}
     var btn = f.querySelector('button'); btn.disabled = true; btn.textContent = t('loading');
-    post({a:'ask', code: cur.code, name: name, child: child, text: text, token: mcToken()}).then(function(j){
+    post({a:'ask', code: cur.code, name: name, child: child, text: text, token: mcToken(), to: f.to ? f.to.value : ''}).then(function(j){
       if (!j.ok) { MC.err = String(j.err).indexOf('CODE') >= 0 ? t('mc_bad') : j.err; renderMyClass(); return; }
       MC.sent = true; mcLoad(cur.code);
     }).catch(function(){ btn.disabled = false; btn.textContent = t('qa_send'); });
