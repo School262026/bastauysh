@@ -1655,6 +1655,10 @@
     if (KW.unknown) box.append(hint(T('Пәні анықталмаған баға: ') + KW.unknown + T('. Олар «?» деген бағанда тұр.')));
     if (KW.unkind) box.append(hint(T('Түрі анықталмаған баға: ') + KW.unkind + T('. «🔄 Күнделіктен жаңарту» батырмасын бір минуттан кейін қайта басыңыз.')));
     if (KW.manage) kwMatchPanel(box);
+    if (KW.manage && (KW.types || []).length) box.append(h('details', {class: 'card mb-3'},
+      h('summary', {class: 'font-bold text-emerald-950 cursor-pointer text-sm'}, T('🔎 Күнделіктегі баға түрлері (тексеру үшін)')),
+      h('div', {class: 'text-sm mt-2 space-y-0.5'}, KW.types.map(t => h('div', {}, (t[0] || T('(атауы жоқ)')) + ' → ', h('b', {}, KW_KINDS[t[1]] || t[1]), ' · ' + t[2]))),
+      (KW.titles || []).length ? h('div', {class: 'text-xs text-charcoal/65 mt-2'}, KW.titles.map(t => t[0] + ' (' + t[1] + ')').join(' · ')) : null));
     if (!KW.at) return;
     if (!KW.subjects.includes(KW_SUB)) KW_SUB = '';
     const pick = () => kwRender(box);
