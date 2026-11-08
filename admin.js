@@ -63,7 +63,7 @@
   // ---------- рөлдер мен рұқсаттар ----------
   const ROLE_NAMES = {owner: T('Бас әкімші'), admin: T('Әкімші'), teacher: T('Сынып жетекшісі'), subject: T('Пән мұғалімі / үйірме жетекшісі'), psych: T('Педагог-психолог'), viewer: T('Әкімшілік мүшесі (тек қарау)')};
   const PERM_NAMES = {posts: T('📰 Жаңалықтар'), menu: T('🍽 Ас мәзірі'), week: T('🗓 Апта жоспары'), photos: T('🖼 Суреттер'), team: T('👥 Ұжым'),
-    faq: T('❓ Ата-анаға ақпарат'), texts: T('✏️ Мәтіндер'), contacts: T('☎ Байланыс'), classes: T('🏫 Сыныптарды қарау'), log: T('📜 Журнал'), feedback: T('📝 Кері байланысты көру')};
+    faq: T('❓ Ата-анаға ақпарат'), texts: T('✏️ Мәтіндер'), contacts: T('☎ Байланыс'), classes: T('🏫 Сыныптарды қарау'), log: T('📜 Журнал'), feedback: T('📝 Кері байланысты көру'), olymp: T('🏆 Олимпиада')};
   const isOwner = () => ME.role === 'owner';
   const can = p => isOwner() || (ME.role === 'admin' && (ME.perms || []).includes(p));
   const seesClasses = () => isOwner() || ME.role === 'viewer' || ME.role === 'teacher' || can('classes');
@@ -379,6 +379,7 @@
     ['hw', T('📚 Үй тапсырмасы'), seesClasses],
     ['qa', T('💬 Ата-ана сұрақтары'), seesClasses],
     ['fb', T('📝 Кері байланыс'), () => isOwner() || ['teacher', 'subject', 'psych'].includes(ME.role) || (ME.perms || []).includes('feedback')],
+    ['olymp', T('🏆 Олимпиада'), () => can('olymp') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['codes', T('🔑 Ата-ана кодтары'), () => isOwner() || ME.role === 'teacher'],
     ['users', T('👤 Қызметкерлер'), isOwner],
     ['log', T('📜 Журнал'), () => isOwner() || ME.role === 'viewer' || can('log')],
@@ -1615,6 +1616,214 @@
         h('a', {href: guideUrl('bas-akimshi'), target: '_blank', class: 'btn btn-l btn-s'}, T('📖 Бас әкімші нұсқаулығы')),
         h('a', {href: guideUrl('nusqaulyq'), target: '_blank', class: 'btn btn-l btn-s'}, T('📖 Қызметкерлер нұсқаулығы')),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(T('Қызметкерлер ботының нұсқаулығы: ') + guideUrl('nusqaulyq')).then(() => toast(T('Көшірілді')))}, T('Сілтемені көшіру'))));
+  }
+
+  // ---------- 🏆 ШОР / Олимпиада ----------
+  const OL_LV = {school: T('Мектеп'), city: T('Қала'), region: T('Облыс'), republic: T('Республика'), intl: T('Халықаралық')};
+  const OL_ORDER = ['school', 'city', 'region', 'republic', 'intl'];
+  const SCHEDULE_URL = 'https://sabak-kestesi.pages.dev/';
+  let OL = null, OL_TAB = 'cal', OL_F = {subj: '', level: '', grade: ''}, OL_PICK = '';
+  const olStu = id => (OL.students || []).find(s => s.id === id);
+  const olDays = d => Math.round((parse(d) - parse(today())) / 864e5);
+  const olSelect = (opts, val, onchange) => { const el = h('select', {class: 'inp'}, opts.map(o => h('option', {value: o[0]}, o[1]))); el.value = val; if (onchange) el.addEventListener('change', () => onchange(el.value)); return el; };
+  async function olReload(){ OL = await api('olList'); dirty = false; go('olymp', true); }
+  VIEWS.olymp = async function(view){
+    view.append(title(T('🏆 ШОР / Олимпиада')));
+    const box = h('div', {}, h('p', {class: 'text-charcoal/60'}, T('Жүктелуде…')));
+    view.append(box);
+    try { OL = await api('olList'); } catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); return; }
+    if (!box.isConnected) return;
+    box.innerHTML = '';
+    const tabs = [['cal', T('📅 Күнтізбе')], ['groups', T('👥 ШОР топтары')], ['res', T('🥇 Нәтижелер')], ['dash', T('📊 Жалпы көрсеткіштер')]];
+    box.append(h('div', {class: 'flex flex-wrap gap-1.5 mb-4'}, tabs.map(([k, l]) => h('button', {type: 'button', class: 'chip' + (k === OL_TAB ? ' active' : ''), onclick: () => { OL_TAB = k; go('olymp', true); }}, l))));
+    const body = h('div');
+    box.append(body);
+    ({cal: olCal, groups: olGroups, res: olRes, dash: olDash})[OL_TAB](body);
+  };
+  // Күнтізбе: алдымен алдағылары, жақындары белгіленеді
+  function olCal(box){
+    const subs = [...new Set(OL.olympiads.map(o => o.subject).filter(Boolean))].sort();
+    const redo = () => { box.innerHTML = ''; olCal(box); };
+    const formBox = h('div');
+    const list = OL.olympiads.filter(o => (!OL_F.subj || o.subject === OL_F.subj) && (!OL_F.level || o.level === OL_F.level) && (!OL_F.grade || (o.grades || []).includes(+OL_F.grade)));
+    const t0 = today();
+    const up = list.filter(o => o.date >= t0).sort((a, b) => a.date < b.date ? -1 : 1), past = list.filter(o => o.date < t0).sort((a, b) => a.date < b.date ? 1 : -1);
+    const card = o => {
+      const dd = olDays(o.date), rd = o.regDeadline ? olDays(o.regDeadline) : null;
+      return h('div', {class: 'card flex flex-wrap gap-3 items-center' + (o.date < t0 ? ' opacity-70' : ''), style: dd >= 0 && dd <= 14 ? 'border-color:#D4AF37;border-width:2px' : ''},
+        h('div', {class: 'w-24 shrink-0 text-sm font-bold text-emerald-900'}, fmt(o.date), dd >= 0 && dd <= 14 ? h('div', {class: 'text-xs text-gold-600'}, '🔜 ' + dd + T(' күн')) : null),
+        h('div', {class: 'flex-1 min-w-[12rem]'},
+          h('div', {class: 'font-bold text-emerald-950'}, L(o.title)),
+          h('div', {class: 'text-sm text-charcoal/65'}, [o.subject, OL_LV[o.level], (o.grades || []).length ? o.grades.join(', ') + T(' сынып') : ''].filter(Boolean).join(' · ')),
+          o.regDeadline ? h('div', {class: 'text-xs font-bold ' + (rd >= 0 && rd <= 3 ? 'text-red-700' : 'text-charcoal/60')}, T('Тіркелу мерзімі: ') + fmt(o.regDeadline)) : null,
+          o.link ? h('a', {href: o.link, target: '_blank', rel: 'noopener', class: 'text-sm underline'}, T('Сілтеме ↗')) : null),
+        OL.manage ? h('div', {class: 'flex gap-2 shrink-0'},
+          h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { olForm(formBox, o); window.scrollTo(0, 0); }}, T('Өзгерту')),
+          h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => { if (!confirm(T('Өшіру керек пе?'))) return; await run(T('Өшірілуде…'), () => api('olDelO', {id: o.id})); olReload(); }}, T('Өшіру'))) : null);
+    };
+    box.append(
+      OL.manage ? h('div', {class: 'flex justify-end mb-3'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => olForm(formBox, null)}, T('+ Олимпиада қосу'))) : null,
+      formBox,
+      h('div', {class: 'grid sm:grid-cols-3 gap-2 mb-4'},
+        olSelect([['', T('Барлық пән')]].concat(subs.map(x => [x, x])), OL_F.subj, v => { OL_F.subj = v; redo(); }),
+        olSelect([['', T('Барлық деңгей')]].concat(OL_ORDER.map(k => [k, OL_LV[k]])), OL_F.level, v => { OL_F.level = v; redo(); }),
+        olSelect([['', T('Барлық сынып')]].concat([1, 2, 3, 4].map(n => [String(n), n + T(' сынып')])), OL_F.grade, v => { OL_F.grade = v; redo(); })),
+      list.length ? h('div', {class: 'space-y-2'}, up.concat(past).map(card)) : h('p', {class: 'card text-charcoal/60'}, T('Олимпиада әзірге қосылмаған.')));
+  }
+  function olForm(box, x){
+    x = x ? clone(x) : {date: today(), level: 'school', grades: []};
+    const ttl = mlField(T('Олимпиада атауы *'), x.title);
+    const subj = h('input', {class: 'inp', type: 'text', placeholder: T('мысалы: Математика')}); subj.value = x.subject || '';
+    const level = olSelect(OL_ORDER.map(k => [k, OL_LV[k]]), x.level);
+    const date = dateInput(x.date);
+    const reg = h('input', {type: 'date', class: 'inp'}); reg.value = x.regDeadline || '';
+    const link = h('input', {class: 'inp', type: 'url', placeholder: 'https://'}); link.value = x.link || '';
+    const gr = {};
+    const grades = h('div', {class: 'flex flex-wrap gap-2'}, [1, 2, 3, 4].map(n => { gr[n] = h('input', {type: 'checkbox', checked: (x.grades || []).includes(n)}); return h('label', {class: 'chip', style: 'padding:.3rem .7rem'}, gr[n], ' ' + n + T(' сынып')); }));
+    box.innerHTML = '';
+    box.append(section(x.id ? T('Олимпиаданы өзгерту') : T('Жаңа олимпиада'), hint(AUTO_HINT), ttl.el,
+      h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Пәні'), subj), field(T('Деңгейі'), level), field(T('Өтетін күні *'), date), field(T('Тіркелу мерзімі (міндетті емес)'), reg), field(T('Сілтеме (міндетті емес)'), link)),
+      field(T('Сыныптар'), grades),
+      h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => { box.innerHTML = ''; }}, T('Болдырмау')),
+        h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+          const item = {id: x.id, title: ttl.get(), subject: subj.value.trim(), level: level.value, date: date.value, regDeadline: reg.value, link: link.value.trim(), grades: [1, 2, 3, 4].filter(n => gr[n].checked)};
+          if (!L(item.title).trim()) { toast(T('Олимпиада атауын жазыңыз'), true); return; }
+          await run(T('Сақталуда…'), () => api('olSaveO', {item})); savedToast(); olReload();
+        }}, T('💾 Сақтау')))));
+  }
+  // ШОР топтары
+  function olGroups(box){
+    const formBox = h('div');
+    const coachName = id => ((OL.coaches || []).find(c => c.id === id) || {}).name || (id === ME.id ? ME.name : '');
+    box.append(
+      h('div', {class: 'flex flex-wrap justify-between gap-2 mb-3'},
+        h('a', {class: 'btn btn-l btn-s', href: SCHEDULE_URL, target: '_blank', rel: 'noopener'}, T('🗓 Сабақ кестесі ↗')),
+        OL.manage ? h('button', {type: 'button', class: 'btn btn-g', onclick: () => olGroupForm(formBox, null)}, T('+ Топ қосу')) : null),
+      formBox,
+      OL.groups.length ? h('div', {class: 'grid sm:grid-cols-2 gap-3'}, OL.groups.map(g => h('div', {class: 'card space-y-2'},
+        h('div', {class: 'font-extrabold text-emerald-950'}, g.name),
+        h('div', {class: 'text-sm text-charcoal/70'}, [g.subject, g.grade ? g.grade + T(' сынып') : '', coachName(g.coach) ? T('Жаттықтырушы: ') + coachName(g.coach) : T('Жаттықтырушы бекітілмеген')].filter(Boolean).join(' · ')),
+        h('div', {class: 'text-sm'}, h('b', {}, (g.sids || []).length), T(' оқушы')),
+        (OL.manage || g.coach === ME.id) ? h('div', {class: 'flex gap-2'},
+          h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { olGroupForm(formBox, g); window.scrollTo(0, 0); }}, T('Өзгерту')),
+          OL.manage ? h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => { if (!confirm(T('Өшіру керек пе?'))) return; await run(T('Өшірілуде…'), () => api('olDelG', {id: g.id})); olReload(); }}, T('Өшіру')) : null) : null))) :
+        h('p', {class: 'card text-charcoal/60'}, T('ШОР топтары әзірге жоқ.')));
+  }
+  function olGroupForm(box, g){
+    g = g ? clone(g) : {sids: []};
+    const chosen = new Set(g.sids || []);
+    const name = h('input', {class: 'inp', type: 'text', placeholder: T('мысалы: 2-сынып математика')}); name.value = g.name || '';
+    const subj = h('input', {class: 'inp', type: 'text', placeholder: T('мысалы: Математика')}); subj.value = g.subject || '';
+    const grade = olSelect([['0', '—'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']], String(g.grade || 0));
+    const coach = OL.manage ? olSelect([['', T('Бекітілмеген')]].concat((OL.coaches || []).map(c => [c.id, c.name])), g.coach || '') : null;
+    const classes = [...new Set((OL.students || []).map(s => s.cls))].sort();
+    let curCl = classes[0] || '';
+    const count = h('b', {}, chosen.size);
+    const listBox = h('div', {class: 'grid sm:grid-cols-2 gap-1 max-h-72 overflow-y-auto'});
+    const drawList = () => {
+      listBox.innerHTML = '';
+      (OL.students || []).filter(s => s.cls === curCl).sort((a, b) => a.name.localeCompare(b.name, 'kk')).forEach(s => {
+        const c = h('input', {type: 'checkbox', checked: chosen.has(s.id), onchange: () => { if (c.checked) chosen.add(s.id); else chosen.delete(s.id); count.textContent = chosen.size; }});
+        listBox.append(h('label', {class: 'flex items-center gap-2 text-sm py-1'}, c, s.name));
+      });
+    };
+    const clSel = olSelect(classes.map(c => [c, c]), curCl, v => { curCl = v; drawList(); });
+    drawList();
+    box.innerHTML = '';
+    box.append(section(g.id ? g.name : T('Жаңа топ'),
+      OL.manage ? h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Топ атауы *'), name), field(T('Пәні'), subj), field(T('Сынып деңгейі'), grade), field(T('Жаттықтырушы-мұғалім'), coach)) : null,
+      h('div', {class: 'flex flex-wrap items-end gap-2'}, h('div', {class: 'flex-1 min-w-[8rem]'}, field(T('Сынып'), clSel)),
+        h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { (OL.students || []).filter(s => s.cls === curCl).forEach(s => chosen.add(s.id)); count.textContent = chosen.size; drawList(); }}, T('Бүкіл сыныпты қосу')),
+        h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { (OL.students || []).filter(s => s.cls === curCl).forEach(s => chosen.delete(s.id)); count.textContent = chosen.size; drawList(); }}, T('Сыныпты алып тастау'))),
+      listBox,
+      h('p', {class: 'text-sm'}, T('Таңдалған оқушылар: '), count),
+      h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => { box.innerHTML = ''; }}, T('Болдырмау')),
+        h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+          const item = {id: g.id, sids: [...chosen]};
+          if (OL.manage) { Object.assign(item, {name: name.value.trim(), subject: subj.value.trim(), grade: +grade.value, coach: coach.value}); if (!item.name) { toast(T('Топ атауын жазыңыз'), true); return; } }
+          await run(T('Сақталуда…'), () => api('olSaveG', {item})); savedToast(); olReload();
+        }}, T('💾 Сақтау')))));
+  }
+  // Нәтижелер: олимпиаданы таңдап, оқушының орнын және дипломын енгізу
+  const olFileB64 = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = () => rej(new Error(T('Файлды оқу мүмкін болмады'))); r.readAsDataURL(file); });
+  const olCanEdit = sid => OL.manage || OL.groups.some(g => g.coach === ME.id && (g.sids || []).includes(sid));
+  const olPlace = p => p ? ['', '🥇', '🥈', '🥉'][p] + ' ' + p + T('-орын') : T('Қатысты');
+  function olRes(box){
+    if (!OL.olympiads.length) { box.append(h('p', {class: 'card text-charcoal/60'}, T('Алдымен күнтізбеге олимпиада қосыңыз.'))); return; }
+    const sorted = OL.olympiads.slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    if (!OL_PICK || !sorted.some(o => o.id === OL_PICK)) OL_PICK = sorted[0].id;
+    const formBox = h('div');
+    const rows = OL.results.filter(r => r.oid === OL_PICK).sort((a, b) => (a.place || 9) - (b.place || 9));
+    const canAdd = OL.manage || OL.groups.some(g => g.coach === ME.id);
+    box.append(
+      field(T('Олимпиада'), olSelect(sorted.map(o => [o.id, fmt(o.date) + ' · ' + L(o.title)]), OL_PICK, v => { OL_PICK = v; go('olymp', true); })),
+      canAdd ? h('div', {class: 'flex justify-end my-3'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => olResForm(formBox, null)}, T('+ Нәтиже қосу'))) : h('div', {class: 'my-3'}),
+      formBox,
+      rows.length ? h('div', {class: 'space-y-2'}, rows.map(r => { const st = olStu(r.sid); return h('div', {class: 'card flex flex-wrap items-center gap-3'},
+        h('div', {class: 'flex-1 min-w-[12rem]'}, h('div', {class: 'font-bold text-emerald-950'}, st ? st.name + ' · ' + st.cls : '—'),
+          h('div', {class: 'text-sm text-charcoal/70'}, [olPlace(r.place), r.award, r.score ? T('Балл: ') + r.score : ''].filter(Boolean).join(' · ')),
+          r.diploma ? h('a', {href: 'https://drive.google.com/file/d/' + r.diploma + '/view', target: '_blank', rel: 'noopener', class: 'text-sm underline'}, T('📄 Диплом ↗')) : null),
+        olCanEdit(r.sid) ? h('div', {class: 'flex gap-2'},
+          h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { olResForm(formBox, r); window.scrollTo(0, 0); }}, T('Өзгерту')),
+          h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => { if (!confirm(T('Өшіру керек пе?'))) return; await run(T('Өшірілуде…'), () => api('olDelR', {id: r.id})); olReload(); }}, T('Өшіру'))) : null); })) :
+        h('p', {class: 'card text-charcoal/60'}, T('Бұл олимпиадаға нәтиже енгізілмеген.')));
+  }
+  function olResForm(box, r){
+    r = r ? clone(r) : {place: 0};
+    const pool = (OL.manage ? (OL.students || []) : (OL.students || []).filter(s => OL.groups.some(g => g.coach === ME.id && (g.sids || []).includes(s.id)))).slice().sort((a, b) => (a.cls + a.name).localeCompare(b.cls + b.name, 'kk'));
+    const stu = olSelect([['', T('Оқушыны таңдаңыз')]].concat(pool.map(s => [s.id, s.cls + ' · ' + s.name])), r.sid || '');
+    if (r.id) stu.disabled = true;
+    const place = olSelect([['0', T('Қатысты (орынсыз)')], ['1', '🥇 1'], ['2', '🥈 2'], ['3', '🥉 3']], String(r.place || 0));
+    const award = h('input', {class: 'inp', type: 'text', placeholder: T('мысалы: Алғыс хат')}); award.value = r.award || '';
+    const score = h('input', {class: 'inp', type: 'text'}); score.value = r.score || '';
+    const file = h('input', {class: 'inp', type: 'file', accept: 'application/pdf,image/jpeg,image/png'});
+    const notify = h('input', {type: 'checkbox', checked: true});
+    box.innerHTML = '';
+    box.append(section(r.id ? T('Нәтижені өзгерту') : T('Жаңа нәтиже'),
+      h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Оқушы *'), stu), field(T('Орны'), place), field(T('Марапат (міндетті емес)'), award), field(T('Балл (міндетті емес)'), score), field(r.diploma ? T('Дипломды ауыстыру (PDF/JPG, 5 МБ-қа дейін)') : T('Диплом (PDF/JPG, 5 МБ-қа дейін)'), file)),
+      h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, notify, T('Жүлде болса, ата-анаға хабарлама жіберу')),
+      h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => { box.innerHTML = ''; }}, T('Болдырмау')),
+        h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+          if (!stu.value) { toast(T('Оқушыны таңдаңыз'), true); return; }
+          const f = file.files[0];
+          if (f && f.size > 5 * 1024 * 1024) { toast(T('Файл 5 МБ-тан аспауы керек'), true); return; }
+          const j = await run(T('Сақталуда…'), async () => {
+            let diploma = r.diploma || '';
+            if (f) diploma = (await api('olUpload', {b64: await olFileB64(f), mime: f.type, name: f.name})).id;
+            return api('olSaveR', {item: {sid: stu.value, oid: OL_PICK, place: +place.value, award: award.value.trim(), score: score.value.trim(), diploma}, notify: notify.checked});
+          });
+          savedToast(); showNotify(j.notify); olReload();
+        }}, T('💾 Сақтау')))));
+  }
+  // Жалпы көрсеткіштер
+  function olDash(box){
+    const byId = {}; OL.olympiads.forEach(o => { byId[o.id] = o; });
+    const res = OL.results.filter(r => byId[r.oid]), wins = res.filter(r => r.place >= 1 && r.place <= 3);
+    const held = OL.olympiads.filter(o => o.date <= today()).length, kids = new Set(res.map(r => r.sid)).size;
+    const tile = (v, l) => h('div', {class: 'rounded-xl bg-emerald-50 p-3'}, h('div', {class: 'text-2xl font-extrabold text-emerald-950'}, v), h('div', {class: 'text-xs text-charcoal/60'}, l));
+    const tally = key => { const m = {}; res.forEach(r => { const k = key(byId[r.oid]) || '—'; m[k] = m[k] || {n: 0, w: 0}; m[k].n++; if (r.place >= 1 && r.place <= 3) m[k].w++; }); return m; };
+    const tbl = (head, m, label) => h('table', {class: 'w-full text-sm'}, h('tr', {class: 'text-left text-charcoal/60'}, h('th', {class: 'py-1'}, head), h('th', {}, T('Қатысу')), h('th', {}, T('Жүлде'))),
+      Object.keys(m).sort().map(k => h('tr', {class: 'border-t border-emerald-900/5'}, h('td', {class: 'py-1'}, label ? label(k) : k), h('td', {}, m[k].n), h('td', {class: 'font-bold'}, m[k].w))));
+    const win = wins.slice().sort((a, b) => byId[a.oid].date < byId[b.oid].date ? 1 : -1);
+    const print = () => {
+      const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+      const w = window.open('', '_blank');
+      if (!w) { toast(T('Жаңа терезе бұғатталды'), true); return; }
+      w.document.write('<!doctype html><meta charset="utf-8"><title>' + esc(T('Олимпиада нәтижелері')) + '</title><style>body{font-family:Arial;padding:16px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:5px 7px;text-align:left}</style><h2>' + esc(T('Олимпиада нәтижелері')) + '</h2><table><tr><th>' + esc(T('Күні')) + '</th><th>' + esc(T('Олимпиада')) + '</th><th>' + esc(T('Деңгейі')) + '</th><th>' + esc(T('Оқушы')) + '</th><th>' + esc(T('Орны')) + '</th></tr>' +
+        win.map(r => { const o = byId[r.oid], s = olStu(r.sid); return '<tr><td>' + esc(o.date) + '</td><td>' + esc(L(o.title)) + '</td><td>' + esc(OL_LV[o.level]) + '</td><td>' + esc(s ? s.name + ' (' + s.cls + ')' : '') + '</td><td>' + r.place + '</td></tr>'; }).join('') + '</table><script>window.onload=function(){window.print()}<\/script>');
+      w.document.close();
+    };
+    box.append(
+      h('div', {class: 'grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4'}, tile(held, T('Өткен олимпиада')), tile(kids, T('Қатысқан оқушы')), tile(res.length, T('Қатысу саны')), tile(wins.length, T('Жүлде'))),
+      h('div', {class: 'grid sm:grid-cols-2 gap-4'},
+        section(T('Деңгей бойынша'), tbl(T('Деңгейі'), tally(o => o.level), k => OL_LV[k] || k)),
+        section(T('Пән бойынша'), tbl(T('Пәні'), tally(o => o.subject)))),
+      h('div', {class: 'mt-4'}, section(T('Жеңімпаздар'),
+        win.length ? h('div', {class: 'flex justify-end'}, h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: print}, T('🖨 PDF / Басып шығару'))) : null,
+        win.length ? h('div', {class: 'space-y-1'}, win.map(r => { const o = byId[r.oid], s = olStu(r.sid); return h('div', {class: 'text-sm border-b border-emerald-900/5 py-1'}, h('b', {}, s ? s.name + ' · ' + s.cls : '—'), ' — ' + olPlace(r.place) + ' · ' + L(o.title) + ' · ' + OL_LV[o.level] + ' · ' + fmt(o.date)); })) : h('p', {class: 'text-charcoal/60'}, T('Жүлдегерлер әзірге жоқ.')))));
   }
 
   // ---------- 🔑 Ата-ана кодтары ----------

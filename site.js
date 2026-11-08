@@ -449,6 +449,7 @@
   window.uiWeekToday = function(){ weekStart = monday(today()); renderDaily(); };
 
   function renderDaily(){
+    try { renderOlStats(); } catch(e) {}
     var body = byId('dailyBody'); if (!body) return;
     document.querySelectorAll('.daily-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab') === dailyTab); });
     body.innerHTML = dailyTab === 'menu' ? renderMenu() : renderWeek();
@@ -634,6 +635,37 @@
       '<p class="mt-5 text-xs text-charcoal/50">' + esc(T.legal) + '</p>';
     return h;
   }
+  // 🏆 Олимпиада: тек өз баласының топтары мен нәтижелері (ата-ана тіркелгенде ғана сервер береді)
+  var OLT = {
+    kz: {groups:'ШОР топтары', coach:'Жаттықтырушы', res:'Нәтижелер', part:'Қатысты', place:'-орын', score:'Балл', dip:'Диплом', none:'Нәтижелер әзірге жоқ', lv:{school:'Мектеп', city:'Қала', region:'Облыс', republic:'Республика', intl:'Халықаралық'}, stats:'Оқушыларымыздың жетістіктері', prizes:'жүлде', first:'бірінші орын'},
+    ru: {groups:'Группы ШОР', coach:'Тренер', res:'Результаты', part:'Участие', place:' место', score:'Балл', dip:'Диплом', none:'Результатов пока нет', lv:{school:'Школа', city:'Город', region:'Область', republic:'Республика', intl:'Международный'}, stats:'Достижения наших учеников', prizes:'призов', first:'первых мест'},
+    en: {groups:'Olympiad groups', coach:'Coach', res:'Results', part:'Took part', place:' place', score:'Score', dip:'Diploma', none:'No results yet', lv:{school:'School', city:'City', region:'Region', republic:'National', intl:'International'}, stats:'Our students\' achievements', prizes:'prizes', first:'first places'}
+  };
+  function mcOl(d){
+    var T = OLT[lang] || OLT.kz, o = d.olymp || {groups: [], results: []}, h = '';
+    if (o.groups.length) h += '<div class="font-extrabold text-emerald-950 mb-2">👥 ' + esc(T.groups) + '</div><div class="grid sm:grid-cols-2 gap-3 mb-5">' + o.groups.map(function(g){
+      return '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="font-bold text-emerald-950">' + esc(g.name) + '</div><div class="text-sm text-charcoal/70">' + esc(g.subject || '') + (g.coach ? ' · ' + esc(T.coach) + ': ' + esc(g.coach) : '') + '</div></div>';
+    }).join('') + '</div>';
+    h += '<div class="font-extrabold text-emerald-950 mb-2">🥇 ' + esc(T.res) + '</div>';
+    h += !o.results.length ? '<p class="text-charcoal/60">' + esc(T.none) + '</p>' : '<div class="space-y-2">' + o.results.map(function(r){
+      var title = (r.title && (r.title[lang] || r.title.kz)) || '', medal = ['', '🥇 ', '🥈 ', '🥉 '][r.place] || '';
+      return '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="font-bold text-emerald-950">' + esc(title) + '</div>' +
+        '<div class="text-sm text-charcoal/70">' + esc(r.date) + ' · ' + esc(r.subject || '') + ' · ' + esc(T.lv[r.level] || '') + '</div>' +
+        '<div class="mt-1 font-bold">' + medal + esc(r.place ? r.place + T.place : T.part) + (r.award ? ' · ' + esc(r.award) : '') + (r.score ? ' · ' + esc(T.score) + ': ' + esc(r.score) : '') + '</div>' +
+        (r.diploma ? '<a class="text-sm underline" target="_blank" rel="noopener" href="https://drive.google.com/file/d/' + esc(r.diploma) + '/view">📄 ' + esc(T.dip) + '</a>' : '') + '</div>';
+    }).join('') + '</div>';
+    return h;
+  }
+  // Ашық сайтта тек сандар: балалардың аты шықпайды
+  function renderOlStats(){
+    var el = byId('olstats'); if (!el) return;
+    var s = get('olStats'), T = OLT[lang] || OLT.kz;
+    if (!s || !s.places) { el.hidden = true; return; }
+    var chips = ['school', 'city', 'region', 'republic', 'intl'].filter(function(k){ return s.levels && s.levels[k]; }).map(function(k){ return '<span class="chip">' + esc(T.lv[k]) + ': <b>' + s.levels[k] + '</b></span>'; }).join(' ');
+    el.hidden = false;
+    el.innerHTML = '<div class="max-w-6xl mx-auto px-4 text-center"><div class="text-2xl font-extrabold text-emerald-950">🏆 ' + esc(T.stats) + '</div>' +
+      '<div class="mt-2 text-lg"><b>' + s.places + '</b> ' + esc(T.prizes) + (s.first ? ' · <b>' + s.first + '</b> ' + esc(T.first) : '') + '</div><div class="mt-3 flex flex-wrap gap-2 justify-center">' + chips + '</div></div>';
+  }
   window.uiMcCard = function(i){ MC.cardIdx = i; renderMyClass(); };
   window.uiMcCardPrint = function(){
     var cur = MC.codes[MC.cur], d = cur && MC.data[cur.code];
@@ -720,6 +752,7 @@
     if (MC.cur >= MC.codes.length || MC.cur < 0) MC.cur = 0;
     var cur = MC.codes[MC.cur], d = MC.data[cur.code];
     if ((MC.tab === 'fb' || MC.tab === 'card') && d && !d.child) MC.tab = 'hw';
+    if (MC.tab === 'ol' && d && !d.olymp) MC.tab = d.child ? 'fb' : 'hw';
     var h = '<div class="flex flex-wrap items-center justify-center gap-2 mb-5">' + MC.codes.map(function(c, i){
       return '<button type="button" class="chip' + (i === MC.cur ? ' active' : '') + '" onclick="uiMcPick(' + i + ')">' + (c.child ? '👧 ' + esc(c.cls) + ' · ' + esc(c.child) : '🏫 ' + esc(c.cls)) + '</button>';
     }).join('') + '<button type="button" class="chip" onclick="uiMcAdd()">' + esc(t('mc_add')) + '</button></div>';
@@ -729,12 +762,12 @@
       '<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><div class="text-2xl font-extrabold text-emerald-950">' + esc(cur.cls) + (cur.child ? ' · ' + esc(cur.child) : '') + '</div>' +
       (d && d.teachers && d.teachers.length ? '<div class="text-sm text-charcoal/70">' + esc(t('mc_teacher')) + ': <b>' + esc(d.teachers.join(', ')) + '</b></div>' : '') + '</div>' +
       '<button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiMcRemove()">' + esc(t('mc_remove')) + '</button></div>' +
-      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']] : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
+      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']].concat(d.olymp ? [['ol', '🏆 ', 'ol_tab']] : []) : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
         var lk = (x[0] === 'fb' || x[0] === 'card') && mcLocked(d) ? '🔒 ' : '';
         return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + lk + x[1] + esc(t(x[2])) + '</button>';
       }).join('') + '</div>';
     var pop = regPopNeeded(cur, d);
-    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : (MC.tab === 'fb' || MC.tab === 'card') && mcLocked(d) ? mcLockedView(d, pop) : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : (MC.tab === 'fb' || MC.tab === 'card') && mcLocked(d) ? mcLockedView(d, pop) : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'ol' ? mcOl(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
     box.innerHTML = h + '</div>';
     regPop(pop ? d : null);
   }
