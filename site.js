@@ -441,7 +441,7 @@
       var cls = (x.cls || []).length ? '<span class="text-xs font-bold bg-emerald-50 text-emerald-900 rounded-full px-2 py-0.5">' + esc(x.cls.indexOf('*') >= 0 ? t('hw_all') : x.cls.join(', ')) + '</span>' : '';
       h += '<div class="flex gap-4 rounded-2xl border border-emerald-900/10 p-4"><div class="w-14 shrink-0 text-center font-extrabold text-emerald-900">' + esc(x.time || '') + '</div><div class="min-w-0"><div class="font-bold text-emerald-950">' + esc(L(x.title)) + ' ' + cls + '</div>' +
         (L(x.place) ? '<div class="text-sm text-charcoal/70 mt-0.5">📍 ' + esc(L(x.place)) + '</div>' : '') +
-        (L(x.text) ? '<div class="rich text-sm text-charcoal/85 mt-1">' + clean(L(x.text)) + '</div>' : '') + '</div></div>';
+        (L(x.text) ? '<div class="rich text-sm text-charcoal/85 mt-1">' + clean(L(x.text)) + '</div>' : '') + mediaRow(x.media, 'week_' + (x.id || x.date)) + '</div></div>';
     });
     return h + '</div>';
   }
@@ -583,7 +583,7 @@
       if (x.date !== cur) { cur = x.date; head = '<h3 class="pt-2 font-extrabold text-emerald-900">' + esc(fmtDate(x.date, true)) + '</h3>'; }
       return head + '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="flex flex-wrap items-center justify-between gap-2"><div class="font-extrabold text-emerald-950">' + esc(x.subj) + '</div>' +
         '<span class="text-xs font-bold rounded-full bg-emerald-50 text-emerald-900 px-2 py-0.5">' + esc(t(FB_KIND[x.kind] || 'fb_main')) + '</span></div>' +
-        '<div class="text-xs font-bold text-charcoal/55 mt-0.5">' + esc(t('fb_teacher')) + ': ' + esc(x.by || '') + '</div>' +
+        '<div class="text-xs font-bold text-charcoal/55 mt-0.5">' + (x.by ? esc(t('fb_teacher')) + ': ' + esc(x.by) : '') + '</div>' +
         (x.text ? '<div class="mt-2 text-base text-charcoal leading-relaxed whitespace-pre-line">' + esc(x.text) + '</div>' : '') +
         (x.rec ? '<div class="mt-3 rounded-xl bg-gold-50 border border-gold-100 p-3"><div class="text-xs font-extrabold uppercase tracking-wide text-gold-600">' + esc(t('fb_rec')) + '</div><div class="mt-1 text-sm text-charcoal whitespace-pre-line">' + esc(x.rec) + '</div></div>' : '') + '</div>';
     }).join('') + '</div>';
@@ -666,6 +666,61 @@
     el.innerHTML = '<div class="max-w-6xl mx-auto px-4 text-center"><div class="text-2xl font-extrabold text-emerald-950">🏆 ' + esc(T.stats) + '</div>' +
       '<div class="mt-2 text-lg"><b>' + s.places + '</b> ' + esc(T.prizes) + (s.first ? ' · <b>' + s.first + '</b> ' + esc(T.first) : '') + '</div><div class="mt-3 flex flex-wrap gap-2 justify-center">' + chips + '</div></div>';
   }
+  // 📘 Күнделіктен бағалар: тек өз баласының бағасы, ата-ана өзі жасаған парольмен
+  var GRT = {
+    kz: {title:'Күнделіктен бағалар', setT:'Бағаларды көру үшін пароль жасаңыз', setD:'Бұл пароль тек сіздің балаңыздың бағаларын ашады. Кемінде 6 таңба. Оны ұмытпаңыз.', pw:'Пароль', pw2:'Парольді қайталаңыз', save:'Сақтау', enter:'Кіру', askT:'Парольді енгізіңіз', wrong:'Пароль қате', diff:'Парольдер сәйкес емес', short:'Пароль кемінде 6 таңба болуы керек', none:'Бағалар әзірге жүктелмеген. Мектеп жаңартқан соң осында көрінеді.', upd:'Жаңартылған күні', fo:'ФО', ab:'Аралық бағалау', avg:'Орташа', forgot:'Парольді ұмытсаңыз, сынып жетекшісіне хабарласыңыз.'},
+    ru: {title:'Оценки из Күнделік', setT:'Создайте пароль для просмотра оценок', setD:'Этот пароль открывает только оценки вашего ребёнка. Не короче 6 символов. Не забудьте его.', pw:'Пароль', pw2:'Повторите пароль', save:'Сохранить', enter:'Войти', askT:'Введите пароль', wrong:'Неверный пароль', diff:'Пароли не совпадают', short:'Пароль должен быть не короче 6 символов', none:'Оценки пока не загружены. Они появятся здесь после обновления школой.', upd:'Обновлено', fo:'ФО', ab:'Промежуточное оценивание', avg:'Среднее', forgot:'Если забыли пароль, обратитесь к классному руководителю.'},
+    en: {title:'Kundelik grades', setT:'Create a password to view grades', setD:'This password opens only your child\'s grades. At least 6 characters. Keep it safe.', pw:'Password', pw2:'Repeat password', save:'Save', enter:'Sign in', askT:'Enter your password', wrong:'Wrong password', diff:'Passwords do not match', short:'Password must be at least 6 characters', none:'Grades are not loaded yet. They will appear after the school updates them.', upd:'Updated', fo:'Formative', ab:'Interim assessment', avg:'Average', forgot:'If you forget it, contact the class teacher.'}
+  };
+  var GR = {};
+  function grSess(code, v){ try { if (v === undefined) return sessionStorage.getItem('bs_kwp_' + code) || ''; sessionStorage.setItem('bs_kwp_' + code, v); } catch(e) {} return ''; }
+  function grLoad(code, pw){
+    var st = GR[code] = GR[code] || {}; st.busy = 1;
+    post({a:'kwpGet', code: code, tokens:[mcToken()], pw: pw || ''}).then(function(j){
+      st.busy = 0; st.err = j.ok === false ? j.err : '';
+      st.need = j.needSet ? 'set' : j.needPw ? 'pw' : ''; st.wrong = !!j.wrong;
+      if (j.periods) { st.data = j; st.idx = 0; if (pw) grSess(code, pw); }
+      renderMyClass();
+    }).catch(function(){ st.busy = 0; st.err = t('mc_err') || 'Error'; renderMyClass(); });
+  }
+  function mcGrades(d){
+    var T = GRT[lang] || GRT.kz, code = MC.codes[MC.cur].code, st = GR[code] = GR[code] || {}, C = window.CARD;
+    if (!st.data && !st.need && !st.busy && !st.err) { grLoad(code, grSess(code)); return '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>'; }
+    if (st.busy) return '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>';
+    var msg = st.msg || (st.wrong ? T.wrong : '') || st.err || '';
+    var box = function(head, sub, inputs, btn){ return '<div class="max-w-sm mx-auto rounded-2xl border border-emerald-900/10 p-5"><div class="font-extrabold text-emerald-950 mb-1">🔒 ' + esc(head) + '</div>' + (sub ? '<p class="text-sm text-charcoal/70 mb-3">' + esc(sub) + '</p>' : '') + inputs + (msg ? '<p class="text-sm text-red-700 mt-2">' + esc(msg) + '</p>' : '') + btn + '<p class="text-xs text-charcoal/55 mt-3">' + esc(T.forgot) + '</p></div>'; };
+    var inp = function(id, ph){ return '<input id="' + id + '" type="password" autocomplete="new-password" placeholder="' + esc(ph) + '" class="w-full border border-emerald-900/20 rounded-xl px-3 py-2 mt-2">'; };
+    var btn = function(fn, l){ return '<button type="button" onclick="' + fn + '" class="mt-3 w-full bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-5 py-2.5 rounded-full text-sm">' + esc(l) + '</button>'; };
+    if (st.need === 'set') return box(T.setT, T.setD, inp('grPw', T.pw) + inp('grPw2', T.pw2), btn('uiGrSet()', T.save));
+    if (st.need === 'pw' || !st.data) return box(T.askT, '', inp('grPw', T.pw), btn('uiGrEnter()', T.enter));
+    var ps = st.data.periods || [];
+    if (!ps.length) return '<p class="text-center text-charcoal/60 py-6">📘 ' + esc(T.none) + '</p>';
+    if (st.idx >= ps.length) st.idx = 0;
+    var p = ps[st.idx], subs = {};
+    p.marks.forEach(function(m){ (subs[m[0]] = subs[m[0]] || []).push(m); });
+    var h = '<div class="flex flex-wrap gap-2 mb-2">' + ps.map(function(x, i){ return '<button type="button" class="chip' + (i === st.idx ? ' active' : '') + '" onclick="uiGrPer(' + i + ')">' + esc(C.periodName(x.period, lang)) + '</button>'; }).join('') + '</div>' +
+      '<p class="text-xs text-charcoal/55 mb-4">' + esc(T.upd) + ': ' + esc(new Date(p.at).toLocaleDateString()) + '</p><div class="space-y-3">';
+    Object.keys(subs).sort().forEach(function(s){
+      var nums = subs[s].map(function(m){ return parseFloat(String(m[2]).replace(',', '.')); }).filter(function(n){ return !isNaN(n); });
+      var avg = nums.length ? Math.round(nums.reduce(function(a, b){ return a + b; }, 0) / nums.length * 10) / 10 : '';
+      h += '<div class="rounded-2xl border border-emerald-900/10 p-4"><div class="flex justify-between gap-3"><div class="font-bold text-emerald-950">' + esc(s) + '</div>' + (avg !== '' ? '<div class="text-sm font-extrabold text-emerald-900">' + esc(T.avg) + ': ' + avg + '</div>' : '') + '</div>' +
+        '<div class="flex flex-wrap gap-1.5 mt-2">' + subs[s].map(function(m){ return '<span title="' + esc(m[1]) + '" style="background:' + (m[3] === 'FO' ? '#EEF2F0' : '#F7E3B5') + ';border-radius:7px;padding:1px 8px;font-weight:700;font-size:14px">' + esc(m[2]) + '</span>'; }).join('') + '</div></div>';
+    });
+    return h + '</div>';
+  }
+  window.uiGrPer = function(i){ var code = MC.codes[MC.cur].code; GR[code].idx = i; renderMyClass(); };
+  window.uiGrEnter = function(){ var code = MC.codes[MC.cur].code, el = byId('grPw'); GR[code].msg = ''; grLoad(code, el ? el.value : ''); renderMyClass(); };
+  window.uiGrSet = function(){
+    var code = MC.codes[MC.cur].code, T = GRT[lang] || GRT.kz, st = GR[code], a = byId('grPw').value, b = byId('grPw2').value;
+    if (a.length < 6) { st.msg = T.short; renderMyClass(); return; }
+    if (a !== b) { st.msg = T.diff; renderMyClass(); return; }
+    st.msg = ''; st.busy = 1; renderMyClass();
+    post({a:'kwpSet', code: code, tokens:[mcToken()], pw: a}).then(function(j){
+      st.busy = 0;
+      if (j.ok === false) { st.msg = j.err; } else { st.need = ''; st.data = j; st.idx = 0; grSess(code, a); }
+      renderMyClass();
+    });
+  };
   window.uiMcCard = function(i){ MC.cardIdx = i; renderMyClass(); };
   window.uiMcCardPrint = function(){
     var cur = MC.codes[MC.cur], d = cur && MC.data[cur.code];
@@ -751,7 +806,7 @@
     }
     if (MC.cur >= MC.codes.length || MC.cur < 0) MC.cur = 0;
     var cur = MC.codes[MC.cur], d = MC.data[cur.code];
-    if ((MC.tab === 'fb' || MC.tab === 'card') && d && !d.child) MC.tab = 'hw';
+    if ((MC.tab === 'fb' || MC.tab === 'card' || MC.tab === 'grades') && d && !d.child) MC.tab = 'hw';
     if (MC.tab === 'ol' && d && !d.olymp) MC.tab = d.child ? 'fb' : 'hw';
     var h = '<div class="flex flex-wrap items-center justify-center gap-2 mb-5">' + MC.codes.map(function(c, i){
       return '<button type="button" class="chip' + (i === MC.cur ? ' active' : '') + '" onclick="uiMcPick(' + i + ')">' + (c.child ? '👧 ' + esc(c.cls) + ' · ' + esc(c.child) : '🏫 ' + esc(c.cls)) + '</button>';
@@ -762,12 +817,12 @@
       '<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><div class="text-2xl font-extrabold text-emerald-950">' + esc(cur.cls) + (cur.child ? ' · ' + esc(cur.child) : '') + '</div>' +
       (d && d.teachers && d.teachers.length ? '<div class="text-sm text-charcoal/70">' + esc(t('mc_teacher')) + ': <b>' + esc(d.teachers.join(', ')) + '</b></div>' : '') + '</div>' +
       '<button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiMcRemove()">' + esc(t('mc_remove')) + '</button></div>' +
-      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab']].concat(d.olymp ? [['ol', '🏆 ', 'ol_tab']] : []) : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
-        var lk = (x[0] === 'fb' || x[0] === 'card') && mcLocked(d) ? '🔒 ' : '';
+      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab'], ['grades', '📘 ', 'grades_tab']].concat(d.olymp ? [['ol', '🏆 ', 'ol_tab']] : []) : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
+        var lk = (x[0] === 'fb' || x[0] === 'card' || x[0] === 'grades') && mcLocked(d) ? '🔒 ' : '';
         return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + lk + x[1] + esc(t(x[2])) + '</button>';
       }).join('') + '</div>';
     var pop = regPopNeeded(cur, d);
-    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : (MC.tab === 'fb' || MC.tab === 'card') && mcLocked(d) ? mcLockedView(d, pop) : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'ol' ? mcOl(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : (MC.tab === 'fb' || MC.tab === 'card' || MC.tab === 'grades') && mcLocked(d) ? mcLockedView(d, pop) : MC.tab === 'grades' ? mcGrades(d) : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'ol' ? mcOl(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
     box.innerHTML = h + '</div>';
     regPop(pop ? d : null);
   }

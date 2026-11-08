@@ -581,15 +581,17 @@
     const place = mlField(T('Өтетін орны (міндетті емес)'), x.place);
     const cls = classPicker(x.cls, allClasses(), true);
     const text = mlField(T('Қосымша ақпарат (міндетті емес)'), x.text, {rich: true});
+    const media = mediaEditor(x.media, {video: true});
     box.innerHTML = '';
     box.append(section(x.id ? T('Іс-шараны өзгерту') : T('Жаңа іс-шара'), hint(AUTO_HINT),
       h('div', {class: 'grid grid-cols-2 sm:grid-cols-3 gap-3'}, field(T('Күні'), date), field(T('Уақыты'), time)),
       ttl.el, place.el, field(T('Қай сыныптарға (таңдамасаңыз — барлығына)'), cls.el), text.el,
+      field(T('Фото, скриншот немесе видео (міндетті емес)'), media.el),
       h('div', {class: 'flex gap-2 justify-end'},
         h('button', {type: 'button', class: 'btn btn-l', onclick: () => { box.innerHTML = ''; dirty = false; }}, T('Бас тарту')),
         h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
           if (!hasText(ttl.get())) { toast(T('Атауын жазыңыз'), true); return; }
-          const item = Object.assign(x, {date: date.value || today(), time: time.value, title: ttl.get(), place: place.get(), cls: cls.get(), text: text.get()});
+          const item = Object.assign(x, {date: date.value || today(), time: time.value, title: ttl.get(), place: place.get(), cls: cls.get(), text: text.get(), media: media.get()});
           const j = await run(T('Сақталуда…'), () => api('upsert', {col: 'week', item}));
           DATA.week = (DATA.week || []).filter(y => y.id !== j.item.id).concat([j.item]);
           weekMon = monday(j.item.date);
@@ -1295,7 +1297,7 @@
   }
 
   // ---------- 👥 Қызметкерлерді тізіммен қосу (бас әкімші) ----------
-  const ROLE_BY_WORD = [[/психолог/i, 'psych'], [/үйірме|кружк/i, 'subject'], [/сынып жетекшісі|классн/i, 'teacher'], [/пән|предмет|мұғалім|учит/i, 'subject'], [/әкімшілік|администр|қарау/i, 'viewer']];
+  const ROLE_BY_WORD = [[/куратор/i, 'curator'], [/психолог/i, 'psych'], [/үйірме|кружк/i, 'subject'], [/сынып жетекшісі|классн/i, 'teacher'], [/пән|предмет|мұғалім|учит/i, 'subject'], [/әкімшілік|администр|қарау/i, 'viewer']];
   function usersBulk(view){
     view.innerHTML = '';
     const file = h('input', {type: 'file', accept: '.csv,.xlsx,.xls', class: 'inp'});
@@ -1313,15 +1315,15 @@
       const taken = new Set(USERS.map(u => u.login));
       const list = rows.slice(1).map(r => {
         const roleWord = String(r[ci.role] || '');
-        const role = (ROLE_BY_WORD.find(([re]) => re.test(roleWord)) || [0, 'subject'])[1];
-        return {name: String(r[ci.name] || '').trim(), login: String(r[ci.login] || '').trim().toLowerCase(), role,
+        const word = (ROLE_BY_WORD.find(([re]) => re.test(roleWord)) || [0, 'subject'])[1], curator = word === 'curator', role = curator ? 'teacher' : word;
+        return {name: String(r[ci.name] || '').trim(), login: String(r[ci.login] || '').trim().toLowerCase(), role, curator,
           classes: role === 'teacher' || role === 'subject' ? split(r[ci.cls]).map(c => c.toUpperCase()) : [], subjects: split(r[ci.subj]), clubs: split(r[ci.clubs]), email: ci.email >= 0 ? String(r[ci.email] || '').trim() : ''};
       }).filter(x => x.name && x.login);
       const fresh = list.filter(x => !taken.has(x.login)), skip = list.filter(x => taken.has(x.login));
       const checks = fresh.map(() => h('input', {type: 'checkbox', checked: true}));
       prev.append(section(T('Алдын ала қарау: ') + fresh.length + T(' жаңа қызметкер') + (skip.length ? ' (' + skip.length + T(' логин бұрыннан бар — өткізіледі)') : ''),
         h('div', {class: 'space-y-1 text-sm max-h-[50vh] overflow-y-auto'}, fresh.map((x, k) => h('label', {class: 'flex gap-2 items-start border-b border-emerald-900/5 py-1'}, checks[k],
-          h('span', {}, h('b', {}, x.name), ' · ', x.login, ' · ', ROLE_NAMES[x.role], x.classes.length ? ' · ' + x.classes.join(', ') : '', x.clubs.length ? ' · 🎯 ' + x.clubs.join(', ') : '')))),
+          h('span', {}, h('b', {}, x.name), ' · ', x.login, ' · ', (x.curator ? T('Куратор') : ROLE_NAMES[x.role]), x.classes.length ? ' · ' + x.classes.join(', ') : '', x.clubs.length ? ' · 🎯 ' + x.clubs.join(', ') : '')))),
         h('div', {class: 'flex justify-end'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
           const chosen = fresh.filter((x, k) => checks[k].checked);
           if (!chosen.length) return;
@@ -1385,7 +1387,7 @@
   }
   // Қызметкерлердің логин-паролі
   const credRows = creds => [[T('Аты-жөні'), T('Логин'), T('Пароль'), T('Рөлі'), T('Сыныптар'), T('Пәндері / үйірмелері')]].concat(creds.map(c =>
-    [c.u.name, c.u.login, c.pw || '', ROLE_NAMES[c.u.role] || c.u.role, (c.u.classes || []).join(', '), (c.u.subjects || []).concat(c.u.clubs || []).join(', ')]));
+    [c.u.name, c.u.login, c.pw || '', (c.u.curator ? T('Куратор') : ROLE_NAMES[c.u.role] || c.u.role), (c.u.classes || []).join(', '), (c.u.subjects || []).concat(c.u.clubs || []).join(', ')]));
   function credsExcel(creds){ saveXlsx(T('Логиндер') + ' ' + fileDate() + '.xlsx', [{name: T('Логиндер'), rows: credRows(creds)}]); }
   function credsPdf(creds){
     const rows = credRows(creds);
@@ -1507,6 +1509,7 @@
         h('div', {class: 'flex-1 min-w-[14rem]'}, h('div', {class: 'font-bold text-emerald-950'}, (p.child || T('(сынып коды)')) + ' — ' + p.name),
           h('div', {class: 'text-xs text-charcoal/65'}, '+' + p.phone + (p.email ? ' · ' + p.email : '') + ' · ' + CH_ICONS(p))),
         h('a', {class: 'btn btn-l btn-s', target: '_blank', href: 'https://wa.me/' + p.phone}, '💬'),
+        p.child ? h('button', {type: 'button', class: 'btn btn-l btn-s', title: T('Баға паролін тазарту'), onclick: async () => { if (!confirm(T('Баланың баға паролі тазартылсын ба? Ата-ана жаңа пароль жасайды.'))) return; await run(T('Сақталуда…'), () => api('kwpReset', {id: p.id})); toast(T('Тазартылды ✓')); }}, '🔑') : null,
         h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => {
           if (!confirm(p.name + T(': тіркелуі өшірілсін бе? Ол бұдан былай хабарлама алмайды.'))) return;
           await run(T('Өшірілуде…'), () => api('parentDel', {id: p.id})); fbParents(box, F);
@@ -1944,9 +1947,62 @@
         win.length ? h('div', {class: 'space-y-1'}, win.map(r => { const o = byId[r.oid], s = olStu(r.sid); return h('div', {class: 'text-sm border-b border-emerald-900/5 py-1'}, h('b', {}, s ? s.name + ' · ' + s.cls : '—'), ' — ' + olPlace(r.place) + ' · ' + L(o.title) + ' · ' + OL_LV[o.level] + ' · ' + fmt(o.date)); })) : h('p', {class: 'text-charcoal/60'}, T('Жүлдегерлер әзірге жоқ.')))));
   }
 
+  // Ата-аналарға код жіберу: файл браузерде ғана оқылады (серверге жіберілмейді); әр хабарды адам өзі WhatsApp-та жібереді
+  const waFold = v => String(v || '').toLowerCase().replace(/[әіңғүұқөһё]/g, c => ({'ә': 'а', 'і': 'и', 'ң': 'н', 'ғ': 'г', 'ү': 'у', 'ұ': 'у', 'қ': 'к', 'ө': 'о', 'һ': 'х', 'ё': 'е'}[c]));
+  const waWords = v => waFold(v).split(/[\s.,]+/).map(x => x.replace(/[^a-zа-я]/g, '')).filter(w => w.length > 1);
+  const waCls = v => String(v || '').toUpperCase().replace(/\s+/g, '').replace(/[АВСЕНКМОРТХ]/g, c => ({'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P', 'Т': 'T', 'Х': 'X'}[c]));
+  const waPhone = v => { let d = String(v || '').split(/[,;/]/)[0].replace(/\D/g, ''); if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1); if (d.length === 10) d = '7' + d; return d.length === 11 ? d : ''; };
+  const waText = (x, code) => { const hi = x.parent ? x.parent : ''; const url = SITE_URL + '#c=' + code, guide = SITE_URL + 'ata-ana';
+    return 'Құрметті ' + (hi || 'ата-ана') + '!\n\nBaiterek ST бастауыш мектебінің сайтында «Сіздің сыныбыңыздың беті» бөлімі ашылды. Төмендегі сілтемені ашып, тіркеліңіз:\n' + url + '\nБаланың коды: ' + code + '\n\nОнда балаңыз туралы сынып жетекшісі мен пән мұғалімдерінің кері байланысын, даму картасын және Күнделік.kz бағаларын көре аласыз.\nНұсқаулық: ' + guide +
+      '\n\n———\n\nУважаемый(ая) ' + (hi || 'родитель') + '!\n\nНа сайте начальной школы Baiterek ST открыт раздел «Страница вашего класса». Откройте ссылку и зарегистрируйтесь:\n' + url + '\nКод ребёнка: ' + code + '\n\nТам вы увидите обратную связь от классного руководителя и учителей-предметников, карту развития и оценки из Күнделік.kz.\nИнструкция: ' + guide + '?lang=ru'; };
+  function waTool(view){
+    view.innerHTML = '';
+    view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('codes', true)}, T('← Артқа')), title(T('📲 Ата-аналарға код жіберу')));
+    const file = h('input', {class: 'inp', type: 'file', accept: '.xlsx,.xls,.csv'}), out = h('div', {class: 'mt-4'});
+    view.append(hint(T('Файлда баланың аты-жөні, сыныбы, ата-анасының аты-жөні және телефоны болуы керек. Файл серверге жіберілмейді, тек осы браузерде оқылады. WhatsApp ресми емес бағдарламалармен жаппай хабар жіберуді бұғаттайды, сондықтан әр хабарды өзіңіз жібересіз: батырманы басасыз, WhatsApp-та «Жіберу» басасыз.')), field(T('Файл'), file), out);
+    file.addEventListener('change', async () => {
+      const f = file.files[0]; if (!f) return;
+      let rows; try { rows = await readTable(f); } catch (e) { toast(e.message || T('Файлды оқу мүмкін болмады'), true); return; }
+      const head = rows[0].map(x => String(x).toLowerCase()), col = re => head.findIndex(x => re.test(x));
+      const phone = col(/тел|whats|ватс/), cl = col(/сынып|сыныб|класс/), parent = col(/ата-ана|ата ана|родит/), child = head.findIndex((x, i) => i !== parent && i !== phone && i !== cl && /бала|оқушы|ученик|ребен|ребён|аты/.test(x));
+      if (phone < 0 || cl < 0 || child < 0) { toast(T('Файлда баланың аты, сынып және телефон бағандары болуы керек'), true); return; }
+      const classes = allClasses(), all = [];
+      for (let k = 0; k < classes.length; k++) {
+        busy(T('Сыныптар жүктелуде: ') + (k + 1) + ' / ' + classes.length, Math.round(k * 100 / classes.length));
+        try { if (!FBC[classes[k]]) FBC[classes[k]] = await api('fbList', {cls: classes[k]}); } catch (e) { continue; }
+        (FBC[classes[k]].students || []).forEach(s => { if (s.code) all.push({cls: classes[k], name: s.name, code: s.code, words: waWords(s.name)}); });
+      }
+      done();
+      const ok = [], bad = [];
+      rows.slice(1).forEach(r => {
+        const name = String(r[child] || '').trim(), c = waCls(r[cl]), ph = waPhone(r[phone]), par = parent >= 0 ? String(r[parent] || '').trim() : '';
+        if (!name) return;
+        const w = waWords(name), cand = all.filter(s => waCls(s.cls) === c && s.words.filter(x => w.includes(x)).length >= 2);
+        if (cand.length !== 1) { bad.push({name, cls: r[cl], why: cand.length ? T('бірнеше бала сәйкес келді') : T('тізімнен табылмады')}); return; }
+        if (!ph) { bad.push({name, cls: r[cl], why: T('телефон дұрыс емес')}); return; }
+        ok.push({child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: ph, parent: par});
+      });
+      const key = 'wa_sent', load = () => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; } }, sent = load();
+      const count = h('b', {});
+      const upd = () => { count.textContent = ok.filter(x => sent[x.code + x.phone]).length + ' / ' + ok.length; };
+      const clsOpts = [...new Set(ok.map(x => x.cls))].sort(); let cur = '';
+      const list = h('div', {class: 'space-y-1'});
+      const draw = () => { list.innerHTML = ''; ok.filter(x => !cur || x.cls === cur).forEach(x => {
+        const id = x.code + x.phone, b = h('a', {class: 'btn btn-s ' + (sent[id] ? 'btn-l' : 'btn-p'), target: '_blank', rel: 'noopener', href: 'https://wa.me/' + x.phone + '?text=' + encodeURIComponent(waText(x, x.code)),
+          onclick: () => { sent[id] = 1; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); upd(); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp');
+        list.append(h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'}, h('div', {class: 'flex-1 min-w-[12rem] text-sm'}, h('b', {}, x.child), ' · ' + x.cls + (x.parent ? ' · ' + x.parent : ''), h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), b));
+      }); };
+      const sel = olSelect([['', T('Барлық сынып')]].concat(clsOpts.map(c => [c, c])), '', v => { cur = v; draw(); });
+      upd(); draw();
+      out.innerHTML = '';
+      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), list,
+        bad.length ? section(T('Сәйкес келмегендер (') + bad.length + ')', h('div', {class: 'text-sm space-y-0.5'}, bad.map(b => h('div', {}, h('b', {}, b.name), ' · ' + b.cls + ' — ' + b.why)))) : null);
+    });
+  }
   // ---------- 🔑 Ата-ана кодтары ----------
   VIEWS.codes = function(view){
     const list = isOwner() ? allClasses() : (ME.classes || []);
+    if (isOwner()) view.append(h('div', {class: 'flex justify-end mb-2'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => waTool(view)}, T('📲 Ата-аналарға код жіберу'))));
     view.append(title(T('Ата-ана кодтары')),
       hint(T('Әр сыныптың өз коды бар. Кодты сыныптың ата-аналарына WhatsApp арқылы жіберіңіз: олар сайттағы «Сыныбым» бөліміне кіріп, тек өз сыныбының үй тапсырмасын, фотоларын және сұрақ-жауабын көреді. Код басқа адамдарға тарап кетсе, «Жаңа код» басыңыз — ескі код жұмыс істемей қалады.')));
     view.append(h('div', {class: 'grid sm:grid-cols-2 gap-3 mt-4'}, list.map(c => {
@@ -1998,8 +2054,9 @@
     const login = h('input', {class: 'inp', type: 'text', autocapitalize: 'none', spellcheck: 'false'}); login.value = u.login || '';
     const email = h('input', {class: 'inp', type: 'email', placeholder: 'mysaly@gmail.com'}); email.value = u.email || '';
     const phone = h('input', {class: 'inp', type: 'tel', placeholder: '+7 701 123 45 67'}); phone.value = u.phone ? '+' + u.phone : '';
-    const role = h('select', {class: 'inp'}, ['teacher', 'subject', 'psych', 'admin', 'viewer'].map(r => h('option', {value: r}, ROLE_NAMES[r])));
-    role.value = u.role;
+    const role = h('select', {class: 'inp'}, ['teacher', 'curator', 'subject', 'psych', 'admin', 'viewer'].map(r => h('option', {value: r}, r === 'curator' ? T('Куратор') : ROLE_NAMES[r])));
+    role.value = u.curator ? 'curator' : u.role;
+    const rv = () => role.value === 'curator' ? 'teacher' : role.value;
     const active = h('input', {type: 'checkbox', checked: u.active !== false});
     const pw = h('input', {class: 'inp font-mono', type: 'text', placeholder: isNew ? '' : T('Өзгертпесеңіз бос қалдырыңыз')});
     if (isNew) pw.value = genPw();
@@ -2018,13 +2075,13 @@
     const fbView = h('input', {type: 'checkbox', checked: (u.perms || []).includes('feedback')});
     const viewSec = section(T('Қосымша құқық'), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, fbView, T('📝 Барлық сыныптың кері байланысын көру (оқушыларға мұғалімдер жазған пікірлер)')));
     const syncRole = () => {
-      const r = role.value;
+      const r = rv();
       clsSec.hidden = r !== 'teacher' && r !== 'subject'; permSec.hidden = r !== 'admin'; viewSec.hidden = r !== 'viewer';
       clsNote.textContent = r === 'subject' ? T('Пән мұғалімі тек осы сыныптардың оқушыларына кері байланыс жазып, даму картасына баға қояды және тек өз жазғанын көреді. Үйірме жетекшісі үшін сыныпты таңдамай, тек үйірмесін жазуға болады.')
         : T('Сынып жетекшісі тек осы сыныптардың жазбаларын, үй тапсырмасын, ата-ана сұрақтарын, Drive қалтасын және оқушылар тізімін басқарады, кері байланыс жаза алады.');
     };
     role.addEventListener('change', syncRole);
-    name.addEventListener('input', () => { if (isNew && !login.dataset.touched) { const c = cls.get()[0]; login.value = c ? c.toLowerCase() : ''; } });
+    name.addEventListener('input', () => { if (isNew && !login.dataset.touched) { const c = cls.get()[0]; login.value = c ? c.toLowerCase() + (role.value === 'curator' ? 'k' : '') : ''; } });
     login.addEventListener('input', () => { login.dataset.touched = '1'; });
     view.append(
       h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('users')}, T('← Тізімге қайту')),
@@ -2037,10 +2094,10 @@
           h('label', {class: 'flex items-center gap-2 font-semibold text-sm'}, active, T('Белсенді (өшірсеңіз, сайтқа кіре алмайды және Drive қолжетімділігі алынады)'))),
         clsSec, permSec, viewSec,
         saveBar(T('Сақтау'), async () => {
-          const rec = {id: u.id, name: name.value.trim(), login: login.value.trim().toLowerCase(), email: email.value.trim(), phone: phone.value.trim(), role: role.value, active: active.checked,
-            classes: (role.value === 'teacher' || role.value === 'subject') ? cls.get() : [],
-            subjects: (role.value === 'teacher' || role.value === 'subject') ? subjects.value.split(',').map(x => x.trim()).filter(Boolean) : [],
-            clubs: (role.value === 'teacher' || role.value === 'subject') ? clubsInp.value.split(',').map(x => x.trim()).filter(Boolean) : [],
+          const rec = {id: u.id, name: name.value.trim(), login: login.value.trim().toLowerCase(), email: email.value.trim(), phone: phone.value.trim(), role: rv(), curator: role.value === 'curator', active: active.checked,
+            classes: (rv() === 'teacher' || rv() === 'subject') ? cls.get() : [],
+            subjects: (rv() === 'teacher' || rv() === 'subject') ? subjects.value.split(',').map(x => x.trim()).filter(Boolean) : [],
+            clubs: (rv() === 'teacher' || rv() === 'subject') ? clubsInp.value.split(',').map(x => x.trim()).filter(Boolean) : [],
             perms: role.value === 'admin' ? Object.keys(perms).filter(k => perms[k].checked) : role.value === 'viewer' && fbView.checked ? ['feedback'] : []};
           if (!rec.name || !rec.login) { toast(T('Аты-жөні мен логинін жазыңыз'), true); return; }
           if (rec.role === 'teacher' && !rec.classes.length) { toast(T('Сыныбын таңдаңыз'), true); return; }
