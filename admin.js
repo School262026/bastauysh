@@ -1754,6 +1754,13 @@
   const olStu = id => (OL.students || []).find(s => s.id === id);
   const olDays = d => Math.round((parse(d) - parse(today())) / 864e5);
   const olSelect = (opts, val, onchange) => { const el = h('select', {class: 'inp'}, opts.map(o => h('option', {value: o[0]}, o[1]))); el.value = val; if (onchange) el.addEventListener('change', () => onchange(el.value)); return el; };
+  // Пәнді қолмен жазуға болады, ал тізім тек көмекші ретінде ұсынылады
+  const olSubjInput = (val, ph, onch) => {
+    const id = 'olsub' + Math.random().toString(36).slice(2), el = h('input', {class: 'inp', type: 'text', placeholder: ph, autocomplete: 'off'});
+    el.value = val || ''; el.setAttribute('list', id);
+    if (onch) el.addEventListener('change', () => onch(el.value.trim()));
+    return {el, box: h('div', {}, el, h('datalist', {id}, [...new Set(FB_SUBJECTS.concat(OL.olympiads.map(o => o.subject).filter(Boolean)))].map(x => h('option', {value: x}))))};
+  };
   async function olReload(){ OL = await api('olList'); dirty = false; go('olymp', true); }
   VIEWS.olymp = async function(view){
     view.append(title(T('🏆 ШОР / Олимпиада')));
@@ -1770,10 +1777,9 @@
   };
   // Күнтізбе: алдымен алдағылары, жақындары белгіленеді
   function olCal(box){
-    const subs = [...new Set(OL.olympiads.map(o => o.subject).filter(Boolean))].sort();
     const redo = () => { box.innerHTML = ''; olCal(box); };
     const formBox = h('div');
-    const list = OL.olympiads.filter(o => (!OL_F.subj || o.subject === OL_F.subj) && (!OL_F.level || o.level === OL_F.level) && (!OL_F.grade || (o.grades || []).includes(+OL_F.grade)));
+    const list = OL.olympiads.filter(o => (!OL_F.subj || String(o.subject || '').toLowerCase().includes(OL_F.subj.toLowerCase())) && (!OL_F.level || o.level === OL_F.level) && (!OL_F.grade || (o.grades || []).includes(+OL_F.grade)));
     const t0 = today();
     const up = list.filter(o => o.date >= t0).sort((a, b) => a.date < b.date ? -1 : 1), past = list.filter(o => o.date < t0).sort((a, b) => a.date < b.date ? 1 : -1);
     const card = o => {
@@ -1793,7 +1799,7 @@
       OL.manage ? h('div', {class: 'flex justify-end mb-3'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => olForm(formBox, null)}, T('+ Олимпиада қосу'))) : null,
       formBox,
       h('div', {class: 'grid sm:grid-cols-3 gap-2 mb-4'},
-        olSelect([['', T('Барлық пән')]].concat(subs.map(x => [x, x])), OL_F.subj, v => { OL_F.subj = v; redo(); }),
+        olSubjInput(OL_F.subj, T('Пәнді жазыңыз (бос болса — барлық пән)'), v => { OL_F.subj = v; redo(); }).box,
         olSelect([['', T('Барлық деңгей')]].concat(OL_ORDER.map(k => [k, OL_LV[k]])), OL_F.level, v => { OL_F.level = v; redo(); }),
         olSelect([['', T('Барлық сынып')]].concat([1, 2, 3, 4].map(n => [String(n), n + T(' сынып')])), OL_F.grade, v => { OL_F.grade = v; redo(); })),
       list.length ? h('div', {class: 'space-y-2'}, up.concat(past).map(card)) : h('p', {class: 'card text-charcoal/60'}, T('Олимпиада әзірге қосылмаған.')));
@@ -1801,7 +1807,7 @@
   function olForm(box, x){
     x = x ? clone(x) : {date: today(), level: 'school', grades: []};
     const ttl = mlField(T('Олимпиада атауы *'), x.title);
-    const subj = h('input', {class: 'inp', type: 'text', placeholder: T('мысалы: Математика')}); subj.value = x.subject || '';
+    const sj = olSubjInput(x.subject, T('Пәнді жазыңыз, мысалы: Математика')), subj = sj.el;
     const level = olSelect(OL_ORDER.map(k => [k, OL_LV[k]]), x.level);
     const date = dateInput(x.date);
     const reg = h('input', {type: 'date', class: 'inp'}); reg.value = x.regDeadline || '';
@@ -1810,7 +1816,7 @@
     const grades = h('div', {class: 'flex flex-wrap gap-2'}, [1, 2, 3, 4].map(n => { gr[n] = h('input', {type: 'checkbox', checked: (x.grades || []).includes(n)}); return h('label', {class: 'chip', style: 'padding:.3rem .7rem'}, gr[n], ' ' + n + T(' сынып')); }));
     box.innerHTML = '';
     box.append(section(x.id ? T('Олимпиаданы өзгерту') : T('Жаңа олимпиада'), hint(AUTO_HINT), ttl.el,
-      h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Пәні'), subj), field(T('Деңгейі'), level), field(T('Өтетін күні *'), date), field(T('Тіркелу мерзімі (міндетті емес)'), reg), field(T('Сілтеме (міндетті емес)'), link)),
+      h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Пәні'), sj.box), field(T('Деңгейі'), level), field(T('Өтетін күні *'), date), field(T('Тіркелу мерзімі (міндетті емес)'), reg), field(T('Сілтеме (міндетті емес)'), link)),
       field(T('Сыныптар'), grades),
       h('div', {class: 'flex flex-wrap gap-2 justify-end'},
         h('button', {type: 'button', class: 'btn btn-l', onclick: () => { box.innerHTML = ''; }}, T('Болдырмау')),
@@ -1842,7 +1848,7 @@
     g = g ? clone(g) : {sids: []};
     const chosen = new Set(g.sids || []);
     const name = h('input', {class: 'inp', type: 'text', placeholder: T('мысалы: 2-сынып математика')}); name.value = g.name || '';
-    const subj = h('input', {class: 'inp', type: 'text', placeholder: T('мысалы: Математика')}); subj.value = g.subject || '';
+    const sj = olSubjInput(g.subject, T('Пәнді жазыңыз, мысалы: Математика')), subj = sj.el;
     const grade = olSelect([['0', '—'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']], String(g.grade || 0));
     const coach = OL.manage ? olSelect([['', T('Бекітілмеген')]].concat((OL.coaches || []).map(c => [c.id, c.name])), g.coach || '') : null;
     const classes = [...new Set((OL.students || []).map(s => s.cls))].sort();
@@ -1860,7 +1866,7 @@
     drawList();
     box.innerHTML = '';
     box.append(section(g.id ? g.name : T('Жаңа топ'),
-      OL.manage ? h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Топ атауы *'), name), field(T('Пәні'), subj), field(T('Сынып деңгейі'), grade), field(T('Жаттықтырушы-мұғалім'), coach)) : null,
+      OL.manage ? h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Топ атауы *'), name), field(T('Пәні'), sj.box), field(T('Сынып деңгейі'), grade), field(T('Жаттықтырушы-мұғалім'), coach)) : null,
       h('div', {class: 'flex flex-wrap items-end gap-2'}, h('div', {class: 'flex-1 min-w-[8rem]'}, field(T('Сынып'), clSel)),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { (OL.students || []).filter(s => s.cls === curCl).forEach(s => chosen.add(s.id)); count.textContent = chosen.size; drawList(); }}, T('Бүкіл сыныпты қосу')),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { (OL.students || []).filter(s => s.cls === curCl).forEach(s => chosen.delete(s.id)); count.textContent = chosen.size; drawList(); }}, T('Сыныпты алып тастау'))),
