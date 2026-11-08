@@ -1716,7 +1716,7 @@
           info.ready ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => { if (!confirm(T('Күнделік байланысы өшірілсін бе?'))) return; render(await run(T('Сақталуда…'), () => api('kwSet', {clear: true}))); }}, T('Өшіру')) : null,
           h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
             if (!login.value.trim() || !pass.value) { toast(T('Логин мен парольді жазыңыз'), true); return; }
-            render(await run(T('Тексерілуде…'), () => api('kwSet', {login: login.value.trim(), password: pass.value}))); toast(T('Сақталды ✓'));
+            render(await run(T('Тексерілуде…'), () => api('kwSet', {kunLogin: login.value.trim(), kunPass: pass.value}))); toast(T('Сақталды ✓'));
           }}, T('💾 Сақтау'))));
     };
     api('kwInfo').then(render).catch(e => { box.innerHTML = ''; box.append(h('p', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
