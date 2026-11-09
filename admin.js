@@ -1630,7 +1630,7 @@
   }
 
   // ---------- 📘 Күнделіктен бағалар ----------
-  const KW_KINDS = {FO: T('ФО'), AB: T('Аралық бағалау')};
+  const KW_KINDS = {FO: T('ФО'), AB: T('Аралық бағалау'), TERM: T('Тоқсандық баға')};
   const kwK = k => k === 'BJB' || k === 'TJB' ? 'AB' : k;   // бастауышта БЖБ/ТЖБ жоқ: журналда тек «АБ: Б/Ж»
   const KW_COL = {FO: '#EEF2F0', BJB: '#CFE6F5', TJB: '#D9D2F2', AB: '#F7E3B5'};
   let KW = null, KW_CLS = '', KW_PER = '', KW_SUB = '', KW_KIND = '';
@@ -1658,7 +1658,7 @@
     box.append(h('div', {class: 'flex flex-wrap items-center gap-2 mb-2'}, per,
       h('button', {type: 'button', class: 'btn btn-g', disabled: !KW.ready, onclick: async () => {
         const j = await run(T('Күнделіктен алынуда… Бір минутқа дейін созылуы мүмкін'), () => api('kwPull', {cls: KW_CLS, period: KW_PER}));
-        KW = j; toast(T('Жаңартылды ✓ Баға: ') + j.fresh.marks + (j.fresh.matched ? T(' · байланыстырылған оқушы: ') + j.fresh.matched : ''));
+        KW = j; toast(T('Жаңартылды ✓ Баға: ') + j.fresh.marks + (j.fresh.finals ? T(' · тоқсандық: ') + j.fresh.finals : '') + (j.fresh.matched ? T(' · байланыстырылған оқушы: ') + j.fresh.matched : ''));
         kwRender(box);
       }}, T('🔄 Күнделіктен жаңарту'))),
       h('p', {class: 'text-sm text-charcoal/65 mb-3'}, KW.at ? T('Соңғы жаңарту: ') + fmtTs(KW.at) + ' · ' + KW.by : T('Бұл тоқсан әлі жаңартылмаған. «Күнделіктен жаңарту» батырмасын басыңыз.')));
@@ -1691,17 +1691,43 @@
         h('tr', {}, h('th', {class: 'text-left p-1.5'}, T('Оқушы')), KW.subjects.map(s => h('th', {class: 'p-1.5 text-xs', style: 'min-width:4.5rem'}, s))),
         KW.rows.map(r => h('tr', {class: 'border-t border-emerald-900/5'},
           h('td', {class: 'p-1.5 font-semibold', style: 'white-space:nowrap'}, r.name, r.linked ? null : ' ⚠'),
-          KW.subjects.map(s => { const l = r.marks.filter(m => m[0] === s && flt(m)); return h('td', {class: 'p-1.5 text-center', title: l.map(m => m[1] + ': ' + m[2]).join(', ')}, kwAvg(l) || (l.length ? l.length : '')); }))))),
-        h('p', {class: 'text-xs text-charcoal/55 mt-1'}, T('Кестеде таңдалған түрдегі бағалардың орташа мәні. Толық тізім үшін пәнді таңдаңыз.')));
+          KW.subjects.map(s => { const l = r.marks.filter(m => m[0] === s && flt(m)); return h('td', {class: 'p-1.5 text-center', title: l.map(m => m[1] + ': ' + m[2]).join(', ')}, KW_KIND === 'AB' ? (r.ab[s] || []).filter(x => x !== '').join(' / ') : KW_KIND === 'TERM' ? (r.term[s] || '') : kwAvg(l) || (l.length ? l.length : '')); }))))),
+        h('p', {class: 'text-xs text-charcoal/55 mt-1'}, KW_KIND === 'AB' || KW_KIND === 'TERM' ? T('Толық тізім және енгізу үшін пәнді таңдаңыз.') : T('Кестеде таңдалған түрдегі бағалардың орташа мәні. Толық тізім үшін пәнді таңдаңыз.')));
       return;
     }
+    if (KW.canAB) box.append(h('div', {class: 'flex justify-end mb-2'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => kwABForm(box)}, T('✏️ АБ мен тоқсандық бағаны енгізу'))));
+    const mx = (KW.max || {})[KW_SUB] || [];
     box.append(h('div', {class: 'space-y-1'}, KW.rows.map(r => {
-      const l = r.marks.filter(m => m[0] === KW_SUB && flt(m));
+      const l = KW_KIND === 'AB' || KW_KIND === 'TERM' ? [] : r.marks.filter(m => m[0] === KW_SUB && flt(m)), ab = KW_KIND === 'FO' || KW_KIND === 'TERM' ? [] : (r.ab[KW_SUB] || []), term = KW_KIND === 'FO' || KW_KIND === 'AB' ? '' : (r.term[KW_SUB] || '');
       return h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'},
         h('div', {class: 'font-semibold text-sm', style: 'min-width:11rem;flex:1'}, r.name, r.linked ? null : ' ⚠'),
-        h('div', {class: 'flex flex-wrap gap-1'}, l.length ? l.map(m => h('span', {title: m[1] + ' · ' + (KW_KINDS[kwK(m[3])] || m[3]), style: 'background:' + (KW_COL[kwK(m[3])] || '#EEF2F0') + ';border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, m[2])) : h('span', {class: 'text-xs text-charcoal/50'}, '—')),
+        h('div', {class: 'flex flex-wrap gap-1'}, l.length ? l.map(m => h('span', {title: m[1] + ' · ' + (KW_KINDS[kwK(m[3])] || m[3]), style: 'background:' + (KW_COL[kwK(m[3])] || '#EEF2F0') + ';border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, m[2])) : (ab.length || term ? null : h('span', {class: 'text-xs text-charcoal/50'}, '—')),
+          ab.map((v, i) => v === '' ? null : h('span', {style: 'background:' + KW_COL.AB + ';border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, T('АБ ') + (i + 1) + ': ' + v + (mx[i] ? '/' + mx[i] : ''))),
+          term ? h('span', {style: 'background:#2E7D5B;color:#fff;border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, T('Тоқсан: ') + term) : null),
         h('div', {class: 'text-sm font-extrabold text-emerald-900', style: 'min-width:2.5rem;text-align:right'}, kwAvg(l)));
     })), h('div', {class: 'flex flex-wrap gap-2 mt-2 text-xs'}, Object.keys(KW_KINDS).map(k => h('span', {style: 'background:' + KW_COL[k] + ';border-radius:6px;padding:0 6px'}, KW_KINDS[k]))));
+  }
+  // Бас әкімші: аралық бағалау мен тоқсандық бағаны қолмен енгізу
+  function kwABForm(box){
+    box.innerHTML = '';
+    const cellCss = 'width:3.6rem;padding:.3rem;text-align:center';
+    const num = v => { const el = h('input', {class: 'inp', type: 'text', inputmode: 'decimal', style: cellCss}); el.value = v == null ? '' : v; return el; };
+    const old = (KW.max || {})[KW_SUB] || [], maxI = [0, 1, 2].map(i => num(old[i]));
+    const rows = KW.rows.map(r => { const ab = r.ab[KW_SUB] || [], cells = [num(ab[0]), num(ab[1]), num(ab[2]), num(r.term[KW_SUB])]; return {r, cells}; });
+    const th = t => h('th', {class: 'p-1 text-xs'}, t);
+    box.append(section(KW_CLS + ' · ' + KW_SUB + ' · ' + CARD.periodName(KW_PER, UI),
+      hint(T('Күнделіктегі журналға қарап толтырыңыз. Бос қалдырылған ұяшық сақталмайды. Тоқсандық баға Күнделіктен автоматты түскен болса, осы жерге жазғаныңыз сайтта соның орнына көрінеді.')),
+      h('div', {style: 'overflow-x:auto'}, h('table', {class: 'w-full text-sm'},
+        h('tr', {}, th(T('Оқушы')), th(T('АБ 1')), th(T('АБ 2')), th(T('АБ 3')), th(T('Тоқсандық баға'))),
+        h('tr', {class: 'bg-emerald-50'}, h('td', {class: 'p-1 text-xs font-bold'}, T('Макс. балл')), maxI.map(el => h('td', {class: 'p-1 text-center'}, el)), h('td', {})),
+        rows.map(x => h('tr', {class: 'border-t border-emerald-900/5'}, h('td', {class: 'p-1 font-semibold', style: 'white-space:nowrap'}, x.r.name), x.cells.map(el => h('td', {class: 'p-1 text-center'}, el)))))),
+      h('div', {class: 'flex flex-wrap gap-2 justify-end'},
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => kwRender(box)}, T('Болдырмау')),
+        h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+          const data = {}; rows.forEach(x => { data[x.r.pid] = x.cells.map(el => el.value.trim().replace(',', '.')); });
+          KW = await run(T('Сақталуда…'), () => api('kwSaveAB', {cls: KW_CLS, period: KW_PER, subject: KW_SUB, max: maxI.map(el => el.value.trim()), rows: data}));
+          toast(T('Сақталды ✓')); kwRender(box);
+        }}, T('💾 Сақтау')))));
   }
   // Күнделіктегі оқушы мен сайттағы оқушыны байланыстыру; аттарды Күнделік бойынша түзету
   function kwMatchPanel(box){
