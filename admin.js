@@ -1989,11 +1989,26 @@
   // Ата-аналарға код жіберу: файл браузерде ғана оқылады (серверге жіберілмейді); әр хабарды адам өзі WhatsApp-та жібереді
   const waFold = v => String(v || '').toLowerCase().replace(/[әіңғүұқөһё]/g, c => ({'ә': 'а', 'і': 'и', 'ң': 'н', 'ғ': 'г', 'ү': 'у', 'ұ': 'у', 'қ': 'к', 'ө': 'о', 'һ': 'х', 'ё': 'е'}[c]));
   const waWords = v => waFold(v).split(/[\s.,]+/).map(x => x.replace(/[^a-zа-я]/g, '')).filter(w => w.length > 1);
-  const waCls = v => String(v || '').toUpperCase().replace(/\s+/g, '').replace(/[АВСЕНКМОРТХ]/g, c => ({'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P', 'Т': 'T', 'Х': 'X'}[c]));
-  const waPhone = v => { let d = String(v || '').split(/[,;/]/)[0].replace(/\D/g, ''); if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1); if (d.length === 10) d = '7' + d; return d.length === 11 ? d : ''; };
+  const waCls = v => String(v || '').toUpperCase().replace(/[\s"«»'.-]+/g, '').replace(/СЫНЫП|КЛАСС/g, '').replace(/[АВСЕНКМОРТХДФГБ]/g, c => ({'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P', 'Т': 'T', 'Х': 'X', 'Д': 'D', 'Ф': 'F', 'Г': 'G', 'Б': 'B'}[c]));
+  const waPhone = v => { let d = String(v || '').split(/[,;/]/)[0].replace(/\D/g, ''); if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1); else if (d.length === 10 && d[0] === '7') d = '7' + d; return d.length === 11 && d[0] === '7' ? d : ''; };
+  const waNear = (a, b) => { if (a === b) return true; if (Math.min(a.length, b.length) < 5 || Math.abs(a.length - b.length) > 1) return false; let p = [...Array(b.length + 1).keys()]; for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; } return p[b.length] <= 1; };
+  // Бір параққа бір сынып: № | ФИО ребенка | ФИО родителей | Телефон; екінші ата-ана келесі жолда, баланың аты бос
+  const waParseSheet = (rows, sheet) => {
+    const hi = rows.findIndex(r => r.some(x => /фио\s*реб|ребен|ребён|баланың|оқушы|ученик/i.test(String(x))) && r.some(x => /телефон|тел\.|whats|ватс/i.test(String(x))));
+    if (hi < 0) return [];
+    const low = rows[hi].map(x => String(x).toLowerCase()), phone = low.findIndex(x => /телефон|тел\.|whats|ватс/.test(x)), parent = low.findIndex(x => /родит|ата-ана|ата ана/.test(x));
+    const child = low.findIndex((x, i) => i !== parent && i !== phone && /реб[её]н|фио|бала|оқушы|ученик/.test(x)), cl = low.findIndex(x => /сынып|сыныб|класс/.test(x));
+    const out = []; let cur = null;
+    rows.slice(hi + 1).forEach(r => {
+      const name = String(r[child] || '').trim(), ph = String(r[phone] || '').trim(), par = parent >= 0 ? String(r[parent] || '').trim() : '';
+      if (name && /[A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]{2}/.test(name)) { cur = {name, cls: cl >= 0 && String(r[cl] || '').trim() ? r[cl] : sheet, phones: []}; out.push(cur); }
+      if (cur && ph) cur.phones.push({parent: par, raw: ph, phone: waPhone(ph)});
+    });
+    return out;
+  };
   const waText = (x, code) => { const hi = x.parent ? x.parent : ''; const url = SITE_URL + '#c=' + code, guide = SITE_URL + 'ata-ana';
-    return 'Құрметті ' + (hi || 'ата-ана') + '!\n\nBaiterek ST бастауыш мектебінің сайтында «Сіздің сыныбыңыздың беті» бөлімі ашылды. Төмендегі сілтемені ашып, тіркеліңіз:\n' + url + '\nБаланың коды: ' + code + '\n\nОнда балаңыз туралы сынып жетекшісі мен пән мұғалімдерінің кері байланысын, даму картасын және Күнделік.kz бағаларын көре аласыз.\nНұсқаулық: ' + guide +
-      '\n\n———\n\nУважаемый(ая) ' + (hi || 'родитель') + '!\n\nНа сайте начальной школы Baiterek ST открыт раздел «Страница вашего класса». Откройте ссылку и зарегистрируйтесь:\n' + url + '\nКод ребёнка: ' + code + '\n\nТам вы увидите обратную связь от классного руководителя и учителей-предметников, карту развития и оценки из Күнделік.kz.\nИнструкция: ' + guide + '?lang=ru'; };
+    return 'Құрметті ' + (hi || 'ата-ана') + '!\n\nBaiterek ST бастауыш мектебінің сайтында «Сіздің сыныбыңыздың беті» бөлімі ашылды. Төмендегі сілтемені ашып, тіркеліңіз:\n' + url + '\nБаланың коды: ' + code + '\n\nОнда балаңыз туралы сынып жетекшісі мен пән мұғалімдерінің кері байланысын, даму картасын және Күнделік.kz бағаларын көре аласыз.\nНұсқаулық: ' + guide + '\n\nҚұрметпен, мектеп әкімшілігі' +
+      '\n\n———\n\nУважаемый(ая) ' + (hi || 'родитель') + '!\n\nНа сайте начальной школы Baiterek ST открыт раздел «Страница вашего класса». Откройте ссылку и зарегистрируйтесь:\n' + url + '\nКод ребёнка: ' + code + '\n\nТам вы увидите обратную связь от классного руководителя и учителей-предметников, карту развития и оценки из Күнделік.kz.\nИнструкция: ' + guide + '?lang=ru\n\nС уважением, администрация школы'; };
   function waTool(view){
     view.innerHTML = '';
     view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('codes', true)}, T('← Артқа')), title(T('📲 Ата-аналарға код жіберу')));
@@ -2001,10 +2016,13 @@
     view.append(hint(T('Файлда баланың аты-жөні, сыныбы, ата-анасының аты-жөні және телефоны болуы керек. Файл серверге жіберілмейді, тек осы браузерде оқылады. WhatsApp ресми емес бағдарламалармен жаппай хабар жіберуді бұғаттайды, сондықтан әр хабарды өзіңіз жібересіз: батырманы басасыз, WhatsApp-та «Жіберу» басасыз.')), field(T('Файл'), file), out);
     file.addEventListener('change', async () => {
       const f = file.files[0]; if (!f) return;
-      let rows; try { rows = await readTable(f); } catch (e) { toast(e.message || T('Файлды оқу мүмкін болмады'), true); return; }
-      const head = rows[0].map(x => String(x).toLowerCase()), col = re => head.findIndex(x => re.test(x));
-      const phone = col(/тел|whats|ватс/), cl = col(/сынып|сыныб|класс/), parent = col(/ата-ана|ата ана|родит/), child = head.findIndex((x, i) => i !== parent && i !== phone && i !== cl && /бала|оқушы|ученик|ребен|ребён|аты/.test(x));
-      if (phone < 0 || cl < 0 || child < 0) { toast(T('Файлда баланың аты, сынып және телефон бағандары болуы керек'), true); return; }
+      let sheets;
+      try {
+        if (/\.csv$|\.txt$/i.test(f.name)) sheets = [{name: '', rows: parseCsv(await f.text())}];
+        else { await run(T('Excel оқылуда…'), loadXlsx); const wb = XLSX.read(await f.arrayBuffer(), {type: 'array'}); sheets = wb.SheetNames.map(n => ({name: n, rows: XLSX.utils.sheet_to_json(wb.Sheets[n], {header: 1, defval: '', raw: false})})); }
+      } catch (e) { toast(e.message || T('Файлды оқу мүмкін болмады'), true); return; }
+      const parsed = [].concat(...sheets.map(s => waParseSheet(s.rows, s.name)));
+      if (!parsed.length) { toast(T('Файлда баланың аты мен телефон бағандары табылмады'), true); return; }
       const classes = allClasses(), all = [];
       for (let k = 0; k < classes.length; k++) {
         busy(T('Сыныптар жүктелуде: ') + (k + 1) + ' / ' + classes.length, Math.round(k * 100 / classes.length));
@@ -2013,20 +2031,21 @@
       }
       done();
       const ok = [], bad = [];
-      rows.slice(1).forEach(r => {
-        const name = String(r[child] || '').trim(), c = waCls(r[cl]), ph = waPhone(r[phone]), par = parent >= 0 ? String(r[parent] || '').trim() : '';
-        if (!name) return;
-        const w = waWords(name), cand = all.filter(s => waCls(s.cls) === c && s.words.filter(x => w.includes(x)).length >= 2);
-        if (cand.length !== 1) { bad.push({name, cls: r[cl], why: cand.length ? T('бірнеше бала сәйкес келді') : T('тізімнен табылмады')}); return; }
-        if (!ph) { bad.push({name, cls: r[cl], why: T('телефон дұрыс емес')}); return; }
-        ok.push({child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: ph, parent: par});
+      parsed.forEach(p => {
+        const w = waWords(p.name), c = waCls(p.cls), cand = all.filter(s => waCls(s.cls) === c && s.words.filter(x => w.some(y => waNear(x, y))).length >= 2);
+        if (cand.length !== 1) { bad.push({name: p.name, cls: p.cls, why: cand.length ? T('бірнеше бала сәйкес келді') : T('тізімнен табылмады')}); return; }
+        const good = p.phones.filter(x => x.phone);
+        if (!good.length) { bad.push({name: p.name, cls: p.cls, why: p.phones.length ? T('телефон дұрыс емес') : T('телефон жоқ')}); return; }
+        good.forEach((x, n) => ok.push({child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: x.phone, parent: x.parent, n}));
+        if (good.length < p.phones.length) bad.push({name: p.name, cls: p.cls, why: T('бір нөмір дұрыс емес, қалғанына жіберіледі')});
       });
       const key = 'wa_sent', load = () => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; } }, sent = load();
-      const count = h('b', {});
-      const upd = () => { count.textContent = ok.filter(x => sent[x.code + x.phone]).length + ' / ' + ok.length; };
+      const count = h('b', {}); let onlyFirst = true;
+      const shown = () => ok.filter(x => !onlyFirst || x.n === 0);
+      const upd = () => { count.textContent = shown().filter(x => sent[x.code + x.phone]).length + ' / ' + shown().length; };
       const clsOpts = [...new Set(ok.map(x => x.cls))].sort(); let cur = '';
       const list = h('div', {class: 'space-y-1'});
-      const draw = () => { list.innerHTML = ''; ok.filter(x => !cur || x.cls === cur).forEach(x => {
+      const draw = () => { list.innerHTML = ''; shown().filter(x => !cur || x.cls === cur).forEach(x => {
         const id = x.code + x.phone, b = h('a', {class: 'btn btn-s ' + (sent[id] ? 'btn-l' : 'btn-p'), target: '_blank', rel: 'noopener', href: 'https://wa.me/' + x.phone + '?text=' + encodeURIComponent(waText(x, x.code)),
           onclick: () => { sent[id] = 1; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); upd(); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp');
         list.append(h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'}, h('div', {class: 'flex-1 min-w-[12rem] text-sm'}, h('b', {}, x.child), ' · ' + x.cls + (x.parent ? ' · ' + x.parent : ''), h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), b));
@@ -2034,15 +2053,17 @@
       const sel = olSelect([['', T('Барлық сынып')]].concat(clsOpts.map(c => [c, c])), '', v => { cur = v; draw(); });
       upd(); draw();
       out.innerHTML = '';
-      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), list,
+      const firstCb = h('input', {type: 'checkbox', checked: true, onchange: () => { onlyFirst = firstCb.checked; upd(); draw(); }});
+      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге')), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), list,
         bad.length ? section(T('Сәйкес келмегендер (') + bad.length + ')', h('div', {class: 'text-sm space-y-0.5'}, bad.map(b => h('div', {}, h('b', {}, b.name), ' · ' + b.cls + ' — ' + b.why)))) : null);
     });
   }
   // ---------- 🔑 Ата-ана кодтары ----------
   VIEWS.codes = function(view){
     const list = isOwner() ? allClasses() : (ME.classes || []);
-    if (isOwner()) view.append(h('div', {class: 'flex justify-end mb-2'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => waTool(view)}, T('📲 Ата-аналарға код жіберу'))));
-    view.append(title(T('Ата-ана кодтары')),
+    view.append(title(T('Ата-ана кодтары')));
+    if (isOwner()) view.append(h('div', {class: 'card flex flex-wrap items-center justify-between gap-3 mb-4'}, h('div', {class: 'text-sm font-semibold text-emerald-950'}, T('Ата-аналардың телефон тізімі бойынша WhatsApp арқылы жеке сілтеме жіберу')), h('button', {type: 'button', class: 'btn btn-g', onclick: () => waTool(view)}, T('📲 Ата-аналарға код жіберу'))));
+    view.append(
       hint(T('Әр сыныптың өз коды бар. Кодты сыныптың ата-аналарына WhatsApp арқылы жіберіңіз: олар сайттағы «Сыныбым» бөліміне кіріп, тек өз сыныбының үй тапсырмасын, фотоларын және сұрақ-жауабын көреді. Код басқа адамдарға тарап кетсе, «Жаңа код» басыңыз — ескі код жұмыс істемей қалады.')));
     view.append(h('div', {class: 'grid sm:grid-cols-2 gap-3 mt-4'}, list.map(c => {
       const code = (CLS.codes || {})[c];
