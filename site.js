@@ -511,7 +511,7 @@
       if (isNew) {
         if (mcIndex(code) < 0) MC.codes.push({code: code, cls: j.cls});
         MC.cur = mcIndex(code); MC.adding = false; MC.hwDate = null;
-        if (j.child) MC.tab = 'fb';
+        if (j.child) MC.tab = 'home';
       }
       var ci = mcIndex(code);
       if (ci >= 0) { MC.codes[ci].cls = j.cls; MC.codes[ci].child = j.child ? j.child.name : ''; }
@@ -730,6 +730,30 @@
       renderMyClass();
     });
   };
+  // 🏠 Шолу: баланың жағдайы бір бетте (жаңа дерек жоқ, бар бөлімдерден жиналады)
+  var HOMET = {
+    kz: {hi:'Сәлем', lvl:'Жалпы деңгей', strong:'Күшті жақтары', weak:'Дамыту керек', todo:'Үйде не істеуге болады', none:'Даму картасы әзірге толтырылмаған. Мұғалімдер тоқсан соңында бағалайды.', fb:'Кері байланыс', fbN:'жазба', ol:'Олимпиада жүлдесі', open:'Ашу', term:'Соңғы кезең'},
+    ru: {hi:'Здравствуйте', lvl:'Общий уровень', strong:'Сильные стороны', weak:'Нужно развивать', todo:'Что можно сделать дома', none:'Карта развития пока не заполнена. Учителя оценивают в конце четверти.', fb:'Обратная связь', fbN:'записей', ol:'Призы олимпиад', open:'Открыть', term:'Последний период'},
+    en: {hi:'Hello', lvl:'Overall level', strong:'Strengths', weak:'To develop', todo:'What you can do at home', none:'The development profile is not filled in yet. Teachers rate at the end of the term.', fb:'Feedback', fbN:'notes', ol:'Olympiad prizes', open:'Open', term:'Latest period'}
+  };
+  function mcHome(d){
+    var C = window.CARD, T = HOMET[lang] || HOMET.kz, LV = C.levels[lang] || C.levels.kz, cards = d.cards || [];
+    var c = cards[0], A = c ? C.analyse(c.agg || {}, lang) : null, ok = A && (A.strong.length || A.weak.length || A.overall);
+    var chips = function(arr, bg, fg){ return arr.length ? arr.slice(0, 6).map(function(x){ return '<span class="inline-block rounded-full px-3 py-1 text-sm font-semibold mr-1.5 mb-1.5" style="background:' + bg + ';color:' + fg + '">' + esc(x) + '</span>'; }).join('') : '<span class="text-charcoal/50">—</span>'; };
+    var tile = function(icon, big, label, tab){ return '<button type="button" onclick="uiMcTab(\'' + tab + '\')" class="text-left rounded-2xl border border-emerald-900/10 p-4 hover:bg-emerald-50"><div class="text-2xl">' + icon + '</div><div class="text-2xl font-extrabold text-emerald-950">' + big + '</div><div class="text-sm text-charcoal/65">' + esc(label) + '</div></button>'; };
+    var prizes = d.olymp ? d.olymp.results.filter(function(r){ return r.place >= 1 && r.place <= 3; }).length : 0;
+    var h = '<div class="rounded-2xl bg-emerald-900 text-white p-5 mb-5"><div class="text-sm opacity-80">' + esc(T.hi) + '!</div><div class="text-2xl font-extrabold">' + esc(d.child.name) + '</div>' +
+      '<div class="text-sm opacity-80 mt-1">' + esc(d.cls) + (c ? ' · ' + esc(C.periodName(c.period, lang)) : '') + '</div>' + (ok && A.overall ? '<div class="mt-3 inline-block rounded-full bg-white/15 px-3 py-1 text-sm font-bold">' + esc(T.lvl) + ': ' + esc(LV[A.overall]) + '</div>' : '') + '</div>';
+    if (!ok) return h + '<p class="rounded-2xl bg-gold-50 border border-gold-100 p-4">' + esc(T.none) + '</p>';
+    var dom = C.domains(c.agg), ser = C.series(cards), prev = C.prevOf(ser, c.period);
+    h += '<div class="grid md:grid-cols-2 gap-5 mb-5"><div class="rounded-2xl border border-emerald-900/10 p-4">' + C.radarSVG(dom, prev, lang) + '</div><div class="space-y-4">' +
+      '<div><div class="font-extrabold text-emerald-950 mb-1.5">💪 ' + esc(T.strong) + '</div>' + chips(A.strong.concat(A.good), '#E2F1EA', '#14532d') + '</div>' +
+      '<div><div class="font-extrabold text-emerald-950 mb-1.5">🌱 ' + esc(T.weak) + '</div>' + chips(A.weak.concat(A.focus), '#FDE8E4', '#7f1d1d') + '</div>' +
+      '<p class="text-sm text-charcoal/70">' + esc(C.dynText(dom, prev, lang)) + '</p></div></div>';
+    if (A.recs.length) h += '<div class="rounded-2xl bg-gold-50 border border-gold-100 p-4 mb-5"><div class="font-extrabold text-emerald-950 mb-1.5">✅ ' + esc(T.todo) + '</div><ul class="list-disc pl-5 space-y-1 text-sm">' + A.recs.slice(0, 3).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+    h += '<div class="grid grid-cols-2 md:grid-cols-4 gap-3">' + tile('📝', (d.fbCount != null ? d.fbCount : (d.feedback || []).length), T.fb + ' (' + T.fbN + ')', 'fb') + tile('📊', cards.length, C.T[lang].tab, 'card') + tile('📘', '→', t('grades_tab'), 'grades') + (d.olymp ? tile('🏆', prizes, T.ol, 'ol') : '') + '</div>';
+    return h;
+  }
   window.uiMcCard = function(i){ MC.cardIdx = i; renderMyClass(); };
   window.uiMcCardPrint = function(){
     var cur = MC.codes[MC.cur], d = cur && MC.data[cur.code];
@@ -783,7 +807,7 @@
       if (!j.ok) { MC.regErr = String(j.err).indexOf('CODE') >= 0 ? t('mc_bad') : j.err; renderMyClass(); return; }
       MC.data[code].reg = j.reg; MC.regEdit = false; MC.regErr = ''; MC.regMsg = t('reg_saved');
       try { localStorage.setItem('bs_cls_' + code, JSON.stringify(MC.data[code])); } catch(e) {}
-      if (MC.data[code].child) MC.tab = 'fb';
+      if (MC.data[code].child) MC.tab = 'home';
       renderMyClass(); mcLoad(code);
       if (j.reg.ch.tg && !j.reg.tg && j.reg.tgLink) { MC_TG_OPENED(); window.open(j.reg.tgLink, '_blank'); }
     }).catch(function(){ MC.regErr = t('loading'); renderMyClass(); });
@@ -815,7 +839,7 @@
     }
     if (MC.cur >= MC.codes.length || MC.cur < 0) MC.cur = 0;
     var cur = MC.codes[MC.cur], d = MC.data[cur.code];
-    if ((MC.tab === 'fb' || MC.tab === 'card' || MC.tab === 'grades') && d && !d.child) MC.tab = 'hw';
+    if ((MC.tab === 'home' || MC.tab === 'fb' || MC.tab === 'card' || MC.tab === 'grades') && d && !d.child) MC.tab = 'hw';
     if (MC.tab === 'ol' && d && !d.olymp) MC.tab = d.child ? 'fb' : 'hw';
     var h = '<div class="flex flex-wrap items-center justify-center gap-2 mb-5">' + MC.codes.map(function(c, i){
       return '<button type="button" class="chip' + (i === MC.cur ? ' active' : '') + '" onclick="uiMcPick(' + i + ')">' + (c.child ? '👧 ' + esc(c.cls) + ' · ' + esc(c.child) : '🏫 ' + esc(c.cls)) + '</button>';
@@ -826,12 +850,12 @@
       '<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><div class="text-2xl font-extrabold text-emerald-950">' + esc(cur.cls) + (cur.child ? ' · ' + esc(cur.child) : '') + '</div>' +
       (d && d.teachers && d.teachers.length ? '<div class="text-sm text-charcoal/70">' + esc(t('mc_teacher')) + ': <b>' + esc(d.teachers.join(', ')) + '</b></div>' : '') + '</div>' +
       '<button type="button" class="text-xs font-bold text-charcoal/50 underline" onclick="uiMcRemove()">' + esc(t('mc_remove')) + '</button></div>' +
-      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab'], ['grades', '📘 ', 'grades_tab']].concat(d.olymp ? [['ol', '🏆 ', 'ol_tab']] : []) : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
-        var lk = (x[0] === 'fb' || x[0] === 'card' || x[0] === 'grades') && mcLocked(d) ? '🔒 ' : '';
+      '<div class="flex flex-wrap gap-2 mb-6">' + (d && d.child ? [['home', '🏠 ', 'home_tab'], ['fb', '📝 ', 'fb_tab'], ['card', '📊 ', 'card_tab'], ['grades', '📘 ', 'grades_tab']].concat(d.olymp ? [['ol', '🏆 ', 'ol_tab']] : []) : []).concat([['hw', '📚 ', 'mc_tab_hw'], ['news', '📸 ', 'mc_tab_news'], ['qa', '💬 ', 'mc_tab_qa'], ['reg', '🔔 ', 'reg_tab']]).map(function(x){
+        var lk = (x[0] === 'home' || x[0] === 'fb' || x[0] === 'card' || x[0] === 'grades') && mcLocked(d) ? '🔒 ' : '';
         return '<button type="button" class="chip' + (MC.tab === x[0] ? ' active' : '') + '" onclick="uiMcTab(\'' + x[0] + '\')">' + lk + x[1] + esc(t(x[2])) + '</button>';
       }).join('') + '</div>';
     var pop = regPopNeeded(cur, d);
-    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : (MC.tab === 'fb' || MC.tab === 'card' || MC.tab === 'grades') && mcLocked(d) ? mcLockedView(d, pop) : MC.tab === 'grades' ? mcGrades(d) : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'ol' ? mcOl(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
+    h += !d ? '<p class="text-center text-charcoal/60 py-6">' + esc(t('loading')) + '</p>' : (MC.tab === 'home' || MC.tab === 'fb' || MC.tab === 'card' || MC.tab === 'grades') && mcLocked(d) ? mcLockedView(d, pop) : MC.tab === 'home' ? mcHome(d) : MC.tab === 'grades' ? mcGrades(d) : MC.tab === 'fb' ? mcFb(d) : MC.tab === 'card' ? mcCard(d) : MC.tab === 'ol' ? mcOl(d) : MC.tab === 'reg' && !pop ? mcReg(d) : MC.tab === 'reg' ? '' : MC.tab === 'hw' ? mcHw(d) : MC.tab === 'news' ? mcNews(d) : mcQa(d);
     box.innerHTML = h + '</div>';
     regPop(pop ? d : null);
   }
