@@ -387,6 +387,7 @@
     ['qa', T('💬 Ата-ана сұрақтары'), () => seesClasses() || ME.role === 'subject'],
     ['fb', T('📝 Кері байланыс'), () => isOwner() || ['teacher', 'subject', 'psych'].includes(ME.role) || (ME.perms || []).includes('feedback')],
     ['tt', T('🗓 Сабақ кестесі'), () => true],
+    ['usage', T('📊 Қолданыс'), () => isOwner() || ME.role === 'viewer'],
     ['kun', T('📘 Күнделіктен бағалар'), () => can('kun') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['olymp', T('🏆 Олимпиада'), () => can('olymp') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['codes', T('🔑 Ата-ана кодтары'), () => isOwner() || ME.role === 'teacher'],
@@ -1629,6 +1630,28 @@
         h('a', {href: guideUrl('nusqaulyq'), target: '_blank', class: 'btn btn-l btn-s'}, T('📖 Қызметкерлер нұсқаулығы')),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(T('Қызметкерлер ботының нұсқаулығы: ') + guideUrl('nusqaulyq')).then(() => toast(T('Көшірілді')))}, T('Сілтемені көшіру'))));
   }
+
+  // ---------- 📊 Қолданыс: сайтты кім пайдаланып жатыр ----------
+  VIEWS.usage = async function(view){
+    view.append(title(T('📊 Қолданыс')));
+    const box = h('div', {}, h('p', {class: 'text-charcoal/60'}, T('Жүктелуде…'))); view.append(box);
+    let j; try { j = await api('usage'); } catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); return; }
+    if (!box.isConnected) return;
+    box.innerHTML = '';
+    const pct = (a, b) => b ? Math.round(a * 100 / b) : 0;
+    const tile = (v, label, sub) => h('div', {class: 'card'}, h('div', {class: 'text-xs text-charcoal/60'}, label), h('div', {class: 'text-3xl font-extrabold text-emerald-950'}, v), sub ? h('div', {class: 'text-xs text-charcoal/55'}, sub) : null);
+    const bar = p => h('div', {style: 'background:#e5ece8;border-radius:999px;height:10px;overflow:hidden;min-width:7rem'}, h('div', {style: 'width:' + p + '%;height:100%;background:' + (p >= 70 ? '#2E7D5B' : p >= 30 ? '#D4AF37' : '#E9A23B')}));
+    box.append(
+      h('div', {class: 'grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4'},
+        tile(pct(j.registered, j.students) + '%', T('Ата-ана тіркелді'), j.registered + ' / ' + j.students + T(' бала')),
+        tile(j.staff.entered + ' / ' + j.staff.total, T('Қызметкер кірді'), T('өз пароліңді қойғандар')),
+        tile(j.staff.bot, T('Ботқа қосылғандар'), T('қызметкер')),
+        tile(j.channels.tg + ' · ' + j.channels.wa + ' · ' + j.channels.email, 'Telegram · WhatsApp · Email', T('хабарлама арналары'))),
+      section(T('Сыныптар бойынша тіркелген ата-аналар'),
+        h('div', {style: 'overflow-x:auto'}, h('table', {class: 'w-full text-sm'},
+          h('tr', {class: 'text-left text-charcoal/60'}, h('th', {class: 'py-1'}, T('Сынып')), h('th', {}, T('Бала')), h('th', {}, T('Тіркелген')), h('th', {}, '')),
+          j.classes.map(c => { const p = pct(c.registered, c.students); return h('tr', {class: 'border-t border-emerald-900/5'}, h('td', {class: 'py-1.5 font-bold'}, c.cls), h('td', {}, c.students), h('td', {}, c.registered + ' (' + p + '%)'), h('td', {}, bar(p))); })))));
+  };
 
   // ---------- 🗓 Сабақ кестесі (тек қызметкерлерге; замена бұл жерде мүлде жоқ) ----------
   VIEWS.tt = async function(view){
