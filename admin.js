@@ -388,6 +388,7 @@
     ['fb', T('📝 Кері байланыс'), () => isOwner() || ['teacher', 'subject', 'psych'].includes(ME.role) || (ME.perms || []).includes('feedback')],
     ['tt', T('🗓 Сабақ кестесі'), () => true],
     ['usage', T('📊 Қолданыс'), () => isOwner() || ME.role === 'viewer'],
+    ['rem', T('🔔 Еске салу'), () => isOwner()],
     ['kun', T('📘 Күнделіктен бағалар'), () => can('kun') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['olymp', T('🏆 Олимпиада'), () => can('olymp') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['codes', T('🔑 Ата-ана кодтары'), () => isOwner() || ME.role === 'teacher'],
@@ -1630,6 +1631,33 @@
         h('a', {href: guideUrl('nusqaulyq'), target: '_blank', class: 'btn btn-l btn-s'}, T('📖 Қызметкерлер нұсқаулығы')),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(T('Қызметкерлер ботының нұсқаулығы: ') + guideUrl('nusqaulyq')).then(() => toast(T('Көшірілді')))}, T('Сілтемені көшіру'))));
   }
+
+  // ---------- 🔔 Қызметкерлерге еске салу ----------
+  VIEWS.rem = async function(view){
+    view.append(title(T('🔔 Еске салу')));
+    const box = h('div', {}, h('p', {class: 'text-charcoal/60'}, T('Жүктелуде…'))); view.append(box);
+    let j; try { j = await api('remInfo'); } catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, T(e.message))); return; }
+    if (!box.isConnected) return;
+    box.innerHTML = '';
+    const DN = [T('Дс'), T('Сс'), T('Ср'), T('Бс'), T('Жм'), T('Сб'), T('Жк')];
+    const on = h('input', {type: 'checkbox', checked: j.set.on}), hour = h('input', {class: 'inp', type: 'number', min: 0, max: 23, value: j.set.hour, style: 'width:5rem'});
+    const days = DN.map((n, i) => h('label', {class: 'flex items-center gap-1 text-sm font-semibold'}, h('input', {type: 'checkbox', value: i + 1, checked: j.set.days.indexOf(String(i + 1)) >= 0}), n));
+    box.append(section(T('Автоматты Telegram еске салу'),
+      hint(T('Бот арқылы қызметкерлерге жеке хабарлама жіберіледі (ботқа қосылғандарға). Ботқа қосылмағандарға төмендегі тізімнен WhatsApp-пен қолмен жіберіңіз: WhatsApp жаппай автоматты жіберуді бұғаттайды.')),
+      h('div', {class: 'flex flex-wrap items-center gap-3 mt-2'}, h('label', {class: 'flex items-center gap-2 font-bold'}, on, T('Қосулы')), ...days, h('span', {class: 'text-sm'}, T('Сағат:')), hour,
+        h('button', {type: 'button', class: 'btn btn-p btn-s', onclick: async () => { const r = await run(T('Сақталуда…'), () => api('remSet', {on: on.checked, hour: +hour.value, days: days.map(d => d.firstChild).filter(i => i.checked).map(i => i.value)})); toast(r.warn || T('Сақталды'), !!r.warn); }}, T('Сақтау'))),
+      h('div', {class: 'mt-3 flex flex-wrap items-center gap-3'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => { if (!confirm(T('Қазір Telegram арқылы жіберейін бе?'))) return; const r = await run(T('Жіберілуде…'), () => api('remSend')); toast(T('Жіберілді: ') + r.sent + T(' · ботсыз: ') + r.noTg); }}, T('📨 Қазір Telegram-ға жіберу')), j.set.last ? h('span', {class: 'text-xs text-charcoal/60'}, T('Соңғысы: ') + j.set.last) : null)));
+    const sent = (() => { try { return JSON.parse(localStorage.getItem('rem_sent') || '{}'); } catch (e) { return {}; } })(), day = new Date().toISOString().slice(0, 10), btns = [];
+    const save = () => { try { localStorage.setItem('rem_sent', JSON.stringify(sent)); } catch (e) {} };
+    const list = h('div', {class: 'space-y-2'});
+    j.items.forEach(x => {
+      const id = x.id + day;
+      const b = x.phone ? h('a', {class: 'btn btn-s ' + (sent[id] ? 'btn-l' : 'btn-p'), target: '_blank', rel: 'noopener', href: 'https://wa.me/' + x.phone + '?text=' + encodeURIComponent(x.text), onclick: () => { sent[id] = 1; save(); b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp') : h('span', {class: 'text-xs text-red-700'}, T('телефон жоқ'));
+      if (x.phone) btns.push({id, a: b});
+      list.append(h('div', {class: 'card', style: 'padding:.6rem .8rem'}, h('div', {class: 'flex flex-wrap items-center gap-2'}, h('b', {class: 'flex-1 min-w-[10rem]'}, x.name, x.tg ? h('span', {class: 'ml-2 text-xs text-emerald-700'}, '🤖 Telegram') : null), b), h('div', {class: 'text-xs text-charcoal/65 mt-1 whitespace-pre-line'}, x.text.split('\n').filter(l => l.indexOf('•') === 0).join('\n'))));
+    });
+    box.append(section(T('Ескертулер бар қызметкерлер: ') + j.items.length, h('button', {type: 'button', class: 'btn btn-p w-full mb-3', style: 'padding:.8rem', onclick: () => { const t = btns.find(o => !sent[o.id]); if (!t) { toast(T('Бәрі жіберілді ✓')); return; } t.a.click(); }}, T('▶ Келесісі (WhatsApp)')), j.items.length ? list : h('p', {class: 'text-charcoal/60'}, T('Қазір ескертетін ештеңе жоқ ✓'))));
+  };
 
   // ---------- 📊 Қолданыс: сайтты кім пайдаланып жатыр ----------
   VIEWS.usage = async function(view){
