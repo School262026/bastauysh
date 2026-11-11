@@ -2091,7 +2091,7 @@
     view.innerHTML = '';
     view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('codes', true)}, T('← Артқа')), title(T('📲 Ата-аналарға код жіберу')));
     const file = h('input', {class: 'inp', type: 'file', accept: '.xlsx,.xls,.csv'}), out = h('div', {class: 'mt-4'});
-    view.append(hint(T('Файлда баланың аты-жөні, сыныбы, ата-анасының аты-жөні және телефоны болуы керек. Файл серверге жіберілмейді, тек осы браузерде оқылады. WhatsApp ресми емес бағдарламалармен жаппай хабар жіберуді бұғаттайды, сондықтан әр хабарды өзіңіз жібересіз: батырманы басасыз, WhatsApp-та «Жіберу» басасыз.')), field(T('Файл'), file), out);
+    view.append(hint(T('Файлда баланың аты-жөні, сыныбы, ата-анасының аты-жөні және телефоны болуы керек. Телефоннан жасасаңыз, Excel файлды алдымен телефонға жіберіңіз (Telegram/Gmail арқылы). Сынақ үшін алдымен бір сыныпты таңдаңыз, «▶ Келесісі» батырмасын басқан сайын келесі ата-анаға WhatsApp ашылады, сіз тек «Жіберу» басасыз. Жіберілгені есте қалады. Файл серверге жіберілмейді, тек осы браузерде оқылады. WhatsApp ресми емес бағдарламалармен жаппай хабар жіберуді бұғаттайды, сондықтан әр хабарды өзіңіз жібересіз: батырманы басасыз, WhatsApp-та «Жіберу» басасыз.')), field(T('Файл'), file), out);
     file.addEventListener('change', async () => {
       const f = file.files[0]; if (!f) return;
       let sheets;
@@ -2122,17 +2122,18 @@
       const shown = () => ok.filter(x => !onlyFirst || x.n === 0);
       const upd = () => { count.textContent = shown().filter(x => sent[x.code + x.phone]).length + ' / ' + shown().length; };
       const clsOpts = [...new Set(ok.map(x => x.cls))].sort(); let cur = '';
-      const list = h('div', {class: 'space-y-1'});
-      const draw = () => { list.innerHTML = ''; shown().filter(x => !cur || x.cls === cur).forEach(x => {
+      const list = h('div', {class: 'space-y-1'}), btns = [];
+      const nextBtn = h('button', {type: 'button', class: 'btn btn-p w-full', style: 'font-size:1.1rem;padding:.9rem', onclick: () => { const t = btns.find(o => !sent[o.id]); if (!t) { toast(T('Бәрі жіберілді ✓')); return; } t.a.click(); }}, T('▶ Келесісі'));
+      const draw = () => { list.innerHTML = ''; btns.length = 0; shown().filter(x => !cur || x.cls === cur).forEach(x => {
         const id = x.code + x.phone, b = h('a', {class: 'btn btn-s ' + (sent[id] ? 'btn-l' : 'btn-p'), target: '_blank', rel: 'noopener', href: 'https://wa.me/' + x.phone + '?text=' + encodeURIComponent(waText(x, x.code)),
-          onclick: () => { sent[id] = 1; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); upd(); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp');
+          onclick: () => { sent[id] = 1; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); upd(); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp'); btns.push({id, a: b});
         list.append(h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'}, h('div', {class: 'flex-1 min-w-[12rem] text-sm'}, h('b', {}, x.child), ' · ' + x.cls + (x.parent ? ' · ' + x.parent : ''), h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), b));
       }); };
       const sel = olSelect([['', T('Барлық сынып')]].concat(clsOpts.map(c => [c, c])), '', v => { cur = v; draw(); });
       upd(); draw();
       out.innerHTML = '';
       const firstCb = h('input', {type: 'checkbox', checked: true, onchange: () => { onlyFirst = firstCb.checked; upd(); draw(); }});
-      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге')), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), list,
+      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге')), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), nextBtn, h('div', {class: 'h-2'}), list,
         bad.length ? section(T('Сәйкес келмегендер (') + bad.length + ')', h('div', {class: 'text-sm space-y-0.5'}, bad.map(b => h('div', {}, h('b', {}, b.name), ' · ' + b.cls + ' — ' + b.why)))) : null);
     });
   }
