@@ -1728,13 +1728,13 @@
   }
   // Күнделік журналынан жүктелген Excel файлдар («Класс/Предмет» тақырыбы, соңғы баған «N чтв»): бірнеше файлды бірден таңдауға болады
   function kwParseJournal(rows){
-    const text = (rows.slice(0, 8).map(r => r.join(' ')).join(' ') || '');
-    const cm = text.match(/Класс:\s*(\d)\s*([A-Za-zА-Яа-яӘәІі])/i), sm = text.match(/Предмет:\s*([^\n]+?)(?=\s{2,}|$)/i) || text.match(/Пән:\s*(.+)/i);
+    const cells = [].concat(...rows.slice(0, 8)).map(c => String(c).trim()), find = re => { const c = cells.find(x => re.test(x)); return c ? c.match(re) : null; };
+    const cm = find(/^Класс:\s*(\d)\s*([A-Za-zА-Яа-яӘәІі])/i), sm = find(/^(?:Предмет|Пән):\s*(.+)$/i);
     let q = 0, qc = -1;
     rows.slice(0, 12).forEach(r => r.forEach((c, i) => { const m = String(c).match(/^(\d)\s*(чтв|четв|тоқ)/i); if (m && !q) { q = +m[1]; qc = i; } }));
     if (!cm || !sm || !q) return null;
     const out = []; rows.forEach(r => { if (/^\d+$/.test(String(r[0]).trim()) && String(r[1] || '').trim().length > 3 && String(r[qc] || '').trim() !== '') out.push([String(r[1]).trim(), String(r[qc]).trim()]); });
-    return {cls: cm[1] + cm[2].toUpperCase(), subject: sm[1].replace(/\s+/g, ' ').trim().replace(/^(.*?)\s{2,}.*$/, '$1'), q, rows: out};
+    return {cls: cm[1] + cm[2].toUpperCase(), subject: sm[1].replace(/\s+/g, ' ').trim(), q, rows: out};
   }
   function kwImportBtn(box){
     const inp = h('input', {type: 'file', accept: '.xls,.xlsx', multiple: true, hidden: true});
