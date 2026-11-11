@@ -1,0 +1,23 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000
+
+/admin
+  X-Robots-Tag: noindex, nofollow
+/admin.html
+  X-Robots-Tag: noindex, nofollow
+/mugalim
+  X-Robots-Tag: noindex, nofollow
+/kurator
+  X-Robots-Tag: noindex, nofollow
+/nusqaulyq
+  X-Robots-Tag: noindex, nofollow
+/sayt-nusqaulyq
+  X-Robots-Tag: noindex, nofollow
+/bas-akimshi
+  X-Robots-Tag: noindex, nofollow
+/ata-ana
+  X-Robots-Tag: noindex, nofollow
