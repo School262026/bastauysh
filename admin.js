@@ -1714,7 +1714,7 @@
         h('p', {class: 'text-xs text-charcoal/55 mt-1'}, KW_KIND === 'AB' || KW_KIND === 'TERM' ? T('Толық тізім және енгізу үшін пәнді таңдаңыз.') : T('Кестеде таңдалған түрдегі бағалардың орташа мәні. Толық тізім үшін пәнді таңдаңыз.')));
       return;
     }
-    if (KW.canAB) box.append(h('div', {class: 'flex justify-end mb-2'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => kwABForm(box)}, T('✏️ АБ мен тоқсандық бағаны енгізу'))));
+    if (KW.canAB) box.append(h('div', {class: 'flex flex-wrap justify-end gap-2 mb-2'}, kwImportBtn(box), h('button', {type: 'button', class: 'btn btn-g', onclick: () => kwABForm(box)}, T('✏️ АБ мен тоқсандық бағаны енгізу'))));
     const mx = (KW.max || {})[KW_SUB] || [];
     box.append(h('div', {class: 'space-y-1'}, KW.rows.map(r => {
       const l = KW_KIND === 'AB' || KW_KIND === 'TERM' ? [] : r.marks.filter(m => m[0] === KW_SUB && flt(m)), ab = KW_KIND === 'FO' || KW_KIND === 'TERM' ? [] : (r.ab[KW_SUB] || []), term = KW_KIND === 'FO' || KW_KIND === 'AB' ? '' : (r.term[KW_SUB] || '');
@@ -1725,6 +1725,42 @@
           term ? h('span', {style: 'background:#2E7D5B;color:#fff;border-radius:6px;padding:0 6px;font-size:13px;font-weight:700'}, T('Тоқсан: ') + term) : null),
         h('div', {class: 'text-sm font-extrabold text-emerald-900', style: 'min-width:2.5rem;text-align:right'}, kwAvg(l)));
     })), h('div', {class: 'flex flex-wrap gap-2 mt-2 text-xs'}, Object.keys(KW_KINDS).map(k => h('span', {style: 'background:' + KW_COL[k] + ';border-radius:6px;padding:0 6px'}, KW_KINDS[k]))));
+  }
+  // Күнделік журналынан жүктелген Excel файлдар («Класс/Предмет» тақырыбы, соңғы баған «N чтв»): бірнеше файлды бірден таңдауға болады
+  function kwParseJournal(rows){
+    const text = (rows.slice(0, 8).map(r => r.join(' ')).join(' ') || '');
+    const cm = text.match(/Класс:\s*(\d)\s*([A-Za-zА-Яа-яӘәІі])/i), sm = text.match(/Предмет:\s*([^\n]+?)(?=\s{2,}|$)/i) || text.match(/Пән:\s*(.+)/i);
+    let q = 0, qc = -1;
+    rows.slice(0, 12).forEach(r => r.forEach((c, i) => { const m = String(c).match(/^(\d)\s*(чтв|четв|тоқ)/i); if (m && !q) { q = +m[1]; qc = i; } }));
+    if (!cm || !sm || !q) return null;
+    const out = []; rows.forEach(r => { if (/^\d+$/.test(String(r[0]).trim()) && String(r[1] || '').trim().length > 3 && String(r[qc] || '').trim() !== '') out.push([String(r[1]).trim(), String(r[qc]).trim()]); });
+    return {cls: cm[1] + cm[2].toUpperCase(), subject: sm[1].replace(/\s+/g, ' ').trim().replace(/^(.*?)\s{2,}.*$/, '$1'), q, rows: out};
+  }
+  function kwImportBtn(box){
+    const inp = h('input', {type: 'file', accept: '.xls,.xlsx', multiple: true, hidden: true});
+    inp.addEventListener('change', async () => {
+      const files = [...inp.files]; inp.value = ''; if (!files.length) return;
+      await run(T('Excel оқылуда…'), loadXlsx);
+      const by = {}, skipped = [];
+      for (const f of files) {
+        try {
+          const wb = XLSX.read(await f.arrayBuffer(), {type: 'array'});
+          const p = kwParseJournal(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: '', raw: false}));
+          if (!p) { skipped.push(f.name); continue; }
+          (by[p.cls + '|' + p.q] = by[p.cls + '|' + p.q] || {cls: p.cls, q: p.q, items: []}).items.push({subject: p.subject, rows: p.rows});
+        } catch (e) { skipped.push(f.name); }
+      }
+      const year = KW_PER.split('/')[0]; let done = 0, un = [];
+      for (const g of Object.values(by)) {
+        const clsName = allClasses().find(c => c.replace(/\s/g, '').toUpperCase() === g.cls) || g.cls;
+        try { const j = await run(T('Сақталуда…'), () => api('kwImportTerm', {cls: clsName, period: year + '/Q' + g.q, items: g.items})); done += j.imported.done; un = un.concat(j.imported.unmatched.map(n => clsName + ': ' + n)); if (clsName === KW_CLS && year + '/Q' + g.q === KW_PER) KW = j; }
+        catch (e) { toast(clsName + ': ' + e.message, true); }
+      }
+      toast(T('Жүктелді: ') + done + T(' баға') + (skipped.length ? T(' · оқылмаған файл: ') + skipped.length : '') + (un.length ? T(' · сәйкес келмеген оқушы: ') + un.length : ''));
+      if (un.length) alert(T('Сәйкес келмеген оқушылар:') + '\n' + un.slice(0, 30).join('\n'));
+      kwRender(box);
+    });
+    return h('span', {}, h('button', {type: 'button', class: 'btn btn-l', onclick: () => inp.click()}, T('📥 Журналдан тоқсандық баға (Excel)')), inp);
   }
   // Бас әкімші: аралық бағалау мен тоқсандық бағаны қолмен енгізу
   function kwABForm(box){
