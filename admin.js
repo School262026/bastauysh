@@ -386,6 +386,7 @@
     ['hw', T('📚 Үй тапсырмасы'), seesClasses],
     ['qa', T('💬 Ата-ана сұрақтары'), () => seesClasses() || ME.role === 'subject'],
     ['fb', T('📝 Кері байланыс'), () => isOwner() || ['teacher', 'subject', 'psych'].includes(ME.role) || (ME.perms || []).includes('feedback')],
+    ['tt', T('🗓 Сабақ кестесі'), () => true],
     ['kun', T('📘 Күнделіктен бағалар'), () => can('kun') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['olymp', T('🏆 Олимпиада'), () => can('olymp') || ['teacher', 'subject', 'viewer'].includes(ME.role)],
     ['codes', T('🔑 Ата-ана кодтары'), () => isOwner() || ME.role === 'teacher'],
@@ -1628,6 +1629,24 @@
         h('a', {href: guideUrl('nusqaulyq'), target: '_blank', class: 'btn btn-l btn-s'}, T('📖 Қызметкерлер нұсқаулығы')),
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(T('Қызметкерлер ботының нұсқаулығы: ') + guideUrl('nusqaulyq')).then(() => toast(T('Көшірілді')))}, T('Сілтемені көшіру'))));
   }
+
+  // ---------- 🗓 Сабақ кестесі (тек қызметкерлерге; замена бұл жерде мүлде жоқ) ----------
+  VIEWS.tt = async function(view){
+    view.append(title(T('🗓 Сабақ кестесі')));
+    const box = h('div', {}, h('p', {class: 'text-charcoal/60'}, T('Жүктелуде…'))); view.append(box);
+    let j; try { j = await api('ttInfo'); } catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); return; }
+    if (!box.isConnected) return;
+    box.innerHTML = '';
+    if (j.canSet) {
+      const inp = h('input', {class: 'inp', type: 'text', autocomplete: 'off', placeholder: 'https://sabak-kestesi.pages.dev/?t=…'}); inp.value = j.url || '';
+      box.append(section(T('Кесте сілтемесі'), hint(T('Мұғалімдерге арналған кесте сілтемесін (кесте жобасындағы «Баптаулар» → мұғалімдердің сілтемесі) қойыңыз. Ол сайтқа ашық жазылмайды, тек серверде сақталады және тек қызметкерлерге көрінеді. Ата-аналар бұл бөлімді көрмейді.')), inp,
+        h('div', {class: 'flex justify-end gap-2'}, j.url ? h('button', {type: 'button', class: 'btn btn-d', onclick: async () => { if (!confirm(T('Сілтеме өшірілсін бе?'))) return; await run(T('Сақталуда…'), () => api('ttSet', {url: ''})); go('tt', true); }}, T('Өшіру')) : null,
+          h('button', {type: 'button', class: 'btn btn-p', onclick: async () => { await run(T('Сақталуда…'), () => api('ttSet', {url: inp.value})); toast(T('Сақталды ✓')); go('tt', true); }}, T('💾 Сақтау')))));
+    }
+    if (!j.url) { box.append(h('p', {class: 'card text-charcoal/70'}, j.canSet ? T('Кесте сілтемесін жоғарыға қойыңыз.') : T('Кесте әзірге қосылмаған. Бас әкімшіге хабарласыңыз.'))); return; }
+    box.append(h('div', {class: 'flex justify-end mb-2'}, h('a', {class: 'btn btn-l btn-s', href: j.url, target: '_blank', rel: 'noopener'}, T('Жаңа терезеде ашу ↗'))),
+      h('iframe', {src: j.url, title: T('Сабақ кестесі'), style: 'width:100%;height:78vh;border:1px solid #d8e2dd;border-radius:14px;background:#fff'}));
+  };
 
   // ---------- 📘 Күнделіктен бағалар ----------
   const KW_KINDS = {FO: T('ФО'), AB: T('Аралық бағалау'), TERM: T('Тоқсандық баға')};
