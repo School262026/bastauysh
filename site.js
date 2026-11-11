@@ -448,11 +448,40 @@
   window.uiWeek = function(n){ weekStart = addDays(weekStart, 7 * n); renderDaily(); };
   window.uiWeekToday = function(){ weekStart = monday(today()); renderDaily(); };
 
+
+  // ---------- ШОР сабақтарының кестесі (сейсенбі, бейсенбі) ----------
+  var SHOR_TT = [
+    {d: 2, rows: [
+      [10, '14:45–15:25', 'math', '3А', 'Ұзаққалиева Э.Ұ.'], [10, '14:45–15:25', 'math', '3CDEFG', 'Усеинова А.А.'], [10, '14:45–15:25', 'rus', '4ABCDEF', 'Сутжанова Г.К.'],
+      [11, '15:30–16:10', 'eng', '4ABCDEF', 'Болатқызы Алтынай'], [11, '15:30–16:10', 'rus', '3ACDEFG', 'Сутжанова Г.К.'],
+      [12, '16:15–16:55', 'math', '4AB', 'Едікеева А.О.'], [12, '16:15–16:55', 'math', '4CDEF', 'Мамышева Р.К.'], [12, '16:15–16:55', 'sci', '3ACDEFG', 'Апрелова Н.П.']]},
+    {d: 4, rows: [
+      [10, '14:45–15:25', 'eng', '3ACDEFG', 'Муханов А.С.'], [11, '15:30–16:10', 'kaz', '3ACDEFG', 'Дүйсенғалиева З.А.'], [11, '15:30–16:10', 'sci', '4ABCDEF', 'Апрелова Н.П.'], [12, '16:15–16:55', 'kaz', '4ABCDEF', 'Дүйсенғалиева З.А.']]}
+  ];
+  var SHOR_L = {
+    kz: {days: {2: 'Сейсенбі', 4: 'Бейсенбі'}, sub: {math: 'Математика', rus: 'Орыс тілі', eng: 'Ағылшын тілі', sci: 'Жаратылыстану', kaz: 'Қазақ тілі'}, lesson: 'сабақ', note: 'ШОР: мектептен кейінгі қосымша сабақтар. Топ сыныптары көрсетілген.'},
+    ru: {days: {2: 'Вторник', 4: 'Четверг'}, sub: {math: 'Математика', rus: 'Русский язык', eng: 'Английский язык', sci: 'Естествознание', kaz: 'Казахский язык'}, lesson: 'урок', note: 'ШОР: дополнительные занятия после уроков. Указаны классы группы.'},
+    en: {days: {2: 'Tuesday', 4: 'Thursday'}, sub: {math: 'Mathematics', rus: 'Russian', eng: 'English', sci: 'Science', kaz: 'Kazakh'}, lesson: 'period', note: 'ШОР: extra classes after school. Groups show the classes taking part.'}
+  };
+  function renderShor(){
+    var L = SHOR_L[lang] || SHOR_L.kz, wd = parse(today()).getDay();
+    var h = '<p class="text-sm text-charcoal/65 mb-4 text-center">' + esc(L.note) + '</p><div class="space-y-5">';
+    SHOR_TT.forEach(function(day){
+      h += '<div><h4 class="text-sm font-extrabold uppercase tracking-wide ' + (day.d === wd ? 'text-gold-600' : 'text-emerald-900') + '">' + esc(L.days[day.d]) + '</h4><div class="mt-2 space-y-2">';
+      day.rows.forEach(function(r){
+        h += '<div class="flex gap-3 rounded-2xl border border-emerald-900/10 p-3"><div class="w-24 shrink-0 text-center"><div class="font-extrabold text-emerald-900">' + r[1] + '</div><div class="text-xs text-charcoal/55">' + r[0] + ' ' + esc(L.lesson) + '</div></div>' +
+          '<div class="min-w-0"><div class="font-bold text-emerald-950">' + esc(L.sub[r[2]]) + ' <span class="text-xs font-bold bg-emerald-50 text-emerald-900 rounded-full px-2 py-0.5 align-middle">' + esc(r[3]) + '</span></div><div class="text-sm text-charcoal/70">' + esc(r[4]) + '</div></div></div>';
+      });
+      h += '</div></div>';
+    });
+    return h + '</div>';
+  }
+
   function renderDaily(){
     try { renderOlStats(); } catch(e) {}
     var body = byId('dailyBody'); if (!body) return;
     document.querySelectorAll('.daily-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-tab') === dailyTab); });
-    body.innerHTML = dailyTab === 'menu' ? renderMenu() : renderWeek();
+    body.innerHTML = dailyTab === 'menu' ? renderMenu() : dailyTab === 'shor' ? renderShor() : renderWeek();
   }
   window.uiDailyTab = function(tab){ dailyTab = tab; renderDaily(); };
 
