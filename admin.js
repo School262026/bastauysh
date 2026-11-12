@@ -1593,6 +1593,7 @@
       box.innerHTML = '';
       const tok = h('input', {class: 'inp font-mono', type: 'text', placeholder: '123456789:AAH…'});
       const gem = h('input', {class: 'inp font-mono', type: 'password', placeholder: info.ai ? T('Кілт сақталған (ауыстыру үшін жаңасын қойыңыз)') : 'AIza… / AQ.…', autocomplete: 'off'});
+      const grq = h('input', {class: 'inp font-mono', type: 'password', placeholder: info.groq ? T('Кілт сақталған (ауыстыру үшін жаңасын қойыңыз)') : 'gsk_…', autocomplete: 'off'});
       const testOut = h('div', {class: 'text-sm'});
       box.append(
         h('div', {class: 'text-sm'}, h('b', {}, T('Бот: ')), info.name ? h('a', {href: 'https://t.me/' + info.name, target: '_blank', class: 'underline'}, '@' + info.name) : T('әлі қосылмаған'),
@@ -1600,7 +1601,9 @@
         h('div', {class: 'text-sm'}, h('b', {}, 'Gemini: '), info.ai ? T('қосулы ✓ (дауысты тану, бөлімді анықтау, мәтінді түзету)') : T('қосылмаған — бот мәтінді өзгеріссіз жариялайды, бөлімді қызметкер батырмамен таңдайды')),
         info.name ? null : hint(T('Қызметкерлер боты: Telegram-да @BotFather → /newbot → атын жазыңыз (мысалы: Baiterek ST мұғалім). Бұл ата-аналар ботынан БӨЛЕК бот болуы керек. BotFather берген токенді төмендегі өріске қойыңыз.')),
         info.ai ? null : hint(T('Gemini кілті (тегін): aistudio.google.com/apikey сайтына bayterek20050 аккаунтымен кіріп, «Create API key» басыңыз. Мәтіндегі балалардың аты Gemini-ге жіберілмейді (белгімен ауыстырылады), ал дауыс жазбасы Gemini-ге толық жіберіледі.')),
-        h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('Бот токені (BotFather)'), tok), field(T('Gemini API кілті'), gem)),
+        h('div', {class: 'text-sm'}, h('b', {}, 'Groq: '), info.groq ? T('қосулы ✓ (дауысты өте жылдам тану)') : T('қосылмаған. Қосылса, дауыс бірнеше есе жылдам танылады')),
+        info.groq ? null : hint(T('Groq кілті (тегін): console.groq.com сайтына тіркеліп, «API Keys» бөлімінен «Create API Key» басыңыз. Кілт gsk_ деп басталады. Дауыс аудиосы Groq-қа жіберіледі; қате болса, бот өздігінен Gemini-ге ауысады.')),
+        h('div', {class: 'grid sm:grid-cols-3 gap-3'}, field(T('Бот токені (BotFather)'), tok), field(T('Gemini API кілті'), gem), field(T('Groq API кілті (дауыс үшін)'), grq)),
         testOut,
         h('div', {class: 'flex flex-wrap gap-2 justify-end'},
           h('button', {type: 'button', class: 'btn btn-l', onclick: async () => {
@@ -1619,6 +1622,7 @@
             const body = {};
             if (tok.value.trim()) { body.token = tok.value.trim(); body.api = API; }
             if (gem.value.trim()) body.gemini = gem.value.trim();
+            if (grq.value.trim()) body.groq = grq.value.trim();
             if (!Object.keys(body).length) { toast(T('Токенді немесе кілтті қойыңыз'), true); return; }
             const r = await run(T('Тексерілуде…'), () => api('sbSet', body));
             INFO.sbName = r.name || ''; botBtn(); render(r); toast(T('Сақталды ✓'));
