@@ -2201,6 +2201,14 @@
                 res.className = 'text-sm mt-2 ' + (err ? 'text-red-700 font-semibold' : '');
                 res.textContent = T('Жіберілді: ') + done + ' · ' + T('баға: ') + Math.round(cost * 100) / 100 + (err ? ' · ⚠️ ' + err + T(' (келесілері жіберілмеді; шотты тексеріңіз)') : ''); }}, T('📨 SMS жіберу')),
               h('button', {type: 'button', class: 'btn btn-l', onclick: async () => {
+                const ph = (prompt(T('Сынақ SMS: өз телефон нөміріңіз (мысалы 87011234567)')) || '').replace(/\D/g, '').replace(/^8/, '7');
+                if (!/^7\d{10}$/.test(ph)) { if (ph) toast(T('Нөмір дұрыс емес'), true); return; }
+                const v = prompt(T('Қай мәтін? 1 = сілтемемен (https://…); 2 = сілтеме https-сіз; 3 = сілтемесіз'), '1');
+                const texts = {'1': 'Baiterek: тіркелу міндетті ' + SITE_URL + '#c=ABC123', '2': 'Baiterek: тіркелу міндетті bastauysh.pages.dev', '3': 'Baiterek мектебі: тіркелу міндетті. Код ABC123'};
+                if (!texts[v]) return;
+                const r = await run(T('Жіберілуде…'), () => api('smsSend', {items: [{phone: ph, text: texts[v]}]}));
+                res.className = 'text-sm mt-2'; res.textContent = T('Сынақ SMS жіберілді, баға: ') + r.cost + T('. Бірнеше минуттан кейін «SMS күйін тексеру» басыңыз.'); }}, T('🧪 Сынақ SMS')),
+              h('button', {type: 'button', class: 'btn btn-l', onclick: async () => {
                 const r = await run(T('Тексерілуде…'), () => api('smsReport'));
                 let m = 0, un = 0; ok.forEach(x => { if (!x.pick && onlyFirst) return; const st = r.phones[x.phone]; if (st === 'del' || st === 'wait') { if (!sent[x.code + x.phone]) { sent[x.code + x.phone] = 1; m++; } } else if (st === 'fail') un++; });
                 save(); draw(); upd();
