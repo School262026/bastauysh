@@ -2161,11 +2161,13 @@
           onclick: () => { sent[id] = 1; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); upd(); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp'); btns.push({id, a: b});
         list.append(h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'}, h('div', {class: 'flex-1 min-w-[12rem] text-sm'}, h('b', {}, x.child), ' · ' + x.cls + (x.parent ? ' · ' + x.parent : ''), h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), b));
       }); };
-      const smsText = x => 'Baiterek бастауыш: тіркелу міндетті. Бағалар мен кері байланыс сайтта: ' + SITE_URL + '#c=' + x.code + ' Код ' + x.code;
+      let botName = '';
+      const smsText = x => 'Baiterek: тіркелу міндетті ' + SITE_URL + '#c=' + x.code + ' Код ' + x.code + (botName ? '. Бот: t.me/' + botName : '');
       const smsPanel = () => {
         const bx = h('div', {class: 'card mb-3'}, h('div', {class: 'text-sm text-charcoal/60'}, T('SMS жүктелуде…')));
         const todo = () => shown().filter(x => (!cur || x.cls === cur) && !sent[x.code + x.phone]);
         const draw2 = (info) => {
+          botName = info.bot || '';
           bx.innerHTML = '';
           bx.append(h('div', {class: 'font-bold text-emerald-950 mb-1'}, T('📨 SMS арқылы жіберу (SMSC.kz)')));
           if (!info.on) {
