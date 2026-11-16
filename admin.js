@@ -2200,10 +2200,59 @@
         bad.length ? section(T('Сәйкес келмегендер (') + bad.length + ')', h('div', {class: 'text-sm space-y-0.5'}, bad.map(b => h('div', {}, h('b', {}, b.name), ' · ' + b.cls + ' — ' + b.why)))) : null);
     });
   }
+  // ---------- 🔄 Оқушылар тізімін Күнделікпен салыстыру ----------
+  function rosterTool(view){
+    view.innerHTML = '';
+    view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('codes', true)}, T('← Артқа')), title(T('🔄 Оқушылар тізімін Күнделікпен салыстыру')));
+    view.append(hint(T('Күнделік.kz-тағы нақты сынып тізімі біздегі тізіммен салыстырылады: кеткен оқушылар, жаңадан келгендер және басқа сыныпқа ауысқандар табылады. Алдымен тек тізім көрсетіледі, ештеңе өзгермейді; керегін белгілеп, «Қолдану» басасыз. Кеткен оқушының жазбалары мен ата-ана тіркеуі өшеді, ауысқандардың жазбалары жаңа сыныпқа көшеді.')));
+    const out = h('div', {class: 'mt-4'}), go1 = h('button', {type: 'button', class: 'btn btn-p', onclick: start}, T('🔍 Тексеруді бастау'));
+    view.append(go1, out);
+    const w2 = n => String(n).toLowerCase().replace(/[^a-zа-яәіңғүұқөһё ]/g, ' ').split(/\s+/).filter(x => x.length > 2);
+    const near = (a, b) => { const y = w2(b); return w2(a).filter(x => y.some(z => z === x || (x.length >= 4 && z.length >= 4 && x.slice(0, 4) === z.slice(0, 4)))).length >= 2; };
+    async function start(){
+      const classes = allClasses(), res = [], errs = [];
+      for (let k = 0; k < classes.length; k++) {
+        busy(T('Күнделікпен салыстырылуда: ') + (k + 1) + ' / ' + classes.length, Math.round(k * 100 / classes.length));
+        try { res.push(await api('rosCheck', {cls: classes[k]})); } catch (e) { errs.push(classes[k] + ': ' + e.message); }
+      }
+      done();
+      // сыныптар арасындағы ауысу: біреуінде «кетті», екіншісінде «келді» болса, бір бала
+      const adds = [], rems = [];
+      res.forEach(r => { (r.add || []).forEach(a => { a.cls = r.cls; adds.push(a); }); if (!r.warn) (r.remove || []).forEach(x => { x.cls = r.cls; rems.push(x); }); });
+      const moves = [];
+      adds.forEach(a => { const m = rems.find(x => !x.moved && x.cls !== a.cls && near(a.name, x.name)); if (m) { m.moved = a.cls; a.from = m; moves.push({id: m.id, to: a.cls, name: a.name, from: m.cls}); } });
+      out.innerHTML = '';
+      const rows = [], chk = (on, label, apply) => { const i = h('input', {type: 'checkbox', checked: on}); rows.push({i, apply}); return h('label', {class: 'flex items-center gap-2 text-sm py-0.5'}, i, label); };
+      const sum = h('div', {class: 'text-sm mb-3'});
+      if (errs.length) out.append(h('div', {class: 'text-sm text-red-700 mb-2'}, errs.join(' · ')));
+      res.forEach(r => {
+        const A = (r.add || []).filter(a => !a.from), R = (r.remove || []).filter(x => !x.moved), M = moves.filter(m => m.to === r.cls);
+        if (r.none) { out.append(h('div', {class: 'text-sm text-charcoal/60'}, r.cls + ': ' + T('Күнделікте сынып табылмады'))); return; }
+        if (!A.length && !R.length && !M.length && !r.warn) return;
+        out.append(section(r.cls + ' · ' + T('Күнделікте: ') + r.kunCount + T(' · бізде: ') + r.siteCount,
+          r.warn ? h('div', {class: 'text-sm text-red-700 font-semibold mb-1'}, T('⚠️ Күнделіктен тізім күмәнді (тым аз). Өшіру белгіленбеді: алдымен тексеріңіз.')) : null,
+          ...M.map(m => chk(true, '↔ ' + m.name + ' · ' + m.from + ' → ' + m.to, p => p.moves.push({id: m.id, to: m.to}))),
+          ...A.map(a => chk(true, '➕ ' + a.name + T(' (жаңа)'), p => p.adds.push({cls: r.cls, name: a.name, kun: a.kun}))),
+          ...R.map(x => chk(!r.warn, '➖ ' + x.name + T(' (кеткен)'), p => p.removes.push(x.id)))));
+      });
+      if (!rows.length) { out.append(h('p', {class: 'text-emerald-800 font-semibold'}, T('✓ Тізімдер сәйкес: өзгеріс жоқ'))); return; }
+      out.append(sum, h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
+        const p = {adds: [], removes: [], moves: []}; rows.forEach(r => { if (r.i.checked) r.apply(p); });
+        if (!p.adds.length && !p.removes.length && !p.moves.length) { toast(T('Ештеңе таңдалмады'), true); return; }
+        if (!confirm(T('Қолдану керек пе? Қосу: ') + p.adds.length + T(', өшіру: ') + p.removes.length + T(', ауыстыру: ') + p.moves.length)) return;
+        const r = await run(T('Сақталуда…'), () => api('rosApply', p));
+        Object.keys(FBC).forEach(k => delete FBC[k]); out.innerHTML = '';
+        out.append(h('p', {class: 'text-emerald-800 font-semibold'}, T('✓ Жаңартылды. Қосылды: ') + r.added + T(', өшірілді: ') + r.removed + T(', ауыстырылды: ') + r.moved),
+          r.codes.length ? section(T('Жаңа оқушылардың кодтары (ата-аналарына жіберу керек)'), h('div', {class: 'text-sm space-y-0.5'}, r.codes.map(c => h('div', {}, h('b', {}, c.name), ' · ' + c.cls + ' · ' + c.code)))) : null);
+      }}, T('✅ Таңдалғандарды қолдану')));
+      sum.textContent = T('Белгіні алып тастасаңыз, ол өзгеріс жасалмайды.');
+    }
+  }
   // ---------- 🔑 Ата-ана кодтары ----------
   VIEWS.codes = function(view){
     const list = isOwner() ? allClasses() : (ME.classes || []);
     view.append(title(T('Ата-ана кодтары')));
+    if (isOwner()) view.append(h('div', {class: 'card flex flex-wrap items-center justify-between gap-3 mb-4'}, h('div', {class: 'text-sm font-semibold text-emerald-950'}, T('Оқушылар тізімін Күнделікпен салыстыру: кеткендер мен жаңа келгендер')), h('button', {type: 'button', class: 'btn btn-g', onclick: () => rosterTool(view)}, T('🔄 Күнделікпен салыстыру'))));
     if (isOwner()) view.append(h('div', {class: 'card flex flex-wrap items-center justify-between gap-3 mb-4'}, h('div', {class: 'text-sm font-semibold text-emerald-950'}, T('Ата-аналардың телефон тізімі бойынша WhatsApp арқылы жеке сілтеме жіберу')), h('button', {type: 'button', class: 'btn btn-g', onclick: () => waTool(view)}, T('📲 Ата-аналарға код жіберу'))));
     view.append(
       hint(T('Әр сыныптың өз коды бар. Кодты сыныптың ата-аналарына WhatsApp арқылы жіберіңіз: олар сайттағы «Сыныбым» бөліміне кіріп, тек өз сыныбының үй тапсырмасын, фотоларын және сұрақ-жауабын көреді. Код басқа адамдарға тарап кетсе, «Жаңа код» басыңыз — ескі код жұмыс істемей қалады.')));
