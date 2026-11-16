@@ -2200,6 +2200,13 @@
                 }
                 res.className = 'text-sm mt-2 ' + (err ? 'text-red-700 font-semibold' : '');
                 res.textContent = T('Жіберілді: ') + done + ' · ' + T('баға: ') + Math.round(cost * 100) / 100 + (err ? ' · ⚠️ ' + err + T(' (келесілері жіберілмеді; шотты тексеріңіз)') : ''); }}, T('📨 SMS жіберу')),
+              h('button', {type: 'button', class: 'btn btn-l', onclick: () => {
+                const it = todo(); if (!it.length) { toast(T('Бәрі жіберілген ✓')); return; }
+                const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+                const rows = [['Recipient', 'Name', 'Group', 'Code', 'Text']].concat(it.map(x => [x.phone, x.parent || '', x.cls, x.code, smsText(x)]));
+                const blob = new Blob(['\ufeff' + rows.map(r => r.map(q).join(',')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sms-tizim.csv'; document.body.append(a); a.click(); a.remove();
+                toast(T('Файл жүктелді: ') + it.length + T(' нөмір')); }}, T('📥 CSV файл (басқа SMS қызметі үшін)')),
               h('button', {type: 'button', class: 'btn btn-l', onclick: async () => {
                 const ph = (prompt(T('Сынақ SMS: өз телефон нөміріңіз (мысалы 87011234567)')) || '').replace(/\D/g, '').replace(/^8/, '7');
                 if (!/^7\d{10}$/.test(ph)) { if (ph) toast(T('Нөмір дұрыс емес'), true); return; }
