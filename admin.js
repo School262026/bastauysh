@@ -1661,23 +1661,52 @@
       if (x.phone) btns.push({id, a: b});
       list.append(h('div', {class: 'card', style: 'padding:.6rem .8rem'}, h('div', {class: 'flex flex-wrap items-center gap-2'}, h('b', {class: 'flex-1 min-w-[10rem]'}, x.name, x.tg ? h('span', {class: 'ml-2 text-xs text-emerald-700'}, '🤖 Telegram') : null), b), h('div', {class: 'text-xs text-charcoal/65 mt-1 whitespace-pre-line'}, x.text.split('\n').filter(l => l.indexOf('•') === 0).join('\n'))));
     });
-    const waFile = h('input', {type: 'file', accept: '.xlsx', class: 'inp'}), waOut = h('div', {class: 'text-sm mt-2'});
+    const waFile = h('input', {type: 'file', accept: '.xlsx', class: 'inp'}), waZip = h('input', {type: 'file', accept: '.zip', class: 'inp'}), waOut = h('div', {class: 'text-sm mt-2'});
+    const loadZip = () => window.JSZip ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload = res; s.onerror = () => rej(new Error(T('ZIP оқитын бағдарлама жүктелмеді'))); document.head.append(s); });
     const waRows = async () => {
       const f = waFile.files[0]; if (!f) throw new Error(T('Алдымен Excel файлын таңдаңыз'));
       await loadXlsx();
       const wb = XLSX.read(await f.arrayBuffer(), {type: 'array'});
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, defval: '', raw: false}).slice(1);
       const KM = {'Ас мәзірі': 'menu', 'Үй тапсырмасы': 'hw', 'Іс-шара': 'event', 'Жаңалық': 'news'};
-      return rows.filter(r => /^(иә|да|yes)$/i.test(String(r[0]).trim()) && String(r[6]).trim()).map(r => ({d: String(r[1]).trim(), k: KM[String(r[2]).trim()] || 'news', s: String(r[3]).indexOf('мектеп') >= 0 ? 'school' : 'class', c: String(r[4]), t: String(r[6])}));
+      return rows.filter(r => /^(иә|да|yes)$/i.test(String(r[0]).trim()) && String(r[6]).trim()).map(r => ({d: String(r[1]).trim(), k: KM[String(r[2]).trim()] || 'news', s: String(r[3]).indexOf('мектеп') >= 0 ? 'school' : 'class', c: String(r[4]), t: String(r[6]), f: String(r[8] || '').split('|').map(x => x.trim()).filter(Boolean)}));
     };
     const waRun = async dry => {
       const rows = await waRows(), tot = {posts: 0, cposts: 0, homework: 0, menu: 0, dup: 0, phone: 0, badCls: 0, bad: 0};
-      for (let i = 0; i < rows.length; i += 100) { const j = await api('waImport', {items: rows.slice(i, i + 100), dry}); for (const k in tot) tot[k] += j.res[k] || 0; waOut.textContent = (dry ? T('Тексеру… ') : T('Жүктелуде… ')) + Math.min(i + 100, rows.length) + '/' + rows.length; }
-      waOut.textContent = (dry ? T('Жүктелмейді, тек тексеру: ') : T('Жүктелді: ')) + T('мектеп жаңалығы ') + tot.posts + T(', сынып жаңалығы ') + tot.cposts + T(', үй тапсырмасы ') + tot.homework + T(', ас мәзірі ') + tot.menu + T(' · қайталанған (өткізілді) ') + tot.dup + T(' · телефоны бар (өткізілді) ') + tot.phone + T(' · сыныбы танылмаған ') + tot.badCls + T(' · күні қате ') + tot.bad;
+      let zip = null, nPh = 0, nVid = 0, fails = 0;
+      if (waZip.files[0]) { await loadZip(); zip = await JSZip.loadAsync(waZip.files[0]); }
+      for (let i = 0; i < rows.length; i += 25) {
+        const part = rows.slice(i, i + 25);
+        const pre = await api('waImport', {items: part.map(x => ({...x, f: x.f[0] || ''})), dry: true});
+        const dup = new Set(pre.res.dupIdx || []);
+        const items = [];
+        for (let k = 0; k < part.length; k++) {
+          const x = part[k], it = {d: x.d, k: x.k, s: x.s, c: x.c, t: x.t, f: x.f[0] || '', m: []};
+          if (!dry && zip && x.s === 'class' && x.f.length && !dup.has(k)) {
+            const cls = x.c.split(',')[0].trim();
+            for (const fn of x.f) {
+              const ent = zip.file(fn) || zip.file(new RegExp('(^|/)' + fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))[0];
+              if (!ent) { fails++; continue; }
+              waOut.textContent = T('Файл жүктелуде: ') + fn;
+              try {
+                const blob = await ent.async('blob');
+                if (/\.mp4$/i.test(fn)) { it.m.push({t: 'drive', id: await uploadVideo(new File([blob], fn, {type: 'video/mp4'}), cls, () => {})}); nVid++; }
+                else { it.m.push({t: 'img', id: await uploadPhoto(new File([blob], fn, {type: 'image/jpeg'}), cls)}); nPh++; }
+              } catch (e) { fails++; }
+            }
+          }
+          items.push(it);
+        }
+        const j = dry ? pre : await api('waImport', {items, dry: false});
+        for (const kk in tot) tot[kk] += j.res[kk] || 0;
+        waOut.textContent = (dry ? T('Тексеру… ') : T('Жүктелуде… ')) + Math.min(i + 25, rows.length) + '/' + rows.length;
+      }
+      waOut.textContent = (dry ? T('Жүктелмейді, тек тексеру: ') : T('Жүктелді: ')) + T('мектеп жаңалығы ') + tot.posts + T(', сынып жаңалығы ') + tot.cposts + T(', үй тапсырмасы ') + tot.homework + T(', ас мәзірі ') + tot.menu + T(' · қайталанған (өткізілді) ') + tot.dup + T(' · телефоны бар (өткізілді) ') + tot.phone + T(' · сыныбы танылмаған ') + tot.badCls + T(' · күні қате ') + tot.bad + (dry ? '' : T(' · фото ') + nPh + T(', видео ') + nVid + (fails ? T(' · жүктелмеген файл ') + fails : ''));
     };
     box.append(section(T('📥 WhatsApp жазбаларын жүктеу (Excel)'),
       hint(T('«Жариялауға ұсыныс» Excel файлын таңдаңыз: тек «Жариялау?» бағанында «Иә» жазылған жолдар алынады. Ата-аналарға хабарлама жіберілмейді; қайталанғандар қайта қосылмайды; телефон нөмірі бар жазбалар өткізіледі. Алдымен «Тексеру», сосын «Жүктеу».')),
       waFile,
+      h('div', {class: 'text-xs text-charcoal/60 mt-2'}, T('Фото/видео қосу үшін чат архивін (.zip, «с медиа») таңдаңыз — ол міндетті емес:')), waZip,
       h('div', {class: 'flex flex-wrap gap-2 mt-2'},
         h('button', {type: 'button', class: 'btn btn-l', onclick: async () => { try { await waRun(true); } catch (e) { toast(e.message, true); } }}, T('🔍 Тексеру')),
         h('button', {type: 'button', class: 'btn btn-p', onclick: async () => { if (!confirm(T('Жазбалар сайтқа жарияланады. Жалғастырайын ба?'))) return; try { await waRun(false); toast(T('Жүктелді ✓')); } catch (e) { toast(e.message, true); } }}, T('📥 Жүктеу'))),
