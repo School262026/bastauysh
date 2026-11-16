@@ -2204,7 +2204,7 @@
                 const r = await run(T('Тексерілуде…'), () => api('smsReport'));
                 let m = 0, un = 0; ok.forEach(x => { if (!x.pick && onlyFirst) return; const st = r.phones[x.phone]; if (st === 'del' || st === 'wait') { if (!sent[x.code + x.phone]) { sent[x.code + x.phone] = 1; m++; } } else if (st === 'fail') un++; });
                 save(); draw(); upd();
-                res.className = 'text-sm mt-2'; res.textContent = T('SMSC бойынша: жеткізілді ') + r.del + T(', жолда ') + r.wait + T(', жеткізілмеді ') + r.fail + (m ? ' · ' + T('«жіберілді» деп белгіленді: ') + m : ''); }}, T('🔍 SMS күйін тексеру')),
+                res.className = 'text-sm mt-2'; res.textContent = T('SMSC бойынша: жеткізілді ') + r.del + T(', жолда ') + r.wait + T(', жеткізілмеді ') + r.fail + ' [' + Object.keys(r.codes || {}).map(k => k + '×' + r.codes[k]).join(' ') + ']' + (m ? ' · ' + T('«жіберілді» деп белгіленді: ') + m : ''); }}, T('🔍 SMS күйін тексеру')),
               h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => { if (!confirm(T('SMS қызметі өшірілсін бе?'))) return; draw2(await api('smsSet', {smsLogin: '', smsPsw: ''})); }}, T('Өшіру'))), res);
         };
         api('smsInfo').then(draw2).catch(e => { bx.innerHTML = ''; bx.append(h('div', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
