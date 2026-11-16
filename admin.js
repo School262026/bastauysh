@@ -2137,7 +2137,7 @@
       for (let k = 0; k < classes.length; k++) {
         busy(T('Сыныптар жүктелуде: ') + (k + 1) + ' / ' + classes.length, Math.round(k * 100 / classes.length));
         try { if (!FBC[classes[k]]) FBC[classes[k]] = await api('fbList', {cls: classes[k]}); } catch (e) { continue; }
-        (FBC[classes[k]].students || []).forEach(s => { if (s.code) all.push({cls: classes[k], name: s.name, code: s.code, words: waWords(s.name)}); });
+        (FBC[classes[k]].students || []).forEach(s => { if (s.code) all.push({cls: classes[k], name: s.name, code: s.code, reg: !!s.reg, words: waWords(s.name)}); });
       }
       done();
       const ok = [], bad = [];
@@ -2146,12 +2146,17 @@
         if (cand.length !== 1) { bad.push({name: p.name, cls: p.cls, why: cand.length ? T('бірнеше бала сәйкес келді') : T('тізімнен табылмады')}); return; }
         const good = p.phones.filter(x => x.phone);
         if (!good.length) { bad.push({name: p.name, cls: p.cls, why: p.phones.length ? T('телефон дұрыс емес') : T('телефон жоқ')}); return; }
-        good.forEach((x, n) => ok.push({child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: x.phone, parent: x.parent, n}));
+        good.forEach((x, n) => ok.push({child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: x.phone, parent: x.parent, n, reg: cand[0].reg}));
         if (good.length < p.phones.length) bad.push({name: p.name, cls: p.cls, why: T('бір нөмір дұрыс емес, қалғанына жіберіледі')});
       });
       const key = 'wa_sent', save = () => { try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} }, load = () => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; } }, sent = load();
+      // Бір балаға бір нөмір: анасы болса, анасына; анасының нөмірі жоқ болса ғана әкесіне (аты-жөніндегі аяқталу бойынша: -овна/-евна/-қызы және -ова/-ева)
+      const isMom = n => { const t = String(n || '').trim().split(/\s+/); return t.some(w => /(овна|евна|ична|қызы|кызы|гызы)$/i.test(w)) || /(ова|ева|ина|ая|қызы)$/i.test(t[0] || ''); };
+      const byKid = {}; ok.forEach(x => { (byKid[x.code] = byKid[x.code] || []).push(x); });
+      Object.values(byKid).forEach(l => { const pk = l.find(x => isMom(x.parent)) || l[0]; l.forEach(x => { x.pick = x === pk; }); });
+      const regSkip = new Set(ok.filter(x => x.reg).map(x => x.code)).size;
       const count = h('b', {}); let onlyFirst = true;
-      const shown = () => ok.filter(x => !onlyFirst || x.n === 0);
+      const shown = () => ok.filter(x => !x.reg && (!onlyFirst || x.pick));
       const upd = () => { count.textContent = shown().filter(x => sent[x.code + x.phone]).length + ' / ' + shown().length; };
       const clsOpts = [...new Set(ok.map(x => x.cls))].sort(); let cur = '';
       const list = h('div', {class: 'space-y-1'}), btns = [];
@@ -2159,10 +2164,11 @@
       const draw = () => { list.innerHTML = ''; btns.length = 0; shown().filter(x => !cur || x.cls === cur).forEach(x => {
         const id = x.code + x.phone, b = h('a', {class: 'btn btn-s ' + (sent[id] ? 'btn-l' : 'btn-p'), target: '_blank', rel: 'noopener', href: 'https://wa.me/' + x.phone + '?text=' + encodeURIComponent(waText(x, x.code)),
           onclick: () => { sent[id] = 1; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); upd(); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp'); btns.push({id, a: b});
-        list.append(h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'}, h('div', {class: 'flex-1 min-w-[12rem] text-sm'}, h('b', {}, x.child), ' · ' + x.cls + (x.parent ? ' · ' + x.parent : ''), h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), b));
+        const undo = sent[id] ? h('button', {type: 'button', class: 'btn btn-l btn-s', title: T('Жіберілді белгісін алып тастау'), onclick: () => { delete sent[id]; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} upd(); draw(); }}, '↩') : null;
+        list.append(h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'}, h('div', {class: 'flex-1 min-w-[12rem] text-sm'}, h('b', {}, x.child), ' · ' + x.cls + (x.parent ? ' · ' + x.parent : ''), h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), undo, b));
       }); };
       let botName = '';
-      const smsText = x => 'Baiterek: тіркелу міндетті ' + SITE_URL + '#c=' + x.code + ' Код ' + x.code + (botName ? '. Бот: t.me/' + botName : '');
+      const smsText = x => 'Baiterek: тіркелу міндетті ' + SITE_URL + '#c=' + x.code;   // ≤70 таңба: бір ғана SMS
       const smsPanel = () => {
         const bx = h('div', {class: 'card mb-3'}, h('div', {class: 'text-sm text-charcoal/60'}, T('SMS жүктелуде…')));
         const todo = () => shown().filter(x => (!cur || x.cls === cur) && !sent[x.code + x.phone]);
@@ -2196,7 +2202,7 @@
       upd(); draw();
       out.innerHTML = '';
       const firstCb = h('input', {type: 'checkbox', checked: true, onchange: () => { onlyFirst = firstCb.checked; upd(); draw(); }});
-      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге')), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), smsPanel(), nextBtn, h('div', {class: 'h-2'}), list,
+      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге (анасына)')), regSkip ? h('div', {class: 'text-xs text-charcoal/60'}, T('Тіркелген (өткізіліп кетті): ') + regSkip) : null, h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), smsPanel(), nextBtn, h('div', {class: 'h-2'}), list,
         bad.length ? section(T('Сәйкес келмегендер (') + bad.length + ')', h('div', {class: 'text-sm space-y-0.5'}, bad.map(b => h('div', {}, h('b', {}, b.name), ' · ' + b.cls + ' — ' + b.why)))) : null);
     });
   }
