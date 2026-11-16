@@ -2191,8 +2191,20 @@
                 const r = await run(T('Есептелуде…'), () => api('smsSend', {items: it, test: true})); res.textContent = T('Нөмір: ') + r.count + ' · SMS: ' + r.cnt + ' · ' + T('баға: ') + r.cost; }}, T('💰 Бағасын есептеу')),
               h('button', {type: 'button', class: 'btn btn-p', onclick: async () => { const it = todo(); if (!it.length) { toast(T('Бәрі жіберілген ✓')); return; }
                 if (!confirm(T('SMS жіберілсін бе? Нөмір саны: ') + it.length + (cur ? ' (' + cur + ')' : ''))) return;
-                const r = await run(T('Жіберілуде…'), () => api('smsSend', {items: it.map(x => ({phone: x.phone, text: smsText(x)}))}));
-                it.forEach(x => { sent[x.code + x.phone] = 1; }); save(); draw(); upd(); res.textContent = T('Жіберілді: ') + r.sent + ' · ' + T('баға: ') + r.cost; }}, T('📨 SMS жіберу')),
+                // 50-ден бөліп жібереміз: әр бөлік сәтті кетсе, бірден белгіленеді; қате болса (мысалы, ақша таусылса), сол жерде тоқтайды
+                let done = 0, cost = 0, err = '';
+                for (let i = 0; i < it.length && !err; i += 50) {
+                  const part = it.slice(i, i + 50);
+                  try { const r = await run(T('Жіберілуде…') + ' ' + Math.min(i + 50, it.length) + ' / ' + it.length, () => api('smsSend', {items: part.map(x => ({phone: x.phone, text: smsText(x)}))})); part.forEach(x => { sent[x.code + x.phone] = 1; }); done += part.length; cost += r.cost || 0; save(); draw(); upd(); }
+                  catch (e) { err = e.message; }
+                }
+                res.className = 'text-sm mt-2 ' + (err ? 'text-red-700 font-semibold' : '');
+                res.textContent = T('Жіберілді: ') + done + ' · ' + T('баға: ') + Math.round(cost * 100) / 100 + (err ? ' · ⚠️ ' + err + T(' (келесілері жіберілмеді; шотты тексеріңіз)') : ''); }}, T('📨 SMS жіберу')),
+              h('button', {type: 'button', class: 'btn btn-l', onclick: async () => {
+                const r = await run(T('Тексерілуде…'), () => api('smsReport'));
+                let m = 0, un = 0; ok.forEach(x => { if (!x.pick && onlyFirst) return; const st = r.phones[x.phone]; if (st === 'del' || st === 'wait') { if (!sent[x.code + x.phone]) { sent[x.code + x.phone] = 1; m++; } } else if (st === 'fail') un++; });
+                save(); draw(); upd();
+                res.className = 'text-sm mt-2'; res.textContent = T('SMSC бойынша: жеткізілді ') + r.del + T(', жолда ') + r.wait + T(', жеткізілмеді ') + r.fail + (m ? ' · ' + T('«жіберілді» деп белгіленді: ') + m : ''); }}, T('🔍 SMS күйін тексеру')),
               h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => { if (!confirm(T('SMS қызметі өшірілсін бе?'))) return; draw2(await api('smsSet', {smsLogin: '', smsPsw: ''})); }}, T('Өшіру'))), res);
         };
         api('smsInfo').then(draw2).catch(e => { bx.innerHTML = ''; bx.append(h('div', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
