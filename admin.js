@@ -11,6 +11,7 @@
   const RU = window.ADMIN_RU || {};
   const T = s => UI === 'ru' && Object.prototype.hasOwnProperty.call(RU, s) ? RU[s] : s;
   const SITE_URL = location.href.replace(/[#?].*$/, '').replace(/admin(\.html)?$/, '');
+  const ob = v => (v === 'Бас әкімші' ? '26' : v);   // бас әкімшінің аты ешқайда көрінбейді: тек «26»
   let LOGIN = '', PW = null, ME = null, DATA = null, CLS = null, USERS = [], TEACHERS = {}, INFO = {}, TAB = null, dirty = false, curCls = null;
 
   // ---------- көмекші функциялар ----------
@@ -451,7 +452,7 @@
     view.append(h('div', {class: 'space-y-3 mt-4'}, posts.map(p => h('div', {class: 'card flex gap-3 items-center'},
       p.media && p.media[0] ? h('img', {src: thumbUrl(p.media[0]), referrerpolicy: 'no-referrer', class: 'w-16 h-16 rounded-xl object-cover shrink-0 bg-emerald-50'}) : h('div', {class: 'w-16 h-16 rounded-xl bg-emerald-50 shrink-0 flex items-center justify-center text-2xl'}, p.cat === 'greet' ? '🎉' : p.cat === 'event' ? '📸' : '📢'),
       h('div', {class: 'flex-1 min-w-0'},
-        h('div', {class: 'text-xs font-bold text-charcoal/60'}, (p.pinned ? '📌 ' : '') + CATS[p.cat] + ' · ' + fmt(p.date) + (p.by ? ' · ' + p.by : '')),
+        h('div', {class: 'text-xs font-bold text-charcoal/60'}, (p.pinned ? '📌 ' : '') + CATS[p.cat] + ' · ' + fmt(p.date) + (p.by ? ' · ' + ob(p.by) : '')),
         h('div', {class: 'font-bold text-emerald-950 truncate'}, L(p.title) || T('(атаусыз)'))),
       h('div', {class: 'flex gap-2 shrink-0'},
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => postEditor(view, p)}, T('Өзгерту')),
@@ -629,7 +630,7 @@
     posts.forEach(p => box.append(h('div', {class: 'card'},
       h('div', {class: 'flex gap-3 items-start'},
         h('div', {class: 'flex-1 min-w-0'},
-          h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmt(p.date) + ' · ✍️ ' + (p.by || '') + (p.editedBy ? T(' (өзгертті: ') + p.editedBy + ')' : '')),
+          h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmt(p.date) + ' · ✍️ ' + ob(p.by || '') + (p.editedBy ? T(' (өзгертті: ') + ob(p.editedBy) + ')' : '')),
           h('div', {class: 'font-bold text-emerald-950'}, L(p.title) || T('(атаусыз)')),
           h('div', {class: 'text-sm text-charcoal/75 line-clamp-3'}, strip(L(p.body))),
           mediaThumbs(p.media)),
@@ -681,7 +682,7 @@
       const edit = (x.cls || []).every(c => c === '*' ? isOwner() : canEditClass(c));
       listBox.append(h('div', {class: 'flex gap-3 items-start rounded-2xl border border-emerald-900/10 p-3'},
         h('div', {class: 'flex-1 min-w-0'},
-          h('div', {class: 'text-xs font-bold text-gold-600'}, ((x.cls || []).includes('*') ? T('Барлық сыныптар') : (x.cls || []).join(', ')) + ' · ✍️ ' + (x.by || '')),
+          h('div', {class: 'text-xs font-bold text-gold-600'}, ((x.cls || []).includes('*') ? T('Барлық сыныптар') : (x.cls || []).join(', ')) + ' · ✍️ ' + ob(x.by || '')),
           h('div', {class: 'font-bold text-emerald-950'}, L(x.subject)),
           h('div', {class: 'text-sm text-charcoal/75'}, strip(L(x.text))), mediaThumbs(x.media)),
         edit ? h('div', {class: 'flex flex-col gap-2 shrink-0'},
@@ -736,7 +737,7 @@
             h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmtTs(q.ts) + ' · ' + q.name + (q.child ? T(' (баласы: ') + q.child + ')' : '') + (q.toName ? ' → ' + q.toName : '')),
             h('div', {class: 'font-semibold text-emerald-950 whitespace-pre-line mt-1'}, q.q)),
           q.answer ? h('span', {class: 'chip', style: 'padding:.2rem .6rem;font-size:.75rem'}, q.vis === 'class' ? T('👥 Сыныпқа') : T('🔒 Жеке')) : h('span', {class: 'chip active', style: 'padding:.2rem .6rem;font-size:.75rem'}, T('Жауап күтуде'))),
-        q.answer ? h('div', {class: 'text-sm text-charcoal/60'}, T('Жауап берген: ') + (q.ansBy || '') + (q.ansTs ? ' · ' + fmtTs(q.ansTs) : '')) : null,
+        q.answer ? h('div', {class: 'text-sm text-charcoal/60'}, T('Жауап берген: ') + ob(q.ansBy || '') + (q.ansTs ? ' · ' + fmtTs(q.ansTs) : '')) : null,
         canQ(q) ? h('div', {class: 'space-y-2'}, ta, h('div', {class: 'flex flex-wrap gap-2 items-center justify-end'}, h('div', {class: 'w-56'}, vis),
           h('button', {type: 'button', class: 'btn btn-d btn-s', onclick: async () => {
             if (!confirm(T('Сұрақ өшірілсін бе?'))) return;
@@ -855,7 +856,7 @@
     box.append(h('div', {class: 'space-y-3'}, items.map(x => h('div', {class: 'card'},
       h('div', {class: 'flex gap-3 items-start'},
         h('div', {class: 'flex-1 min-w-0'},
-          h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmt(x.date) + ' ' + x.date.slice(0, 4) + ' · ' + (FB_KINDS[x.kind] || T('Пән')) + ' · ✍️ ' + (x.by || '') + (x.imported ? ' (Excel)' : '')),
+          h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmt(x.date) + ' ' + x.date.slice(0, 4) + ' · ' + (FB_KINDS[x.kind] || T('Пән')) + ' · ✍️ ' + ob(x.by || '') + (x.imported ? ' (Excel)' : '')),
           h('div', {class: 'font-bold text-emerald-950'}, x.subj),
           x.text ? h('div', {class: 'text-sm text-charcoal/85 whitespace-pre-line mt-1'}, x.text) : null,
           x.rec ? h('div', {class: 'text-sm mt-2 rounded-xl bg-gold-50 border border-gold-100 p-2 whitespace-pre-line'}, h('b', {}, T('Ата-анаға ұсыныс: ')), x.rec) : null),
@@ -1256,7 +1257,7 @@
         h('div', {}, h('b', {}, T('💪 Күшті жақтары: ')), A.strong.concat(A.good).join(', ') || '—'),
         h('div', {}, h('b', {}, T('🌱 Дамыту керек: ')), A.weak.concat(A.focus).join(', ') || '—')),
       A.summary.length ? h('p', {class: 'text-sm text-charcoal/80'}, A.summary.join(' ')) : null,
-      h('div', {class: 'text-xs text-charcoal/60'}, T('Бағалағандар: ') + c.ratings.map(r => r.by).join(', '))) : null;
+      h('div', {class: 'text-xs text-charcoal/60'}, T('Бағалағандар: ') + c.ratings.map(r => ob(r.by)).join(', '))) : null;
     // сынып жетекшісінің қорытындысы және психолог бөлімі
     const cc = c.concl || {};
     let conclSec = null;
@@ -1735,7 +1736,7 @@
         KW = j; toast(T('Жаңартылды ✓ Баға: ') + j.fresh.marks + (j.fresh.finals ? T(' · тоқсандық: ') + j.fresh.finals : '') + (j.fresh.matched ? T(' · байланыстырылған оқушы: ') + j.fresh.matched : ''));
         kwRender(box);
       }}, T('🔄 Күнделіктен жаңарту'))),
-      h('p', {class: 'text-sm text-charcoal/65 mb-3'}, KW.at ? T('Соңғы жаңарту: ') + fmtTs(KW.at) + ' · ' + KW.by : T('Бұл тоқсан әлі жаңартылмаған. «Күнделіктен жаңарту» батырмасын басыңыз.')));
+      h('p', {class: 'text-sm text-charcoal/65 mb-3'}, KW.at ? T('Соңғы жаңарту: ') + fmtTs(KW.at) + ' · ' + ob(KW.by) : T('Бұл тоқсан әлі жаңартылмаған. «Күнделіктен жаңарту» батырмасын басыңыз.')));
     if (!KW.ready) box.append(hint(T('Күнделік байланысы қосылмаған. Бас әкімші ⚙ Баптаулар бөлімінде логин мен парольді енгізуі керек.')));
     if (KW.unknown) box.append(hint(T('Пәні анықталмаған баға: ') + KW.unknown + T('. Олар «?» деген бағанда тұр.')));
     if (KW.unkind) box.append(hint(T('Түрі анықталмаған баға: ') + KW.unkind + T('. «🔄 Күнделіктен жаңарту» батырмасын бір минуттан кейін қайта басыңыз.')));
@@ -2443,7 +2444,7 @@
     view.append(box);
     let items;
     try { items = (await api('log')).log.slice().reverse(); } catch (e) { box.innerHTML = ''; box.append(h('p', {class: 'text-red-700'}, e.message)); return; }
-    const who = h('select', {class: 'inp'}, h('option', {value: ''}, T('Барлық адамдар')), [...new Set(items.map(x => x.by))].sort().map(n => h('option', {value: n}, n)));
+    const who = h('select', {class: 'inp'}, h('option', {value: ''}, T('Барлық адамдар')), [...new Set(items.map(x => x.by))].sort().map(n => h('option', {value: n}, ob(n))));
     const cl = h('select', {class: 'inp'}, h('option', {value: ''}, T('Барлық сыныптар')), allClasses().map(c => h('option', {value: c}, c)));
     const q = h('input', {class: 'inp', type: 'search', placeholder: T('🔎 Іздеу…')});
     const render = () => {
@@ -2452,7 +2453,7 @@
         (!q.value.trim() || (x.action + ' ' + x.text + ' ' + x.by).toLowerCase().includes(q.value.trim().toLowerCase()))).slice(0, 300);
       if (!list.length) { box.append(h('p', {class: 'text-charcoal/60'}, T('Жазба жоқ.'))); return; }
       list.forEach(x => box.append(h('div', {class: 'card', style: 'padding:.8rem 1rem'},
-        h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmtTs(x.ts) + ' · ' + x.by + (x.cls ? ' · ' + x.cls + T(' сынып') : '')),
+        h('div', {class: 'text-xs font-bold text-charcoal/60'}, fmtTs(x.ts) + ' · ' + ob(x.by) + (x.cls ? ' · ' + x.cls + T(' сынып') : '')),
         h('div', {class: 'font-semibold text-emerald-950'}, x.action),
         x.text ? h('div', {class: 'text-sm text-charcoal/75'}, x.text) : null,
         mediaThumbs(x.media))));
@@ -2681,7 +2682,7 @@
   };
   VIEWS.account = function(view){
     view.append(title(T('Менің парольім')), h('div', {class: 'space-y-4'},
-      section(null, h('p', {}, T('Аты-жөні: '), h('b', {}, ME.name)), h('p', {}, T('Логин: '), h('b', {}, ME.login)), h('p', {}, T('Рөлі: '), ROLE_NAMES[ME.role]),
+      section(null, h('p', {}, T('Аты-жөні: '), h('b', {}, ob(ME.name))), h('p', {}, T('Логин: '), h('b', {}, ME.login)), h('p', {}, T('Рөлі: '), ROLE_NAMES[ME.role]),
         ME.classes && ME.classes.length ? h('p', {}, T('Сынып: '), h('b', {}, ME.classes.join(', '))) : null,
         ME.subjects && ME.subjects.length ? h('p', {}, T('Пәні: '), h('b', {}, ME.subjects.join(', '))) : null,
         ME.clubs && ME.clubs.length ? h('p', {}, T('Үйірмесі: '), h('b', {}, ME.clubs.join(', '))) : null,
@@ -2739,7 +2740,7 @@
       const r = await api('set', {values: {posts: D.posts()}});
       DATA.posts = r.values.posts;
     }
-    $('whoami').textContent = '· ' + (ME.role === 'owner' ? T(ME.name) : ME.name) + (ME.classes && ME.classes.length ? ' (' + ME.classes.join(', ') + ')' : '');
+    $('whoami').textContent = '· ' + ob(ME.name) + (ME.classes && ME.classes.length ? ' (' + ME.classes.join(', ') + ')' : '');
     $('login').hidden = true;
     $('app').hidden = false;
     const tabs = visibleTabs();
