@@ -2149,7 +2149,7 @@
         good.forEach((x, n) => ok.push({child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: x.phone, parent: x.parent, n}));
         if (good.length < p.phones.length) bad.push({name: p.name, cls: p.cls, why: T('бір нөмір дұрыс емес, қалғанына жіберіледі')});
       });
-      const key = 'wa_sent', load = () => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; } }, sent = load();
+      const key = 'wa_sent', save = () => { try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} }, load = () => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; } }, sent = load();
       const count = h('b', {}); let onlyFirst = true;
       const shown = () => ok.filter(x => !onlyFirst || x.n === 0);
       const upd = () => { count.textContent = shown().filter(x => sent[x.code + x.phone]).length + ' / ' + shown().length; };
@@ -2161,11 +2161,40 @@
           onclick: () => { sent[id] = 1; try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} b.className = 'btn btn-s btn-l'; b.textContent = '✓ ' + T('Жіберілді'); upd(); }}, sent[id] ? '✓ ' + T('Жіберілді') : '💬 WhatsApp'); btns.push({id, a: b});
         list.append(h('div', {class: 'card flex flex-wrap items-center gap-2', style: 'padding:.5rem .75rem'}, h('div', {class: 'flex-1 min-w-[12rem] text-sm'}, h('b', {}, x.child), ' · ' + x.cls + (x.parent ? ' · ' + x.parent : ''), h('span', {class: 'text-charcoal/55'}, ' · +' + x.phone)), b));
       }); };
+      const smsText = x => 'Baiterek бастауыш: тіркелу міндетті. Бағалар мен кері байланыс сайтта: ' + SITE_URL + '#c=' + x.code + ' Код ' + x.code;
+      const smsPanel = () => {
+        const bx = h('div', {class: 'card mb-3'}, h('div', {class: 'text-sm text-charcoal/60'}, T('SMS жүктелуде…')));
+        const todo = () => shown().filter(x => (!cur || x.cls === cur) && !sent[x.code + x.phone]);
+        const draw2 = (info) => {
+          bx.innerHTML = '';
+          bx.append(h('div', {class: 'font-bold text-emerald-950 mb-1'}, T('📨 SMS арқылы жіберу (SMSC.kz)')));
+          if (!info.on) {
+            const l = h('input', {class: 'inp', type: 'text', autocomplete: 'off'}), w = h('input', {class: 'inp', type: 'password', autocomplete: 'off'});
+            bx.append(hint(T('smsc.kz сайтында тіркеліп, шотқа ақша салыңыз. Логині мен парольді осында енгізіңіз: олар тек серверде сақталады, сайтта көрінбейді.')),
+              h('div', {class: 'grid sm:grid-cols-2 gap-3'}, field(T('SMSC логині'), l), field(T('SMSC паролі'), w)),
+              h('div', {class: 'mt-2 text-right'}, h('button', {type: 'button', class: 'btn btn-p', onclick: async () => { const r = await run(T('Тексерілуде…'), () => api('smsSet', {smsLogin: l.value, smsPsw: w.value})); draw2(r); toast(T('Сақталды ✓')); }}, T('💾 Сақтау'))));
+            return;
+          }
+          const res = h('div', {class: 'text-sm mt-2'});
+          bx.append(h('div', {class: 'text-sm'}, T('Баланс: ') + (info.balance != null ? info.balance : '—') + (info.err ? ' · ' + info.err : '')),
+            h('div', {class: 'text-xs text-charcoal/60 mt-1'}, T('Мәтін үлгісі: ') + smsText({code: 'ABC123'})),
+            h('div', {class: 'flex flex-wrap gap-2 mt-2'},
+              h('button', {type: 'button', class: 'btn btn-l', onclick: async () => { const it = todo().map(x => ({phone: x.phone, text: smsText(x)})); if (!it.length) { toast(T('Бәрі жіберілген ✓')); return; }
+                const r = await run(T('Есептелуде…'), () => api('smsSend', {items: it, test: true})); res.textContent = T('Нөмір: ') + r.count + ' · SMS: ' + r.cnt + ' · ' + T('баға: ') + r.cost; }}, T('💰 Бағасын есептеу')),
+              h('button', {type: 'button', class: 'btn btn-p', onclick: async () => { const it = todo(); if (!it.length) { toast(T('Бәрі жіберілген ✓')); return; }
+                if (!confirm(T('SMS жіберілсін бе? Нөмір саны: ') + it.length + (cur ? ' (' + cur + ')' : ''))) return;
+                const r = await run(T('Жіберілуде…'), () => api('smsSend', {items: it.map(x => ({phone: x.phone, text: smsText(x)}))}));
+                it.forEach(x => { sent[x.code + x.phone] = 1; }); save(); draw(); upd(); res.textContent = T('Жіберілді: ') + r.sent + ' · ' + T('баға: ') + r.cost; }}, T('📨 SMS жіберу')),
+              h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => { if (!confirm(T('SMS қызметі өшірілсін бе?'))) return; draw2(await api('smsSet', {smsLogin: '', smsPsw: ''})); }}, T('Өшіру'))), res);
+        };
+        api('smsInfo').then(draw2).catch(e => { bx.innerHTML = ''; bx.append(h('div', {class: 'text-sm text-red-700'}, T(e.message) + T(' (серверді жаңарту керек болуы мүмкін)'))); });
+        return bx;
+      };
       const sel = olSelect([['', T('Барлық сынып')]].concat(clsOpts.map(c => [c, c])), '', v => { cur = v; draw(); });
       upd(); draw();
       out.innerHTML = '';
       const firstCb = h('input', {type: 'checkbox', checked: true, onchange: () => { onlyFirst = firstCb.checked; upd(); draw(); }});
-      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге')), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), nextBtn, h('div', {class: 'h-2'}), list,
+      out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге')), h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), smsPanel(), nextBtn, h('div', {class: 'h-2'}), list,
         bad.length ? section(T('Сәйкес келмегендер (') + bad.length + ')', h('div', {class: 'text-sm space-y-0.5'}, bad.map(b => h('div', {}, h('b', {}, b.name), ' · ' + b.cls + ' — ' + b.why)))) : null);
     });
   }
