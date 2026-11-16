@@ -2300,6 +2300,7 @@
       const code = (CLS.codes || {})[c];
       const link = code ? SITE_URL + '#c=' + code : '';
       const msg = code ? 'Құрметті ата-аналар! Baiterek ST бастауыш мектебінің ' + c + ' сыныбының сайттағы беті: ' + link + '\nСынып коды: ' + code + '\n\nТіркелу міндетті: үй тапсырмасы, сынып жаңалықтары, ас мәзірі, фото сайтта. Тіркелгенде «Telegram» батырмасын басыңыз: хабарламалар тегін ботқа келеді. Баланың Күнделік бағалары мен мұғалімдердің кері байланысы үшін жеке код жіберіледі.\n\n———\n\nУважаемые родители! Страница ' + c + ' класса начальной школы Baiterek ST: ' + link + '\nКод класса: ' + code + '\n\nРегистрация обязательна: домашние задания, новости класса, меню и фото на сайте. При регистрации нажмите «Telegram»: уведомления будут приходить бесплатно в бот. Для оценок из Күнделік и обратной связи учителей будет отправлен личный код.' : '';
+      const rmsg = code ? 'Құрметті ата-аналар! Еске саламыз: ' + c + ' сыныбының сайтына тіркелу міндетті ✅ ' + link + ' (сынып коды: ' + code + ').\nТіркелгенде «Telegram» батырмасын басыңыз: үй тапсырмасы, жаңалықтар мен мұғалімдердің пікірі тегін ботқа келеді. Сұрақ болса, сынып жетекшісіне жазыңыз.\n\n———\n\nУважаемые родители! Напоминаем: регистрация на сайте ' + c + ' класса обязательна ✅ ' + link + ' (код класса: ' + code + ').\nПри регистрации нажмите «Telegram»: домашние задания, новости и отзывы учителей будут приходить бесплатно в бот. Вопросы — классному руководителю.' : '';
       const teacher = USERS.filter(u => u.active && u.role === 'teacher' && (u.classes || []).indexOf(c) >= 0 && u.phone)[0];
       const tmsg = teacher && code ? 'Құрметті ' + teacher.name + '! ' + c + ' сыныбының ата-аналар чатына төмендегі хабарламаны жіберуіңізді сұраймыз (көшіріп, чатқа салу жеткілікті). Тіркелу міндетті.\n\n' + msg + '\n\nҚұрметпен, мектеп әкімшілігі' : '';
       return h('div', {class: 'card space-y-3'},
@@ -2309,6 +2310,7 @@
         h('div', {class: 'flex flex-wrap gap-2'},
           code ? h('a', {class: 'btn btn-p btn-s', target: '_blank', href: 'https://wa.me/?text=' + encodeURIComponent(msg)}, T('WhatsApp-қа жіберу')) : null,
           code ? h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => { navigator.clipboard.writeText(msg).then(() => toast(T('Көшірілді'))); }}, T('Көшіру')) : null,
+          code ? h('a', {class: 'btn btn-l btn-s', target: '_blank', rel: 'noopener', href: 'https://wa.me/?text=' + encodeURIComponent(rmsg)}, T('🔔 Еске салу')) : null,
           tmsg ? h('a', {class: 'btn btn-g btn-s', target: '_blank', rel: 'noopener', href: 'https://wa.me/' + teacher.phone.replace(/\D/g, '') + '?text=' + encodeURIComponent(tmsg)}, T('👩‍🏫 Жетекшіге жіберу')) : (code ? h('span', {class: 'text-xs text-charcoal/50 self-center'}, T('жетекшінің телефоны жоқ')) : null),
           h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => {
             if (code && !confirm(T('Жаңа код жасалса, ескі код (') + code + T(') жұмыс істемей қалады. Жалғастырайын ба?'))) return;
