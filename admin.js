@@ -2222,20 +2222,27 @@
       const moves = [];
       adds.forEach(a => { const m = rems.find(x => !x.moved && x.cls !== a.cls && near(a.name, x.name)); if (m) { m.moved = a.cls; a.from = m; moves.push({id: m.id, to: a.cls, name: a.name, from: m.cls}); } });
       out.innerHTML = '';
-      const rows = [], chk = (on, label, apply) => { const i = h('input', {type: 'checkbox', checked: on}); rows.push({i, apply}); return h('label', {class: 'flex items-center gap-2 text-sm py-0.5'}, i, label); };
+      const rows = [];
+      let grp = [];
+      const chk = (on, label, apply) => { const i = h('input', {type: 'checkbox', checked: on}); rows.push({i, apply}); grp.push(i); return h('label', {class: 'flex items-center gap-2 text-sm py-0.5'}, i, label); };
+      const setAll = (list, v) => list.forEach(i => { i.checked = v; });
+      const bar = (list) => h('div', {class: 'flex gap-2 mb-1'}, h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => setAll(list, true)}, T('☑ Бәрін таңдау')), h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => setAll(list, false)}, T('☐ Бәрін алу')));
       const sum = h('div', {class: 'text-sm mb-3'});
       if (errs.length) out.append(h('div', {class: 'text-sm text-red-700 mb-2'}, errs.join(' · ')));
       res.forEach(r => {
         const A = (r.add || []).filter(a => !a.from), R = (r.remove || []).filter(x => !x.moved), M = moves.filter(m => m.to === r.cls);
         if (r.none) { out.append(h('div', {class: 'text-sm text-charcoal/60'}, r.cls + ': ' + T('Күнделікте сынып табылмады'))); return; }
         if (!A.length && !R.length && !M.length && !r.warn) return;
-        out.append(section(r.cls + ' · ' + T('Күнделікте: ') + r.kunCount + T(' · бізде: ') + r.siteCount,
+        grp = []; const mine = grp, bx = h('div', {});
+        out.append(section(r.cls + ' · ' + T('Күнделікте: ') + r.kunCount + T(' · бізде: ') + r.siteCount, bx,
           r.warn ? h('div', {class: 'text-sm text-red-700 font-semibold mb-1'}, T('⚠️ Күнделіктен тізім күмәнді (тым аз). Өшіру белгіленбеді: алдымен тексеріңіз.')) : null,
           ...M.map(m => chk(true, '↔ ' + m.name + ' · ' + m.from + ' → ' + m.to, p => p.moves.push({id: m.id, to: m.to}))),
           ...A.map(a => chk(true, '➕ ' + a.name + T(' (жаңа)'), p => p.adds.push({cls: r.cls, name: a.name, kun: a.kun}))),
           ...R.map(x => chk(!r.warn, '➖ ' + x.name + T(' (кеткен)'), p => p.removes.push(x.id)))));
+        bx.append(bar(mine));
       });
       if (!rows.length) { out.append(h('p', {class: 'text-emerald-800 font-semibold'}, T('✓ Тізімдер сәйкес: өзгеріс жоқ'))); return; }
+      out.prepend(h('div', {class: 'flex flex-wrap gap-2 mb-3'}, h('button', {type: 'button', class: 'btn btn-g', onclick: () => setAll(rows.map(r => r.i), true)}, T('☑ Барлық сыныптағы бәрін таңдау')), h('button', {type: 'button', class: 'btn btn-l', onclick: () => setAll(rows.map(r => r.i), false)}, T('☐ Бәрін алу'))));
       out.append(sum, h('button', {type: 'button', class: 'btn btn-p', onclick: async () => {
         const p = {adds: [], removes: [], moves: []}; rows.forEach(r => { if (r.i.checked) r.apply(p); });
         if (!p.adds.length && !p.removes.length && !p.moves.length) { toast(T('Ештеңе таңдалмады'), true); return; }
