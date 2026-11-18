@@ -858,8 +858,10 @@
   };
   function renderMyClass(){
     var box = byId('mcBody'); if (!box) return;
-    var form = '<form onsubmit="return uiMcEnter(this)" class="flex flex-wrap gap-2 justify-center">' +
-      '<input name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="' + esc(t('mc_code_ph')) + '" class="w-44 rounded-xl border border-emerald-900/20 px-4 py-3 text-center font-mono text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-gold">' +
+    var cm = MC.mode === 'class';
+    var modes = '<div class="flex justify-center gap-2 mb-1 w-full"><button type="button" class="chip' + (cm ? '' : ' active') + '" onclick="uiMcMode(\'child\')">' + esc(t('mc_m_child')) + '</button><button type="button" class="chip' + (cm ? ' active' : '') + '" onclick="uiMcMode(\'class\')">' + esc(t('mc_m_class')) + '</button></div><p class="w-full text-center text-sm text-charcoal/70 mb-1">' + esc(t(cm ? 'mc_hint_class' : 'mc_hint_child')) + '</p>';
+    var form = '<form onsubmit="return uiMcEnter(this)" class="flex flex-wrap gap-2 justify-center">' + modes +
+      '<input name="code" required autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="' + esc(t(cm ? 'mc_code_ph' : 'mc_ph_child')) + '" class="w-44 rounded-xl border border-emerald-900/20 px-4 py-3 text-center font-mono text-lg tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-gold">' +
       '<button class="bg-emerald-900 hover:bg-emerald-800 text-white font-bold px-6 py-3 rounded-xl"' + (MC.pending ? ' disabled' : '') + '>' + esc(MC.pending ? t('loading') : t('mc_enter')) + '</button></form>';
     var err = MC.err ? '<p class="mt-3 text-center text-sm font-semibold text-rose-700">' + esc(MC.err) + '</p>' : '';
     if (!MC.codes.length) {
@@ -925,6 +927,7 @@
     return false;
   };
   window.uiMcPick = function(i){ MC.cur = i; MC.hwDate = null; MC.sent = false; MC.err = ''; if (MC.codes[i].child) MC.tab = 'fb'; renderMyClass(); mcLoad(MC.codes[i].code); };
+  window.uiMcMode = function(m){ MC.mode = m; MC.err = ''; renderMyClass(); };
   window.uiMcAdd = function(){ MC.adding = !MC.adding; MC.err = ''; renderMyClass(); };
   window.uiMcRemove = function(){
     var cur = MC.codes[MC.cur]; if (!cur) return;
