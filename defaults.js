@@ -557,7 +557,7 @@
   // «Сыныбым» — сынып кодымен ашылатын ата-аналар беті
   var MYCLASS = {
     kz:{
-      nav_myclass:"Сыныбым", mc_label:"Ата-аналарға", mc_title:"Сыныбыңыздың жеке беті",
+      nav_myclass:"Сыныбым", nav_staff:"Қызметкерлер кіруі", mc_label:"Ата-аналарға", mc_title:"Сыныбыңыздың жеке беті",
       mc_desc:"Сынып жетекшісі берген кодты енгізіңіз. Үй тапсырмасы, сыныптың фото-видеолары және сұрақ-жауап тек сіздің сыныбыңыздың ата-аналарына көрінеді.",
       mc_code_ph:"Сынып коды", mc_m_child:"👧 Оқушы коды", mc_m_class:"🏫 Сынып коды", mc_ph_child:"Оқушы коды", mc_hint_child:"Сынып жетекшісі жіберген баланың жеке кодын жазыңыз", mc_hint_class:"Сынып жетекшісі берген жалпы сынып кодын жазыңыз", mc_wrong_child:"Бұл оқушы коды емес, сынып коды. «Сынып коды» батырмасын таңдаңыз.", mc_enter:"Кіру", mc_bad:"Код қате немесе ескірген. Сынып жетекшісінен жаңа кодты сұраңыз.",
       mc_add:"+ Басқа баланың сыныбы", mc_remove:"Осы сыныптан шығу", mc_teacher:"Сынып жетекшісі",
@@ -567,7 +567,7 @@
       qa_empty:"Әзірге сұрақ-жауап жоқ", qa_answer:"Жауап", qa_note:"Жеке жауапты тек сұрақ жіберген телефоныңыздан/компьютеріңізден көресіз."
     },
     ru:{
-      nav_myclass:"Мой класс", mc_label:"Для родителей", mc_title:"Страница вашего класса",
+      nav_myclass:"Мой класс", nav_staff:"Вход для сотрудников", mc_label:"Для родителей", mc_title:"Страница вашего класса",
       mc_desc:"Введите код, который дал классный руководитель. Домашние задания, фото и видео класса и вопросы-ответы видят только родители вашего класса.",
       mc_code_ph:"Код класса", mc_m_child:"👧 Код ученика", mc_m_class:"🏫 Код класса", mc_ph_child:"Код ученика", mc_hint_child:"Введите личный код ребёнка, который прислал классный руководитель", mc_hint_class:"Введите общий код класса от классного руководителя", mc_wrong_child:"Это не код ученика, а код класса. Выберите кнопку «Код класса».", mc_enter:"Войти", mc_bad:"Код неверный или устарел. Попросите новый код у классного руководителя.",
       mc_add:"+ Класс другого ребёнка", mc_remove:"Выйти из этого класса", mc_teacher:"Классный руководитель",
@@ -577,7 +577,7 @@
       qa_empty:"Пока нет вопросов и ответов", qa_answer:"Ответ", qa_note:"Личный ответ виден только на том телефоне/компьютере, с которого вы отправили вопрос."
     },
     en:{
-      nav_myclass:"My class", mc_label:"For parents", mc_title:"Your class page",
+      nav_myclass:"My class", nav_staff:"Staff login", mc_label:"For parents", mc_title:"Your class page",
       mc_desc:"Enter the code from your class teacher. Homework, class photos and videos, and Q&A are visible only to parents of your class.",
       mc_code_ph:"Class code", mc_m_child:"👧 Student code", mc_m_class:"🏫 Class code", mc_ph_child:"Student code", mc_hint_child:"Enter your child's personal code from the class teacher", mc_hint_class:"Enter the general class code from the class teacher", mc_wrong_child:"This is a class code, not a student code. Choose the «Class code» button.", mc_enter:"Enter", mc_bad:"The code is wrong or outdated. Ask your class teacher for a new code.",
       mc_add:"+ Another child's class", mc_remove:"Leave this class", mc_teacher:"Class teacher",
