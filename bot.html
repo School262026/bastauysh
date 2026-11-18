@@ -116,7 +116,7 @@ var BOTS = [
 var T = {
   kk: {
     eyebrow: 'Telegram-бот · мұғалімдерге', title: 'Ботпен жұмыс істеу нұсқаулығы',
-    lead: 'Бот тест, ҚМЖ, КТП, БЖБ/ТЖБ, жұмыс парағы, аудио, сурет пен мультфильм сценарийін жасайды. Сұрауды қарапайым сөзбен жаза беріңіз.',
+    lead: 'Бот тест, ҚМЖ, КТП, БЖБ/ТЖБ, жұмыс парағы, сұрақ пен ойыны бар презентация, NotebookLM дереккөзі, Kahoot файлы, аудио, сурет пен мультфильм сценарийін жасайды. Сұрауды қарапайым сөзбен жаза беріңіз.',
     copy: 'Көшіру', copied: 'Көшірілді', updated: 'Нұсқаулық бот жаңарған сайын осы бетте жаңарып отырады — сілтеме өзгермейді.',
     sections: [
       { h: 'Бастау және жаңарту', list: [
@@ -138,8 +138,19 @@ var T = {
         ['Жұмыс парағы', '3 сынып дүниетану су айналымы жұмыс парағы'],
         ['Тоқсанды қайталау', '7 сынып 1 тоқсанды қайталауға жұмыс парағы'],
         ['ҰБТ / МОДО / олимпиада (Word + PDF, 20 сұрақ)', '9 сынып МОДО дайындық тест'],
-        ['Презентация (PowerPoint + PDF)', '7 сынып география атмосфера презентация жаса'],
+        ['Презентация (PowerPoint + PDF, сұрақ, тапсырма, ойын слайдтарымен)', '7 сынып география атмосфера презентация жаса'],
+        ['Функционалдық сауаттылық', '7 сынып функционалдық сауаттылық тест'],
+        ['Kahoot / Quizizz / Quizlet файлдары', '8 сынып жасуша 15 сұрақ тест kahoot'],
         ['Сұрақ', 'Оқушылардың сабаққа қызығушылығын қалай арттырамын?']] },
+      { h: 'Жаңа мүмкіндіктер', list: [
+        '🖥 Презентацияның ішінде: 2–3 сұрақ слайды (A–D), жұмыс парағы тапсырмасы, сыныптық ойын («Иә/Жоқ», «Кім жылдам?», «Артығын тап»), соңында жауаптар кілті. «Тапсырмалар мен ойындар көп болсын» деп жазсаңыз — көбейеді.',
+        '📒 Презентациямен бірге NotebookLM дереккөзі (PDF) мен нұсқаулық келеді: notebooklm.google.com-да одан әдемі презентация, видео, подкаст жасайсыз. Тақырыбы сай болса — мұғалімдер жасаған дайын презентация да келеді.',
+        '🎮 Тест сұрауына «kahoot» сөзін қоссаңыз, Word/PDF тестпен бірге Kahoot.xlsx, Quizizz.xlsx файлдары және Quizlet карточкаларының мәтіні келеді — платформаға «Import» арқылы жүктейсіз.',
+        '🎓 ҰБТ, МОДО, олимпиада тестінің сұрақтары нақты тапсырмаларға ұқсатып құрастырылады; функционалдық сауаттылық — мәтін, кесте, өмірлік жағдаят бойынша.',
+        '📚 Материалдар типтік оқу бағдарламасы мен жүктелген оқулықтар бойынша жасалады; ҚМЖ-да тегін интерактив құралдар ұсынылады: PhET, GeoGebra, LearningApps, Padlet, Mentimeter.',
+        '🎤 Жазудың орнына микрофонды басып тұрып айтуға болады: бот сөзіңізді мәтінге айналдырып, сол тілде орындайды.',
+        '▶️ Сабаққа қатысты YouTube сілтемесін жіберсеңіз, бот видеоның конспектісін жасайды; «презентация жаса», «10 сұрақтан тест жаса» деп қосыңыз (видео ашық болуы керек, басқа тақырыптағы видео қабылданбайды).',
+        '⏳ Кешке Gemini-дің тегін лимиті таусылса, бот соны айтады — 20–30 минуттан кейін қайталаңыз.'] },
       { h: 'Аудио', p: 'Мәтіннің алдына не соңына «аудиоға айналдыр» деп жазыңыз — бәрі бір хабарда. Немесе мәтінге жауап (reply) ретінде «аудиоға айналдыр» деп жазыңыз.',
         examples: [['Мәтінді аудиоға айналдыру', 'аудиоға айналдыр Ана тілі – халықтың ғасырлар бойы жинаған асыл мұрасы']] },
       { h: 'Сурет', p: 'Бот ашық қордан дайын сурет және сол суретті Gemini-де өзіңіз салатын ағылшынша промпт береді. Промптты басып көшіріңіз → gemini.google.com → «Сурет жасау» → қойыңыз.',
@@ -168,7 +179,7 @@ var T = {
   },
   ru: {
     eyebrow: 'Telegram-бот · для учителей', title: 'Инструкция по работе с ботом',
-    lead: 'Бот делает тесты, КСП, КТП, СОР/СОЧ, рабочие листы, аудио, картинки и сценарии мультфильмов. Пишите запрос обычными словами.',
+    lead: 'Бот делает тесты, КСП, КТП, СОР/СОЧ, рабочие листы, презентации с вопросами и играми, источник для NotebookLM, файлы Kahoot, аудио, картинки и сценарии мультфильмов. Пишите запрос обычными словами.',
     copy: 'Копировать', copied: 'Скопировано', updated: 'Инструкция обновляется на этой странице вместе с ботом — ссылка не меняется.',
     sections: [
       { h: 'Начало и обновление', list: [
@@ -190,8 +201,19 @@ var T = {
         ['Рабочий лист', '3 класс естествознание круговорот воды рабочий лист'],
         ['Повторение четверти', 'рабочий лист для повторения 1 четверти, 7 класс'],
         ['ЕНТ / МОДО / олимпиада (Word + PDF, 20 вопросов)', 'тест для подготовки к МОДО, 9 класс'],
-        ['Презентация (PowerPoint + PDF)', 'презентация, 7 класс география, атмосфера'],
+        ['Презентация (PowerPoint + PDF, со слайдами-вопросами, заданием и игрой)', 'презентация, 7 класс география, атмосфера'],
+        ['Функциональная грамотность', '7 класс функциональная грамотность тест'],
+        ['Файлы для Kahoot / Quizizz / Quizlet', '8 класс клетка 15 вопросов тест kahoot'],
         ['Вопрос', 'Как повысить интерес учеников к уроку?']] },
+      { h: 'Новые возможности', list: [
+        '🖥 В презентации: 2–3 слайда-вопроса (A–D), задание как в рабочем листе, игра для класса («Да/Нет», «Кто быстрее?», «Найди лишнее»), в конце ключ ответов. Напишите «больше заданий и игр» — их станет больше.',
+        '📒 Вместе с презентацией приходят источник для NotebookLM (PDF) и инструкция: на notebooklm.google.com из него делаются красивая презентация, видео, подкаст. Если тема совпадает — приходит и готовая презентация учителей.',
+        '🎮 Добавьте к запросу теста слово «kahoot» — вместе с тестом Word/PDF придут Kahoot.xlsx, Quizizz.xlsx и текст карточек Quizlet для загрузки через «Import».',
+        '🎓 Вопросы тестов ЕНТ, МОДО, олимпиад составляются по образцу реальных заданий; функциональная грамотность — по тексту, таблице, жизненной ситуации.',
+        '📚 Материалы составляются по типовой учебной программе и загруженным учебникам; в КСП предлагаются бесплатные сервисы: PhET, GeoGebra, LearningApps, Padlet, Mentimeter.',
+        '🎤 Вместо текста можно удерживать микрофон и сказать задание: бот распознает речь и выполнит на том же языке.',
+        '▶️ Отправьте ссылку на учебное видео YouTube — бот составит конспект; добавьте «сделай презентацию» или «тест на 10 вопросов» (видео должно быть открытым; неучебные видео не принимаются).',
+        '⏳ Если вечером закончится бесплатный лимит Gemini, бот сообщит — повторите через 20–30 минут.'] },
       { h: 'Аудио', p: 'Напишите «озвучь» перед текстом или после него — всё в одном сообщении. Или ответьте (reply) на сообщение с текстом словом «озвучь».',
         examples: [['Озвучить текст', 'озвучь Родной язык — это наследие народа, его история и будущее']] },
       { h: 'Картинки', p: 'Бот пришлёт готовое изображение из открытой базы и английский промпт, чтобы нарисовать самому в Gemini. Нажмите на промпт, чтобы скопировать → gemini.google.com → «Создать изображение» → вставьте.',
@@ -220,7 +242,7 @@ var T = {
   },
   en: {
     eyebrow: 'Telegram bot · for teachers', title: 'How to use the teacher bot',
-    lead: 'The bot makes tests, lesson plans, long-term plans, summative assessments, worksheets, audio, pictures and cartoon scripts. Just write your request in plain words.',
+    lead: 'The bot makes tests, lesson plans, long-term plans, summative assessments, worksheets, presentations with quizzes and games, NotebookLM sources, Kahoot files, audio, pictures and cartoon scripts. Just write your request in plain words.',
     copy: 'Copy', copied: 'Copied', updated: 'This guide is updated on this page whenever the bot changes. The link stays the same.',
     sections: [
       { h: 'Start and update', list: [
@@ -241,8 +263,19 @@ var T = {
         ['Worksheet', 'grade 3 English Animals worksheet'],
         ['Term revision', 'grade 7 English, worksheet to revise term 1'],
         ['UNT / PISA / olympiad (Word + PDF, 20 questions)', 'grade 11 English UNT preparation test'],
-        ['Presentation (PowerPoint + PDF)', 'grade 7 English My family presentation'],
+        ['Presentation (PowerPoint + PDF, with quiz, task and game slides)', 'grade 7 English My family presentation'],
+        ['Functional literacy', 'grade 7 functional literacy test'],
+        ['Kahoot / Quizizz / Quizlet files', 'grade 8 cells 15 questions test kahoot'],
         ['Question', 'How can I make my lessons more engaging?']] },
+      { h: 'New features', list: [
+        '🖥 Presentations include 2–3 quiz slides (A–D), a worksheet task, a class game (Yes/No, Who is faster?, Odd one out) and an answer key. Write "more tasks and games" to get more.',
+        '📒 A NotebookLM source (PDF) with instructions comes with each presentation; if the topic matches, a ready-made teachers\' presentation too.',
+        '🎮 Add the word "kahoot" to a test request to get Kahoot.xlsx, Quizizz.xlsx and Quizlet card text together with the Word/PDF test.',
+        '🎓 UNT and olympiad questions are modelled on real tasks; functional literacy tasks use texts, tables and real-life situations.',
+        '📚 Materials follow the curriculum and uploaded textbooks; lesson plans suggest free tools: PhET, GeoGebra, LearningApps, Padlet, Mentimeter.',
+        '🎤 Hold the microphone button and say your task instead of typing — the bot does it in the language you spoke.',
+        '▶️ Send a link to an educational YouTube video — the bot writes notes; add "make a presentation" or "a test with 10 questions" (public videos only).',
+        '⏳ If the free Gemini limit runs out in the evening, the bot will say so — try again in 20–30 minutes.'] },
       { h: 'Audio', p: 'Write "convert to audio" before or after the text, all in one message. Or reply to a message with the text and write "convert to audio".',
         examples: [['Text to speech', 'convert to audio I wake up early in the morning, usually at 7 o\'clock']] },
       { h: 'Pictures', p: 'The bot sends a ready picture from an open library and an English prompt to draw it yourself in Gemini. Tap the prompt to copy it → gemini.google.com → "Create image" → paste.',
