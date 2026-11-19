@@ -2340,6 +2340,9 @@
     }
   }
   // ---------- 🔑 Ата-ана кодтары ----------
+  // Сынып тілі: А, В — қазақ сыныптары, қалғаны (C–H) — орыс; К* — қазақ, R* — орыс мектеп алды тобы. Басқаша болса, осы екі тізімге сыныпты жазыңыз
+  const RU_CLASSES = [], KZ_CLASSES = [];
+  const clsIsRu = c => RU_CLASSES.includes(c) ? true : KZ_CLASSES.includes(c) ? false : /^R/i.test(c) ? true : /^[КK]/i.test(c) ? false : !/[ABАВ]$/i.test(c);
   VIEWS.codes = function(view){
     const list = isOwner() ? allClasses() : (ME.classes || []);
     view.append(title(T('Ата-ана кодтары')));
@@ -2350,10 +2353,13 @@
     view.append(h('div', {class: 'grid sm:grid-cols-2 gap-3 mt-4'}, list.map(c => {
       const code = (CLS.codes || {})[c];
       const link = code ? SITE_URL + '#c=' + code : '';
-      const msg = code ? 'Құрметті ата-аналар! Baiterek ST бастауыш мектебінің ' + c + ' сыныбының сайттағы беті: ' + link + '\nСынып коды: ' + code + '\n\nТіркелу міндетті: үй тапсырмасы, сынып жаңалықтары, ас мәзірі, фото сайтта. Тіркелгенде «Telegram» батырмасын басыңыз: хабарламалар тегін ботқа келеді. Баланың Күнделік бағалары мен мұғалімдердің кері байланысы үшін жеке код жіберіледі.\n\n———\n\nУважаемые родители! Страница ' + c + ' класса начальной школы Baiterek ST: ' + link + '\nКод класса: ' + code + '\n\nРегистрация обязательна: домашние задания, новости класса, меню и фото на сайте. При регистрации нажмите «Telegram»: уведомления будут приходить бесплатно в бот. Для оценок из Күнделік и обратной связи учителей будет отправлен личный код.' : '';
-      const rmsg = code ? 'Құрметті ата-аналар! Еске саламыз: ' + c + ' сыныбының сайтына тіркелу міндетті ✅ ' + link + ' (сынып коды: ' + code + ').\nТіркелгенде «Telegram» батырмасын басыңыз: үй тапсырмасы, жаңалықтар мен мұғалімдердің пікірі тегін ботқа келеді. Сұрақ болса, сынып жетекшісіне жазыңыз.\n\n———\n\nУважаемые родители! Напоминаем: регистрация на сайте ' + c + ' класса обязательна ✅ ' + link + ' (код класса: ' + code + ').\nПри регистрации нажмите «Telegram»: домашние задания, новости и отзывы учителей будут приходить бесплатно в бот. Вопросы — классному руководителю.' : '';
+      const msgBoth = code ? 'Құрметті ата-аналар! Baiterek ST бастауыш мектебінің ' + c + ' сыныбының сайттағы беті: ' + link + '\nСынып коды: ' + code + '\n\nТіркелу міндетті: үй тапсырмасы, сынып жаңалықтары, ас мәзірі, фото сайтта. Тіркелгенде «Telegram» батырмасын басыңыз: хабарламалар тегін ботқа келеді. Баланың Күнделік бағалары мен мұғалімдердің кері байланысы үшін жеке код жіберіледі.\n\n———\n\nУважаемые родители! Страница ' + c + ' класса начальной школы Baiterek ST: ' + link + '\nКод класса: ' + code + '\n\nРегистрация обязательна: домашние задания, новости класса, меню и фото на сайте. При регистрации нажмите «Telegram»: уведомления будут приходить бесплатно в бот. Для оценок из Күнделік и обратной связи учителей будет отправлен личный код.' : '';
+      const rmsgBoth = code ? 'Құрметті ата-аналар! Еске саламыз: ' + c + ' сыныбының сайтына тіркелу міндетті ✅ ' + link + ' (сынып коды: ' + code + ').\nТіркелгенде «Telegram» батырмасын басыңыз: үй тапсырмасы, жаңалықтар мен мұғалімдердің пікірі тегін ботқа келеді. Сұрақ болса, сынып жетекшісіне жазыңыз.\n\n———\n\nУважаемые родители! Напоминаем: регистрация на сайте ' + c + ' класса обязательна ✅ ' + link + ' (код класса: ' + code + ').\nПри регистрации нажмите «Telegram»: домашние задания, новости и отзывы учителей будут приходить бесплатно в бот. Вопросы — классному руководителю.' : '';
+      const SEP = '\n\n———\n\n', ruCls = clsIsRu(c);
+      const pick = x => x ? x.split(SEP)[ruCls ? 1 : 0] : '';
+      const msg = pick(msgBoth), rmsg = pick(rmsgBoth);
       const teacher = USERS.filter(u => u.active && u.role === 'teacher' && (u.classes || []).indexOf(c) >= 0 && u.phone)[0];
-      const tmsg = teacher && code ? 'Құрметті ' + teacher.name + '! ' + c + ' сыныбының ата-аналар чатына төмендегі хабарламаны жіберуіңізді сұраймыз (көшіріп, чатқа салу жеткілікті). Тіркелу міндетті.\n\n' + msg + '\n\nҚұрметпен, мектеп әкімшілігі' : '';
+      const tmsg = teacher && code ? (ruCls ? 'Уважаемая(ый) ' + teacher.name + '! Просим отправить сообщение ниже в чат родителей класса ' + c + ' (достаточно скопировать и вставить). Регистрация обязательна.' + SEP.slice(0, 2) + msg + SEP.slice(0, 2) + 'С уважением, администрация школы' : 'Құрметті ' + teacher.name + '! ' + c + ' сыныбының ата-аналар чатына төмендегі хабарламаны жіберуіңізді сұраймыз (көшіріп, чатқа салу жеткілікті). Тіркелу міндетті.' + SEP.slice(0, 2) + msg + SEP.slice(0, 2) + 'Құрметпен, мектеп әкімшілігі') : '';
       return h('div', {class: 'card space-y-3'},
         h('div', {class: 'flex items-center justify-between'}, h('div', {class: 'text-lg font-extrabold text-emerald-950'}, c + T(' сынып')),
           code ? h('div', {class: 'font-mono text-xl font-extrabold tracking-widest text-gold-600'}, code) : h('span', {class: 'text-sm text-charcoal/60'}, T('Код жоқ'))),
@@ -2378,6 +2384,7 @@
       h('h1', {class: 'text-2xl font-extrabold text-emerald-950'}, T('Қызметкерлер')),
       h('div', {class: 'flex flex-wrap gap-2'}, h('button', {type: 'button', class: 'btn btn-l', onclick: () => usersExport(view)}, T('📤 Логиндер мен парольдер (Excel / PDF)')),
         h('button', {type: 'button', class: 'btn btn-l', onclick: () => usersBulk(view)}, T('📥 Тізіммен қосу')),
+        h('button', {type: 'button', class: 'btn btn-l', onclick: () => phonesTool(view)}, T('📞 Телефондарды жүктеу')),
         h('button', {type: 'button', class: 'btn btn-g', onclick: () => userEditor(view, null)}, T('+ Қызметкер қосу')))));
     view.append(hint(T('Сынып жетекшілері өз сыныбын, әкімшілер өзіңіз белгілеген бөлімдерді ғана басқарады. Әкімшілік мүшелері барлық сыныптың жазбаларын тек қарайды. Пән мұғалімдері мен үйірме жетекшілері тек «Кері байланыс» бөлімінде өз сыныптарының (үйірмесінің) оқушыларына жазады, педагог-психолог барлық сыныптың даму картасын көреді. Email (Gmail) жазылса, адамға Google Drive-тағы «Бастауыш-Началка» ішінен тек өз қалтасына қолжетімділік беріледі.')));
     if (INFO.classFolder) view.append(h('div', {class: 'my-3'}, h('a', {href: INFO.classFolder, target: '_blank', class: 'btn btn-l btn-s'}, T('📁 «Бастауыш-Началка» қалтасын ашу ↗'))));
@@ -2392,6 +2399,24 @@
         h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => userEditor(view, u)}, T('Өзгерту'))))) : h('p', {class: 'text-charcoal/60 text-sm'}, T('Әзірге жоқ.'))));
     });
   };
+  // Мұғалімдердің телефондарын жапсырылған тізімнен толтыру (аты-жөні бойынша табады; телефоны барларға тимейді)
+  function phonesTool(view){
+    view.innerHTML = '';
+    const ta = h('textarea', {class: 'inp', rows: 12, placeholder: T('№ [Tab] Аты-жөні [Tab] қызметі [Tab] телефон — Word/Excel кестесінен көшіріп салыңыз')});
+    const out = h('div', {class: 'text-sm mt-2'});
+    view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('users')}, T('← Тізімге қайту')), title(T('Телефондарды жүктеу')),
+      section(null, hint(T('Кестені (аты-жөні мен телефоны бар) көшіріп осында салыңыз. Қызметкер аты-жөні (тегі мен аты) бойынша табылады. Телефоны бұрыннан бар адамдарға тимейді.')), ta,
+        h('div', {class: 'flex justify-end mt-2'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
+          const items = ta.value.split(String.fromCharCode(10)).map(l => {
+            const m = l.match(/(\+?[78][\d\s()-]{9,}\d)\s*$/); if (!m) return null;
+            const cells = l.split(String.fromCharCode(9)).map(x => x.trim()), name = (cells.length >= 3 ? cells[1] : l.replace(m[0], '').replace(/^\s*\d+[.)]?\s*/, '')).replace(/\s+/g, ' ').trim();
+            return {name, phone: m[1]};
+          }).filter(Boolean);
+          if (!items.length) { toast(T('Тізім танылмады'), true); return; }
+          const j = await run(T('Жүктелуде…'), () => api('userPhones', {items}));
+          out.textContent = T('Жазылды: ') + j.res.set + T(' · телефоны бұрыннан бар: ') + j.res.had + (j.res.none.length ? T(' · табылмады: ') + j.res.none.join('; ') : '');
+        }}, T('📞 Жүктеу')))), out);
+  }
   function userEditor(view, u){
     dirty = false;
     const isNew = !u;
