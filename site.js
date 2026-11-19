@@ -817,7 +817,7 @@
     h += '<form onsubmit="return uiRegSave(this)" class="mt-4 rounded-2xl border border-emerald-900/10 p-4 sm:p-5 space-y-3">' +
       '<div class="grid sm:grid-cols-2 gap-3"><input name="name" required maxlength="100" placeholder="' + esc(t('reg_name')) + '" value="' + esc(v.name || '') + '" class="' + inp + '">' +
       '<input name="phone" required type="tel" maxlength="20" placeholder="' + esc(t('reg_phone')) + ': +7 7__ ___ __ __" value="' + esc(v.phone ? '+' + v.phone : '') + '" class="' + inp + '"></div>' +
-      '<input name="email" type="email" required maxlength="120" placeholder="' + esc(t('reg_email')) + '" value="' + esc(v.email || '') + '" class="' + inp + '">' +
+      '<input name="email" type="email" maxlength="120" placeholder="' + esc(t('reg_email')) + '" value="' + esc(v.email || '') + '" class="' + inp + '">' +
       '<div class="text-sm font-extrabold text-emerald-950">' + esc(t('reg_ch')) + '</div><div class="flex flex-wrap gap-x-5 gap-y-2">' +
       box('wa', ch.wa, '💬 ' + t('reg_wa')) + box('tg', ch.tg, '✈️ ' + t('reg_tg'), !d.tgName) + box('em', ch.email, '✉️ ' + t('reg_mail')) + '</div>' +
       '<label class="flex items-start gap-2 text-xs text-charcoal/75"><input type="checkbox" name="consent" required class="mt-0.5"' + (r ? ' checked' : '') + '> <span>' + esc(t('reg_consent')) + '</span></label>' +
