@@ -2409,7 +2409,7 @@
         h('div', {class: 'flex justify-end mt-2'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
           const items = ta.value.split(String.fromCharCode(10)).map(l => {
             const m = l.match(/(\+?[78][\d\s()-]{9,}\d)\s*$/); if (!m) return null;
-            const cells = l.split(String.fromCharCode(9)).map(x => x.trim()), name = (cells.length >= 3 ? cells[1] : l.replace(m[0], '').replace(/^\s*\d+[.)]?\s*/, '')).replace(/\s+/g, ' ').trim();
+            const cells = l.split(String.fromCharCode(9)).map(x => x.trim()), name = (cells.length >= 2 ? (cells.find(x => /[A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]{2}/.test(x)) || '') : l.replace(m[0], '').replace(/^\s*\d+[.)]?\s*/, '')).replace(/\s+/g, ' ').trim();
             return {name, phone: m[1]};
           }).filter(Boolean);
           if (!items.length) { toast(T('Тізім танылмады'), true); return; }
