@@ -941,10 +941,12 @@
   function fbCodes(box, F){
     box.innerHTML = '';
     const students = F.students.slice().sort((a, b) => a.name.localeCompare(b.name, 'kk'));
+    const ruCls = clsIsRu(F.cls);
     const msgOf = st => {
       const link = SITE_URL + '#c=' + st.code;
-      return 'Құрметті ата-ана! ' + st.name + ' (' + F.cls + ' сынып) бойынша мұғалімдердің кері байланысы, даму картасы және сынып беті: ' + link + '\nБаланың жеке коды: ' + st.code + '\nКодты басқа адамдарға бермеңіз.' +
-        '\n\nУважаемый родитель! Обратная связь учителей, карта развития ученика ' + st.name + ' (' + F.cls + ' класс) и страница класса: ' + link + '\nЛичный код ребёнка: ' + st.code + '\nНе передавайте код другим.';
+      return ruCls
+        ? 'Уважаемый родитель! Обратная связь учителей, карта развития ученика ' + st.name + ' (' + F.cls + ' класс) и страница класса: ' + link + '\nЛичный код ребёнка: ' + st.code + '\nНе передавайте код другим.'
+        : 'Құрметті ата-ана! ' + st.name + ' (' + F.cls + ' сынып) бойынша мұғалімдердің кері байланысы, даму картасы және сынып беті: ' + link + '\nБаланың жеке коды: ' + st.code + '\nКодты басқа адамдарға бермеңіз.';
     };
     const all = students.map(st => st.name + ' — ' + st.code + ' — ' + SITE_URL + '#c=' + st.code).join('\n');
     box.append(fbBack(),
@@ -956,7 +958,8 @@
         h('div', {class: 'flex items-center justify-between gap-2'}, h('div', {class: 'font-bold text-emerald-950'}, st.name),
           h('div', {class: 'font-mono text-lg font-extrabold tracking-widest text-gold-600'}, st.code)),
         h('div', {class: 'flex flex-wrap gap-2'},
-          h('a', {class: 'btn btn-p btn-s', target: '_blank', href: 'https://wa.me/?text=' + encodeURIComponent(msgOf(st))}, T('WhatsApp-қа жіберу')),
+          ...(st.phones || []).map(p => h('a', {class: 'btn btn-p btn-s', target: '_blank', rel: 'noopener', href: 'https://wa.me/' + p.phone + '?text=' + encodeURIComponent(msgOf(st))}, '💬 ' + (p.parent ? p.parent.split(' ')[0] + ' · ' : '') + '+' + p.phone.replace(/^7/, '7 '))),
+          h('a', {class: (st.phones || []).length ? 'btn btn-l btn-s' : 'btn btn-p btn-s', target: '_blank', href: 'https://wa.me/?text=' + encodeURIComponent(msgOf(st))}, (st.phones || []).length ? T('Басқа нөмірге') : T('WhatsApp-қа жіберу')),
           h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: () => navigator.clipboard.writeText(msgOf(st)).then(() => toast(T('Көшірілді')))}, T('Көшіру')),
           h('button', {type: 'button', class: 'btn btn-l btn-s', onclick: async () => {
             if (!confirm(st.name + T(': жаңа код жасалса, ескі код (') + st.code + T(') жұмыс істемей қалады. Жалғастырайын ба?'))) return;
@@ -2188,7 +2191,7 @@
       for (let k = 0; k < classes.length; k++) {
         busy(T('Сыныптар жүктелуде: ') + (k + 1) + ' / ' + classes.length, Math.round(k * 100 / classes.length));
         try { if (!FBC[classes[k]]) FBC[classes[k]] = await api('fbList', {cls: classes[k]}); } catch (e) { continue; }
-        (FBC[classes[k]].students || []).forEach(s => { if (s.code) all.push({cls: classes[k], name: s.name, code: s.code, reg: !!s.reg, words: waWords(s.name)}); });
+        (FBC[classes[k]].students || []).forEach(s => { if (s.code) all.push({id: s.id, cls: classes[k], name: s.name, code: s.code, reg: !!s.reg, words: waWords(s.name)}); });
       }
       done();
       const ok = [], bad = [];
@@ -2197,7 +2200,7 @@
         if (cand.length !== 1) { bad.push({name: p.name, cls: p.cls, why: cand.length ? T('бірнеше бала сәйкес келді') : T('тізімнен табылмады')}); return; }
         const good = p.phones.filter(x => x.phone);
         if (!good.length) { bad.push({name: p.name, cls: p.cls, why: p.phones.length ? T('телефон дұрыс емес') : T('телефон жоқ')}); return; }
-        good.forEach((x, n) => ok.push({child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: x.phone, parent: x.parent, n, reg: cand[0].reg}));
+        good.forEach((x, n) => ok.push({id: cand[0].id, child: cand[0].name, cls: cand[0].cls, code: cand[0].code, phone: x.phone, parent: x.parent, n, reg: cand[0].reg}));
         if (good.length < p.phones.length) bad.push({name: p.name, cls: p.cls, why: T('бір нөмір дұрыс емес, қалғанына жіберіледі')});
       });
       const key = 'wa_sent', save = () => { try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) {} }, load = () => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return {}; } }, sent = load();
@@ -2279,6 +2282,16 @@
       const sel = olSelect([['', T('Барлық сынып')]].concat(clsOpts.map(c => [c, c])), '', v => { cur = v; draw(); });
       upd(); draw();
       out.innerHTML = '';
+      const saveBox = h('div', {class: 'card mb-3 flex flex-wrap items-center justify-between gap-3'},
+        h('div', {class: 'text-sm flex-1 min-w-[14rem]'}, h('b', {}, T('👩‍🏫 Сынып жетекшілері өздері жібере алсын')), h('div', {class: 'text-xs text-charcoal/60'}, T('Телефондарды сайтқа сақтасаңыз, сынып жетекшісі өз сыныбының балаларына «🔑 Балалардың кодтары» бөлімінен тікелей ата-анаға жібере алады. Телефондарды тек бас әкімші мен сол сынып жетекшісі көреді.'))),
+        h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
+          const by = {}; ok.forEach(x => { (by[x.id] = by[x.id] || []).push({phone: x.phone, parent: x.parent}); });
+          const items = Object.keys(by).map(id => ({id, phones: by[id]}));
+          const r = await run(T('Сақталуда…'), () => api('stuPhones', {items}));
+          Object.keys(FBC).forEach(k => delete FBC[k]);
+          toast(T('Сақталды ✓ ') + r.saved + T(' оқушы'));
+        }}, T('💾 Телефондарды сайтқа сақтау')));
+      out.append(saveBox);
       const firstCb = h('input', {type: 'checkbox', checked: true, onchange: () => { onlyFirst = firstCb.checked; upd(); draw(); }});
       out.append(h('div', {class: 'flex flex-wrap items-end gap-3 mb-3'}, h('div', {class: 'flex-1 min-w-[10rem]'}, field(T('Сынып'), sel)), h('label', {class: 'flex items-center gap-2 text-sm font-semibold'}, firstCb, T('Әр балаға тек бір нөмірге (анасына)')), regSkip ? h('div', {class: 'text-xs text-charcoal/60'}, T('Тіркелген (өткізіліп кетті): ') + regSkip) : null, h('div', {class: 'text-sm'}, T('Жіберілді: '), count)), smsPanel(), nextBtn, h('div', {class: 'h-2'}), list,
         bad.length ? section(T('Сәйкес келмегендер (') + bad.length + ')', h('div', {class: 'text-sm space-y-0.5'}, bad.map(b => h('div', {}, h('b', {}, b.name), ' · ' + b.cls + ' — ' + b.why)))) : null);
