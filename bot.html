@@ -86,6 +86,10 @@ table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14p
 th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { color: var(--muted); font-weight: 700; font-size: 13px; }
 tr:last-child td { border-bottom: 0; }
+.q { background: var(--bubble); color: var(--bubble-ink); border-radius: 8px; padding: 1px 7px; cursor: pointer; overflow-wrap: anywhere; }
+.q:hover { outline: 1px solid var(--accent); }
+.q.ok { background: var(--accent); color: var(--paper); }
+.live-note { font-size: 13px; color: var(--muted); }
 footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
 @media (prefers-reduced-motion: no-preference) { .tabs button { transition: background .15s, color .15s; } }
 </style>
@@ -109,6 +113,11 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
 </div>
 
 <script>
+// Нұсқаулық мәтіні боттан алынады (бот жаңарса — бет те жаңарады); алынбаса, төмендегі мәтін көрсетіледі
+var LIVE_URL = 'https://script.google.com/macros/s/AKfycbzWca0n8wyE_CZx4sqoCVH0JX5lgUvMZScbOx3IgyON_3RIpp5BMUwAYmYCDX2sraIW9g/exec?guide=1';
+var LIVE_EX = [];   // пәндік беттерде мысалдарды сол пәнге ауыстыру: [[бұрынғы, жаңа], ...]
+var LIVE = null;
+
 var BOTS = [
   { name: 'Baiterek School', url: 'https://t.me/baiterekschoolbot' }
 ];
@@ -394,7 +403,8 @@ function render(lang) {
   var main = document.getElementById('content');
   main.textContent = '';
   var wrap = el('div', 'wrap');
-  t.sections.forEach(function (s, i) {
+  var secs = LIVE ? liveSections(LIVE[lang] || LIVE.kk).concat(t.sections.filter(function (s) { return s.sites; })) : t.sections;
+  secs.forEach(function (s, i) {
     var sec = el('section');
     var h = el('h2');
     h.appendChild(el('span', 'n', String(i + 1)));
@@ -413,6 +423,11 @@ function render(lang) {
       var ul = el('ul');
       s.list.forEach(function (item) { ul.appendChild(el('li', null, item)); });
       sec.appendChild(ul);
+    }
+    if (s.live) {
+      var lu = el('ul');
+      s.live.forEach(function (line) { lu.appendChild(liveLine(line, t)); });
+      sec.appendChild(lu);
     }
     if (s.examples) {
       var exs = el('div', 'examples');
@@ -454,6 +469,47 @@ function render(lang) {
   main.appendChild(wrap);
 }
 
+// Боттың /guide мәтінін бөлімдерге бөлеміз: **Тақырып** — бөлім, «...» — басып көшірілетін мысал
+function liveSections(text) {
+  LIVE_EX.forEach(function (p) { text = text.split(p[0]).join(p[1]); });
+  var out = [], cur = null;
+  text.split('\n').forEach(function (line, i) {
+    var raw = line.trim();
+    if (!raw || (i === 0 && /\*\*/.test(raw))) return;
+    var h = /^\*\*(.+)\*\*$/.exec(raw);
+    if (h) { cur = { h: h[1].replace(/^\d+\.\s*/, ''), live: [] }; out.push(cur); return; }
+    if (!cur) { cur = { h: '', live: [] }; out.push(cur); }
+    var fm = /^👉\s*(.+)$/.exec(raw);
+    if (fm && fm[1].indexOf('+') !== -1) { cur.formula = fm[1].split('+').map(function (x) { return x.trim(); }); return; }
+    cur.live.push(raw.replace(/^•\s*/, '').replace(/\*\*/g, ''));
+  });
+  return out.filter(function (s) { return s.live.length || s.formula; });
+}
+
+function liveLine(line, t) {
+  var li = el('li');
+  line.split(/(«[^«»]{3,}»)/).forEach(function (part) {
+    if (/^«.+»$/.test(part)) {
+      var q = el('span', 'q', part.slice(1, -1));
+      q.title = t.copy;
+      q.addEventListener('click', function () {
+        var done = function () { q.classList.add('ok'); setTimeout(function () { q.classList.remove('ok'); }, 900); };
+        try { navigator.clipboard.writeText(q.textContent).then(done, done); } catch (e) { done(); }
+      });
+      li.appendChild(document.createTextNode('«')); li.appendChild(q); li.appendChild(document.createTextNode('»'));
+    } else if (part) li.appendChild(document.createTextNode(part));
+  });
+  return li;
+}
+
+function loadLive() {
+  try {
+    fetch(LIVE_URL).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.guide && d.guide.kk) { LIVE = d.guide; render(langFromHash()); }
+    }).catch(function () {});
+  } catch (e) {}
+}
+
 function langFromHash() {
   var h = (location.hash || '').replace('#', '');
   return T[h] ? h : 'kk';
@@ -464,6 +520,7 @@ document.querySelectorAll('.tabs button').forEach(function (b) {
 });
 window.addEventListener('hashchange', function () { render(langFromHash()); });
 render(langFromHash());
+loadLive();
 </script>
 
 </body>
