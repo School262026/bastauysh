@@ -1675,13 +1675,17 @@
       return rows.filter(r => /^(иә|да|yes)$/i.test(String(r[0]).trim()) && String(r[6]).trim()).map(r => ({d: String(r[1]).trim(), k: KM[String(r[2]).trim()] || 'news', s: String(r[3]).indexOf('мектеп') >= 0 ? 'school' : 'class', c: String(r[4]), t: String(r[6]), f: String(r[8] || '').split('|').map(x => x.trim()).filter(Boolean)}));
     };
     const waRun = async dry => {
-      const rows = await waRows(), tot = {posts: 0, cposts: 0, homework: 0, menu: 0, dup: 0, phone: 0, badCls: 0, bad: 0};
+      const rows = await waRows(), tot = {posts: 0, cposts: 0, homework: 0, menu: 0, dup: 0, phone: 0, badCls: 0, bad: 0}, byC = {};
       let zip = null, nPh = 0, nVid = 0, fails = 0;
       if (waZip.files[0]) { await loadZip(); zip = await JSZip.loadAsync(waZip.files[0]); }
       for (let i = 0; i < rows.length; i += 25) {
         const part = rows.slice(i, i + 25);
         const pre = await api('waImport', {items: part.map(x => ({...x, f: x.f[0] || ''})), dry: true});
-        const dup = new Set(pre.res.dupIdx || []);
+        const dup = new Set(pre.res.dupIdx || []), noMed = new Set(pre.res.dupNoMedia || []);
+        part.forEach((x, k) => {
+          const key = x.s === 'school' ? T('Бүкіл мектеп') : (x.c.split(',')[0].trim() || '?'), o = byC[key] = byC[key] || {all: 0, dup: 0, noMed: 0, files: 0};
+          o.all++; if (dup.has(k)) o.dup++; if (noMed.has(k)) o.noMed++; if (x.f.length) o.files++;
+        });
         const items = [];
         for (let k = 0; k < part.length; k++) {
           const x = part[k], it = {d: x.d, k: x.k, s: x.s, c: x.c, t: x.t, f: x.f[0] || '', m: []};
@@ -1705,6 +1709,11 @@
         waOut.textContent = (dry ? T('Тексеру… ') : T('Жүктелуде… ')) + Math.min(i + 25, rows.length) + '/' + rows.length;
       }
       waOut.textContent = (dry ? T('Жүктелмейді, тек тексеру: ') : T('Жүктелді: ')) + T('мектеп жаңалығы ') + tot.posts + T(', сынып жаңалығы ') + tot.cposts + T(', үй тапсырмасы ') + tot.homework + T(', ас мәзірі ') + tot.menu + T(' · қайталанған (өткізілді) ') + tot.dup + T(' · телефоны бар (өткізілді) ') + tot.phone + T(' · сыныбы танылмаған ') + tot.badCls + T(' · күні қате ') + tot.bad + (dry ? '' : T(' · фото ') + nPh + T(', видео ') + nVid + (fails ? T(' · жүктелмеген файл ') + fails : ''));
+      const ks = Object.keys(byC).sort((p, q) => p.localeCompare(q, 'kk', {numeric: true}));
+      waOut.append(h('div', {class: 'mt-3', style: 'overflow-x:auto'}, h('table', {class: 'w-full text-sm'},
+        h('tr', {class: 'text-left text-charcoal/60'}, ['Сынып', 'Excel-де', 'Сайтта бар', 'Сайтқа түспеген', 'Фотосыз/видеосыз түскен', 'Қай жағдай'].map(x => h('th', {class: 'py-1 pr-2'}, T(x)))),
+        ks.map(k => { const o = byC[k], nw = o.all - o.dup, st = nw ? '⏳ ' + T('жүктелмеген бар') : o.noMed ? '📷 ' + T('фото жоқ') : '✅ ' + T('толық');
+          return h('tr', {class: 'border-t border-emerald-900/5'}, h('td', {class: 'py-1 pr-2 font-bold'}, k), h('td', {class: 'pr-2'}, o.all), h('td', {class: 'pr-2'}, o.dup), h('td', {class: 'pr-2 ' + (nw ? 'text-red-700 font-bold' : '')}, nw), h('td', {class: 'pr-2'}, o.noMed ? o.noMed + ' / ' + o.files : '—'), h('td', {}, st)); }))));
     };
     box.append(section(T('📥 WhatsApp жазбаларын жүктеу (Excel)'),
       hint(T('«Жариялауға ұсыныс» Excel файлын таңдаңыз: тек «Жариялау?» бағанында «Иә» жазылған жолдар алынады. Ата-аналарға хабарлама жіберілмейді; қайталанғандар қайта қосылмайды; телефон нөмірі бар жазбалар өткізіледі. Алдымен «Тексеру», сосын «Жүктеу».')),
