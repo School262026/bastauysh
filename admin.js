@@ -1675,7 +1675,7 @@
       return rows.filter(r => /^(иә|да|yes)$/i.test(String(r[0]).trim()) && String(r[6]).trim()).map(r => ({d: String(r[1]).trim(), k: KM[String(r[2]).trim()] || 'news', s: String(r[3]).indexOf('мектеп') >= 0 ? 'school' : 'class', c: String(r[4]), t: String(r[6]), f: String(r[8] || '').split('|').map(x => x.trim()).filter(Boolean)}));
     };
     const waRun = async dry => {
-      const rows = await waRows(), tot = {posts: 0, cposts: 0, homework: 0, menu: 0, dup: 0, phone: 0, badCls: 0, bad: 0}, byC = {};
+      const rows = await waRows(), tot = {posts: 0, cposts: 0, homework: 0, menu: 0, dup: 0, phone: 0, badCls: 0, bad: 0, attached: 0}, byC = {};
       let zip = null, nPh = 0, nVid = 0, fails = 0;
       if (waZip.files[0]) { await loadZip(); zip = await JSZip.loadAsync(waZip.files[0]); }
       for (let i = 0; i < rows.length; i += 25) {
@@ -1689,7 +1689,7 @@
         const items = [];
         for (let k = 0; k < part.length; k++) {
           const x = part[k], it = {d: x.d, k: x.k, s: x.s, c: x.c, t: x.t, f: x.f[0] || '', m: []};
-          if (!dry && zip && x.s === 'class' && x.f.length && !dup.has(k)) {
+          if (!dry && zip && x.s === 'class' && x.f.length && (!dup.has(k) || noMed.has(k))) {
             const cls = x.c.split(',')[0].trim();
             for (const fn of x.f) {
               const ent = zip.file(fn) || zip.file(new RegExp('(^|/)' + fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))[0];
@@ -1708,7 +1708,7 @@
         for (const kk in tot) tot[kk] += j.res[kk] || 0;
         waOut.textContent = (dry ? T('Тексеру… ') : T('Жүктелуде… ')) + Math.min(i + 25, rows.length) + '/' + rows.length;
       }
-      waOut.textContent = (dry ? T('Жүктелмейді, тек тексеру: ') : T('Жүктелді: ')) + T('мектеп жаңалығы ') + tot.posts + T(', сынып жаңалығы ') + tot.cposts + T(', үй тапсырмасы ') + tot.homework + T(', ас мәзірі ') + tot.menu + T(' · қайталанған (өткізілді) ') + tot.dup + T(' · телефоны бар (өткізілді) ') + tot.phone + T(' · сыныбы танылмаған ') + tot.badCls + T(' · күні қате ') + tot.bad + (dry ? '' : T(' · фото ') + nPh + T(', видео ') + nVid + (fails ? T(' · жүктелмеген файл ') + fails : ''));
+      waOut.textContent = (dry ? T('Жүктелмейді, тек тексеру: ') : T('Жүктелді: ')) + T('мектеп жаңалығы ') + tot.posts + T(', сынып жаңалығы ') + tot.cposts + T(', үй тапсырмасы ') + tot.homework + T(', ас мәзірі ') + tot.menu + T(' · қайталанған (өткізілді) ') + tot.dup + T(' · бұрынғы жазбаларға фото/видео қосылды ') + tot.attached + T(' · телефоны бар (өткізілді) ') + tot.phone + T(' · сыныбы танылмаған ') + tot.badCls + T(' · күні қате ') + tot.bad + (dry ? '' : T(' · фото ') + nPh + T(', видео ') + nVid + (fails ? T(' · жүктелмеген файл ') + fails : ''));
       const ks = Object.keys(byC).sort((p, q) => p.localeCompare(q, 'kk', {numeric: true}));
       waOut.append(h('div', {class: 'mt-3', style: 'overflow-x:auto'}, h('table', {class: 'w-full text-sm'},
         h('tr', {class: 'text-left text-charcoal/60'}, ['Сынып', 'Excel-де', 'Сайтта бар', 'Сайтқа түспеген', 'Фотосыз/видеосыз түскен', 'Қай жағдай'].map(x => h('th', {class: 'py-1 pr-2'}, T(x)))),
