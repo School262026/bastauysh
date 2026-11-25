@@ -2904,6 +2904,39 @@
   $('logout').before(langSwitch());
   $('loginForm').prepend(h('div', {class: 'flex justify-end -mb-6'}, langSwitch()));
   pwEye($('pw'));
+  // 🔑 Парольді ұмыттым: код Telegram бот (немесе SMS) арқылы келеді
+  const forgotBox = h('div', {class: 'mt-3 space-y-2'}); forgotBox.hidden = true;
+  const forgotBtn = h('button', {type: 'button', class: 'mt-2 text-sm font-semibold underline text-emerald-900', onclick: () => {
+    forgotBox.hidden = !forgotBox.hidden; if (forgotBox.hidden) return;
+    forgotBox.innerHTML = '';
+    const lg = h('input', {class: 'inp', type: 'text', autocapitalize: 'none', spellcheck: 'false', placeholder: T('Логиніңіз')}); lg.value = loginInput.value.trim();
+    const msg = h('p', {class: 'text-sm'});
+    const step2 = h('div', {class: 'space-y-2'}); step2.hidden = true;
+    const code = h('input', {class: 'inp', type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', placeholder: T('6 таңбалы код')});
+    const np = h('input', {class: 'inp', type: 'password', autocomplete: 'new-password', placeholder: T('Жаңа пароль (кемінде 6 таңба)')});
+    const np2 = h('input', {class: 'inp', type: 'password', autocomplete: 'new-password', placeholder: T('Жаңа парольді қайталаңыз')});
+    step2.append(code, np, np2, h('button', {type: 'button', class: 'btn btn-p w-full', onclick: async () => {
+      if (np.value.length < 6) { msg.textContent = T('Пароль кемінде 6 таңбадан тұруы керек'); return; }
+      if (np.value !== np2.value) { msg.textContent = T('Парольдер бірдей емес'); return; }
+      try {
+        await api('pwReset', {login: lg.value.trim().toLowerCase(), code: code.value.trim(), newpw: np.value});
+        loginInput.value = lg.value.trim().toLowerCase(); $('pw').value = np.value; forgotBox.hidden = true;
+        $('loginMsg').textContent = T('✅ Жаңа пароль сақталды. Кіріп жатырмыз…');
+        $('loginForm').requestSubmit();
+      } catch (e) { msg.textContent = T(e.message); }
+    }}, T('💾 Жаңа парольді сақтау')));
+    forgotBox.append(h('p', {class: 'text-sm text-charcoal/70'}, T('Логиніңізді жазыңыз. Код сайттың Telegram ботына (ботқа қосылған болсаңыз) немесе телефоныңызға SMS-пен келеді.')), lg,
+      h('button', {type: 'button', class: 'btn btn-l w-full', onclick: async () => {
+        msg.textContent = T('Жіберілуде…');
+        try {
+          const j = await api('pwForgot', {login: lg.value.trim().toLowerCase()});
+          if (j.via === 'none') { msg.textContent = T('Кодты жіберу мүмкін болмады: сіз Telegram ботқа қосылмағансыз және телефоныңыз жоқ. Әкімшіге жазыңыз, ол уақытша пароль береді.'); return; }
+          msg.textContent = j.via === 'tg' ? T('Код Telegram ботқа жіберілді. Ботты ашып, кодты осында жазыңыз.') : T('Код SMS-пен жіберілді: ') + j.phone;
+          step2.hidden = false; code.focus();
+        } catch (e) { msg.textContent = T(e.message); }
+      }}, T('📨 Код алу')), step2, msg);
+  }}, T('🔑 Парольді ұмыттым'));
+  $('loginMsg').after(forgotBtn, forgotBox);
   if (!API) $('loginMsg').textContent = T('Сервер мекенжайы әлі орнатылмаған (config.js).');
   let saved = null;
   try {
