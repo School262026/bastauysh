@@ -2311,15 +2311,37 @@
     view.innerHTML = '';
     view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('codes', true)}, T('← Артқа')), title(T('🔄 Оқушылар тізімін Күнделікпен салыстыру')));
     view.append(hint(T('Күнделік.kz-тағы нақты сынып тізімі біздегі тізіммен салыстырылады: кеткен оқушылар, жаңадан келгендер және басқа сыныпқа ауысқандар табылады. Алдымен тек тізім көрсетіледі, ештеңе өзгермейді; керегін белгілеп, «Қолдану» басасыз. Кеткен оқушының жазбалары мен ата-ана тіркеуі өшеді, ауысқандардың жазбалары жаңа сыныпқа көшеді.')));
-    const out = h('div', {class: 'mt-4'}), go1 = h('button', {type: 'button', class: 'btn btn-p', onclick: start}, T('🔍 Тексеруді бастау'));
-    view.append(go1, out);
+    const out = h('div', {class: 'mt-4'}), go1 = h('button', {type: 'button', class: 'btn btn-p', onclick: () => start(null)}, T('🔍 Тексеруді бастау'));
+    const lst = h('textarea', {class: 'inp', rows: 8, placeholder: T('Сынып атауы жеке жолда (мысалы «2 A» немесе «Класс: 2 A»), астында оқушылар — әр жолда бір оқушы (нөмірі болса да болады)')});
+    // Мектептің ресми тізімін салу: сынып атауы — «2 A», «Класс:2 A», «2G»; астындағы жолдар — оқушылар
+    const parseList = () => {
+      const map = {}, fold = x => String(x).toUpperCase().replace(/\s+/g, '').replace(/[АВСЕНКМОРТХ]/g, c => ({'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P', 'Т': 'T', 'Х': 'X'})[c]);
+      const known = {}; allClasses().forEach(c => { known[fold(c)] = c; });
+      let cur = null; const bad = [];
+      lst.value.split(String.fromCharCode(10)).forEach(line => {
+        const t = line.replace(/\t/g, ' ').trim(); if (!t) return;
+        const m = t.match(/^(?:класс|сынып)?\s*:?\s*([0-4])\s*[«"“]?\s*([A-Za-zА-Яа-яЁё])\s*[»"”]?\s*(?:класс|сынып)?$/i);
+        if (m) { cur = known[fold(m[1] + m[2])] || null; if (!cur) bad.push(t); else map[cur] = map[cur] || []; return; }
+        const nm = t.replace(/^\d+[.)]?\s*/, '').trim();
+        if (!nm || /^\d+$/.test(nm) || !cur) return;
+        map[cur].push(nm);
+      });
+      return {map, bad};
+    };
+    const go2 = h('button', {type: 'button', class: 'btn btn-g', onclick: () => {
+      const p = parseList(), n = Object.keys(p.map).length;
+      if (!n) { toast(T('Тізім танылмады: сынып атауын жеке жолға жазыңыз'), true); return; }
+      if (p.bad.length) toast(T('Сайтта жоқ сынып: ') + p.bad.join(', '), true);
+      start(p.map);
+    }}, T('📋 Тізім бойынша тексеру'));
+    view.append(go1, section(T('Немесе мектептің ресми тізімімен салыстыру'), hint(T('Тізімді осында салыңыз. Тек тізімдегі сыныптар тексеріледі: тізімде жоқ оқушы «кеткен», сайтта жоқ оқушы «жаңа» болып шығады. Алдымен тек көрсетіледі, «Қолдану» баспайынша ештеңе өзгермейді.')), lst, h('div', {class: 'flex justify-end mt-2'}, go2)), out);
     const w2 = n => String(n).toLowerCase().replace(/[^a-zа-яәіңғүұқөһё ]/g, ' ').split(/\s+/).filter(x => x.length > 2);
     const near = (a, b) => { const y = w2(b); return w2(a).filter(x => y.some(z => z === x || (x.length >= 4 && z.length >= 4 && x.slice(0, 4) === z.slice(0, 4)))).length >= 2; };
-    async function start(){
-      const classes = allClasses(), res = [], errs = [];
+    async function start(list){
+      const classes = list ? Object.keys(list) : allClasses(), res = [], errs = [];
       for (let k = 0; k < classes.length; k++) {
         busy(T('Күнделікпен салыстырылуда: ') + (k + 1) + ' / ' + classes.length, Math.round(k * 100 / classes.length));
-        try { res.push(await api('rosCheck', {cls: classes[k]})); } catch (e) { errs.push(classes[k] + ': ' + e.message); }
+        try { res.push(await api('rosCheck', list ? {cls: classes[k], names: list[classes[k]]} : {cls: classes[k]})); } catch (e) { errs.push(classes[k] + ': ' + e.message); }
       }
       done();
       // сыныптар арасындағы ауысу: біреуінде «кетті», екіншісінде «келді» болса, бір бала
