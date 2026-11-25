@@ -2320,6 +2320,7 @@
       let cur = null; const bad = [];
       lst.value.split(String.fromCharCode(10)).forEach(line => {
         const t = line.replace(/\t/g, ' ').trim(); if (!t) return;
+        if (known[fold(t.replace(/^(?:класс|сынып|группа|тобы?)\s*:?\s*/i, ''))]) { cur = known[fold(t.replace(/^(?:класс|сынып|группа|тобы?)\s*:?\s*/i, ''))]; map[cur] = map[cur] || []; return; }   // К5, R6 сияқты топтар
         const m = t.match(/^(?:класс|сынып)?\s*:?\s*([0-4])\s*[«"“]?\s*([A-Za-zА-Яа-яЁё])\s*[»"”]?\s*(?:класс|сынып)?$/i);
         if (m) { cur = known[fold(m[1] + m[2])] || null; if (!cur) bad.push(t); else map[cur] = map[cur] || []; return; }
         const nm = t.replace(/^\d+[.)]?\s*/, '').trim();
