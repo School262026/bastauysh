@@ -1795,7 +1795,7 @@
     box.append(h('div', {class: 'flex flex-wrap items-center gap-2 mb-2'}, per,
       h('button', {type: 'button', class: 'btn btn-g', disabled: !KW.ready, onclick: async () => {
         const j = await run(T('Күнделіктен алынуда… Бір минутқа дейін созылуы мүмкін'), () => api('kwPull', {cls: KW_CLS, period: KW_PER}));
-        KW = j; toast(T('Жаңартылды ✓ Баға: ') + j.fresh.marks + (j.fresh.finals ? T(' · тоқсандық: ') + j.fresh.finals : '') + (j.fresh.matched ? T(' · байланыстырылған оқушы: ') + j.fresh.matched : '') + (j.fresh.grp ? T(' · Күнделік тобы: ') + j.fresh.grp : ''));
+        KW = j; toast(T('Жаңартылды ✓ Баға: ') + j.fresh.marks + (j.fresh.finals ? T(' · тоқсандық: ') + j.fresh.finals : '') + (j.fresh.matched ? T(' · байланыстырылған оқушы: ') + j.fresh.matched : '') + (j.fresh.grp ? T(' · Күнделік тобы: ') + j.fresh.grp : '') + (j.fresh.hidden ? T(' · журналда көрсетілмейтін баға алынбады: ') + j.fresh.hidden : ''));
         kwRender(box);
       }}, T('🔄 Күнделіктен жаңарту'))),
       h('p', {class: 'text-sm text-charcoal/65 mb-3'}, KW.at ? T('Соңғы жаңарту: ') + fmtTs(KW.at) + ' · ' + ob(KW.by) : T('Бұл тоқсан әлі жаңартылмаған. «Күнделіктен жаңарту» батырмасын басыңыз.')));
