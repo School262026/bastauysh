@@ -2452,9 +2452,9 @@
     view.append(h('button', {type: 'button', class: 'btn btn-l btn-s mb-4', onclick: () => go('users')}, T('← Тізімге қайту')), title(T('Телефондарды жүктеу')),
       section(null, hint(T('Кестені (аты-жөні мен телефоны бар) көшіріп осында салыңыз. Қызметкер аты-жөні (тегі мен аты) бойынша табылады. Телефоны бұрыннан бар адамдарға тимейді.')), ta,
         h('div', {class: 'flex justify-end mt-2'}, h('button', {type: 'button', class: 'btn btn-g', onclick: async () => {
-          const items = ta.value.split(String.fromCharCode(10)).map(l => {
+          const items = ta.value.split(new RegExp('[' + String.fromCharCode(10) + ';]+')).map(l => {
             const m = l.match(/(\+?[78][\d\s()-]{9,}\d)\s*$/); if (!m) return null;
-            const cells = l.split(String.fromCharCode(9)).map(x => x.trim()), name = (cells.length >= 2 ? (cells.find(x => /[A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]{2}/.test(x)) || '') : l.replace(m[0], '').replace(/^\s*\d+[.)]?\s*/, '')).replace(/\s+/g, ' ').trim();
+            const cells = l.split(String.fromCharCode(9)).map(x => x.trim()), name = (cells.length >= 2 ? (cells.find(x => /[A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]{2}/.test(x)) || '') : l.replace(m[0], '').replace(/^\s*\d+[.)]?\s*/, '').replace(/[-–—\s]*(тел|tel)[.:\s]*$/i, '')).replace(/\s+/g, ' ').trim();
             return {name, phone: m[1]};
           }).filter(Boolean);
           if (!items.length) { toast(T('Тізім танылмады'), true); return; }
